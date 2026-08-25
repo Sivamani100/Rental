@@ -54,7 +54,8 @@ class PropertyModel {
 
   // Rental Specific details
   final String? bhkType; // 1 BHK, 2 BHK, 3 BHK, Villa
-  final String? furnishingStatus; // Unfurnished, Semi-Furnished, Fully-Furnished
+  final String?
+  furnishingStatus; // Unfurnished, Semi-Furnished, Fully-Furnished
   final String? plumbingStatus; // Taps & Shower Tested - No leaks
   final String? seepageStatus; // Zero Seepage, Freshly Painted
   final String? electricalStatus; // All Switches/Sockets Tested, Inverter Ready
@@ -224,14 +225,15 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedTypeIndex = 0; // 0 for Rental, 1 for PG
-  
+
   Position? _currentPosition;
   String _currentCity = 'Fetching location...';
   String _currentArea = 'Please wait';
   bool _isLoadingLocation = true;
-  
+
   List<PropertyModel> _allProperties = [];
   List<PropertyModel> _filteredProperties = [];
+  int _currentSearchRadiusKm = 5;
 
   final _supabase = Supabase.instance.client;
   int _locationTapCount = 0;
@@ -264,10 +266,12 @@ class _HomeScreenState extends State<HomeScreen> {
           .from('properties')
           .select()
           .eq('status', 'approved');
-      
+
       if (mounted) {
         setState(() {
-          _allProperties = (data as List).map((e) => PropertyModel.fromJson(e)).toList();
+          _allProperties = (data as List)
+              .map((e) => PropertyModel.fromJson(e))
+              .toList();
           _filterProperties();
           _isLoadingLocation = false;
         });
@@ -288,7 +292,8 @@ class _HomeScreenState extends State<HomeScreen> {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        if (permission == LocationPermission.denied ||
+            permission == LocationPermission.deniedForever) {
           return;
         }
       }
@@ -312,8 +317,11 @@ class _HomeScreenState extends State<HomeScreen> {
         if (placemarks.isNotEmpty && mounted) {
           final place = placemarks.first;
           setState(() {
-            _currentCity = place.locality ?? place.subLocality ?? 'Current City';
-            _currentArea = '${place.administrativeArea ?? ''}, ${place.country ?? ''}'.replaceAll(RegExp(r'^,\s*'), '');
+            _currentCity =
+                place.locality ?? place.subLocality ?? 'Current City';
+            _currentArea =
+                '${place.administrativeArea ?? ''}, ${place.country ?? ''}'
+                    .replaceAll(RegExp(r'^,\s*'), '');
           });
         }
       } catch (_) {}
@@ -330,27 +338,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _filterProperties() {
     if (_currentPosition == null) return;
-    
+
     final selectedTypeStr = _selectedTypeIndex == 0 ? 'Rental' : 'PG';
+    int searchRadiusKm = 5;
+    List<PropertyModel> tempFiltered = [];
 
-    _filteredProperties = _allProperties.where((property) {
-      // 1. Filter by Type (Rental / House vs PG)
-      if (selectedTypeStr == 'Rental') {
-        if (property.type != 'Rental' && property.type != 'House') return false;
-      } else {
-        if (property.type != 'PG') return false;
+    // Increment radius by 5km until we find properties or hit 50km limit
+    while (searchRadiusKm <= 50) {
+      tempFiltered = _allProperties.where((property) {
+        // 1. Filter by Type (Rental / House vs PG)
+        if (selectedTypeStr == 'Rental') {
+          if (property.type != 'Rental' && property.type != 'House') return false;
+        } else {
+          if (property.type != 'PG') return false;
+        }
+
+        // 2. Filter by distance
+        double distanceInMeters = Geolocator.distanceBetween(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+          property.latitude,
+          property.longitude,
+        );
+
+        return distanceInMeters <= (searchRadiusKm * 1000);
+      }).toList();
+
+      if (tempFiltered.isNotEmpty) {
+        break; // Found properties!
       }
+      searchRadiusKm += 5; // Expand search by 5km
+    }
 
-      // 2. Filter by 5km radius
-      double distanceInMeters = Geolocator.distanceBetween(
-        _currentPosition!.latitude,
-        _currentPosition!.longitude,
-        property.latitude,
-        property.longitude,
-      );
-      
-      return distanceInMeters <= 5000; // 5km
-    }).toList();
+    _filteredProperties = tempFiltered;
+    _currentSearchRadiusKm = searchRadiusKm > 50 ? 50 : searchRadiusKm;
   }
 
   @override
@@ -362,17 +383,28 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 20.0, bottom: 8.0),
+              padding: const EdgeInsets.only(
+                left: 16.0,
+                right: 16.0,
+                top: 20.0,
+                bottom: 8.0,
+              ),
               child: _buildHeader(context),
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
+                padding: const EdgeInsets.only(
+                  left: 16.0,
+                  right: 16.0,
+                  bottom: 8.0,
+                ),
                 child: Column(
                   children: [
                     const SizedBox(height: 24),
                     _buildPropertyList(),
-                    const SizedBox(height: 100), // padding for floating bottom bar
+                    const SizedBox(
+                      height: 100,
+                    ), // padding for floating bottom bar
                   ],
                 ),
               ),
@@ -385,9 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 20.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildBottomToggle(),
-            ],
+            children: [_buildBottomToggle()],
           ),
         ),
       ),
@@ -396,7 +426,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _handleAdminTap() {
     final now = DateTime.now();
-    if (_lastLocationTapTime == null || now.difference(_lastLocationTapTime!) > const Duration(seconds: 1)) {
+    if (_lastLocationTapTime == null ||
+        now.difference(_lastLocationTapTime!) > const Duration(seconds: 1)) {
       _locationTapCount = 1;
     } else {
       _locationTapCount++;
@@ -437,7 +468,10 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 _currentCity,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -473,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.black,
+              color: const Color(0xFFFFEB3A),
               borderRadius: BorderRadius.circular(30),
             ),
             child: Row(
@@ -490,8 +524,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Text(
                   'Post',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
                 ),
@@ -531,15 +565,19 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
-                  color: _selectedTypeIndex == 0 ? Colors.black : Colors.white,
+                  color: _selectedTypeIndex == 0
+                      ? const Color(0xFFFFEB3A)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(26),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'Rental',
                   style: TextStyle(
-                    color: _selectedTypeIndex == 0 ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                    fontWeight: _selectedTypeIndex == 0
+                        ? FontWeight.w800
+                        : FontWeight.w600,
                     fontSize: 15,
                   ),
                 ),
@@ -557,15 +595,19 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
-                  color: _selectedTypeIndex == 1 ? Colors.black : Colors.white,
+                  color: _selectedTypeIndex == 1
+                      ? const Color(0xFFFFEB3A)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(26),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'PG',
                   style: TextStyle(
-                    color: _selectedTypeIndex == 1 ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                    fontWeight: _selectedTypeIndex == 1
+                        ? FontWeight.w800
+                        : FontWeight.w600,
                     fontSize: 15,
                   ),
                 ),
@@ -591,12 +633,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (_filteredProperties.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(32.0),
+      return Padding(
+        padding: const EdgeInsets.all(32.0),
         child: Center(
           child: Text(
-            'No properties found within 5km radius.',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+            'No properties found within ${_currentSearchRadiusKm}km radius.',
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
             textAlign: TextAlign.center,
           ),
         ),
@@ -610,7 +652,12 @@ class _HomeScreenState extends State<HomeScreen> {
           child: PropertyCard(
             property: prop,
             onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => PropertyDetailsScreen(property: prop))).then((_) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PropertyDetailsScreen(property: prop),
+                ),
+              ).then((_) {
                 setState(() {});
               });
             },
@@ -625,11 +672,7 @@ class PropertyCard extends StatelessWidget {
   final PropertyModel property;
   final VoidCallback onTap;
 
-  const PropertyCard({
-    super.key,
-    required this.property,
-    required this.onTap,
-  });
+  const PropertyCard({super.key, required this.property, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -646,16 +689,23 @@ class PropertyCard extends StatelessWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
                   child: Image.network(
-                    property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
+                    property.imageUrls.isNotEmpty
+                        ? property.imageUrls.first
+                        : '',
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 200,
                       color: Colors.grey[200],
-                      child: const Center(child: Icon(Iconsax.image, color: Colors.grey)),
+                      child: const Center(
+                        child: Icon(Iconsax.image, color: Colors.grey),
+                      ),
                     ),
                   ),
                 ),
@@ -663,30 +713,44 @@ class PropertyCard extends StatelessWidget {
                   top: 12,
                   right: 12,
                   child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Text(
-                        property.type,
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Text(
+                      property.type,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
+                  ),
                 ),
                 if (!property.isAvailable)
                   Positioned(
                     top: 12,
                     left: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.redAccent.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(30),
                       ),
                       child: const Text(
                         'Not Available',
-                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -705,13 +769,20 @@ class PropertyCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           property.title,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, height: 1.2),
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            height: 1.2,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         property.price,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -719,12 +790,19 @@ class PropertyCard extends StatelessWidget {
                   // Location
                   Row(
                     children: [
-                      const Icon(Iconsax.location5, color: Colors.grey, size: 16),
+                      const Icon(
+                        Iconsax.location5,
+                        color: Colors.grey,
+                        size: 16,
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           property.locationStr,
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -753,9 +831,17 @@ class PropertyCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildBottomInfo(Iconsax.moon5, property.beds),
-                      Container(height: 16, width: 1, color: Colors.grey.shade300),
+                      Container(
+                        height: 16,
+                        width: 1,
+                        color: Colors.grey.shade300,
+                      ),
                       _buildBottomInfo(Iconsax.drop, property.baths),
-                      Container(height: 16, width: 1, color: Colors.grey.shade300),
+                      Container(
+                        height: 16,
+                        width: 1,
+                        color: Colors.grey.shade300,
+                      ),
                       _buildBottomInfo(Iconsax.maximize4, property.area),
                     ],
                   ),
@@ -768,7 +854,6 @@ class PropertyCard extends StatelessWidget {
     );
   }
 
-
   Widget _buildTag(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -779,7 +864,11 @@ class PropertyCard extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(color: Colors.grey.shade700, fontSize: 12, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: Colors.grey.shade700,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -791,7 +880,11 @@ class PropertyCard extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           text,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -870,7 +963,11 @@ class SkeletonPropertyCard extends StatelessWidget {
                     children: [
                       const SkeletonBox(width: 16, height: 16, borderRadius: 8),
                       const SizedBox(width: 6),
-                      SkeletonBox(width: MediaQuery.of(context).size.width * 0.45, height: 13, borderRadius: 4),
+                      SkeletonBox(
+                        width: MediaQuery.of(context).size.width * 0.45,
+                        height: 13,
+                        borderRadius: 4,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -914,7 +1011,8 @@ class ShimmerEffect extends StatefulWidget {
   State<ShimmerEffect> createState() => _ShimmerEffectState();
 }
 
-class _ShimmerEffectState extends State<ShimmerEffect> with SingleTickerProviderStateMixin {
+class _ShimmerEffectState extends State<ShimmerEffect>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -986,4 +1084,3 @@ class SkeletonBox extends StatelessWidget {
     );
   }
 }
-

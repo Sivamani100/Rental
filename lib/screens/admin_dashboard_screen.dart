@@ -3,6 +3,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_snackbar.dart';
 import 'home_screen.dart' show PropertyModel;
+import 'posting_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -67,6 +68,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (mounted) {
         AppSnackbar.error(context, 'Failed to delete: $e');
       }
+    }
+  }
+
+  Future<void> _confirmDelete(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Property', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to delete this property? This action cannot be undone.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.black54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      _deleteProperty(id);
     }
   }
 
@@ -381,7 +411,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(width: 8),
                 ],
                 IconButton(
-                  onPressed: () => _deleteProperty(prop.id!),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: const Color(0xFFF7F7F9),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                      ),
+                      builder: (context) => PostBottomSheet(
+                        propertyToEdit: prop,
+                        onPropertyCreated: (_) => _fetchProperties(),
+                      ),
+                    ).then((_) => _fetchProperties());
+                  },
+                  icon: const Icon(Iconsax.edit, color: Colors.blueAccent),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () => _confirmDelete(prop.id!),
                   icon: const Icon(Iconsax.trash, color: Colors.redAccent),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.red.withValues(alpha: 0.1),

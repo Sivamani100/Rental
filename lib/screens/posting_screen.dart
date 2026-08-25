@@ -5,18 +5,22 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image/image.dart' as img;
 import '../widgets/app_snackbar.dart';
 import 'home_screen.dart' show PropertyModel;
 
 class PostBottomSheet extends StatefulWidget {
   final Position? currentLocation;
   final Function(PropertyModel)? onPropertyCreated;
+  final PropertyModel? propertyToEdit;
 
   const PostBottomSheet({
     super.key,
     this.currentLocation,
     this.onPropertyCreated,
+    this.propertyToEdit,
   });
 
   @override
@@ -27,6 +31,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   int _currentStep = 1;
   static const int _totalSteps = 6;
   String _selectedType = 'Rental'; // 'Rental' or 'PG'
+  
+  List<String> _existingImages = [];
+  bool get _isEditing => widget.propertyToEdit != null;
 
   // Image & Basic Info
   final ImagePicker _picker = ImagePicker();
@@ -109,6 +116,55 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     if (widget.currentLocation != null) {
       _latitude = widget.currentLocation!.latitude;
       _longitude = widget.currentLocation!.longitude;
+    }
+
+    if (_isEditing) {
+      final p = widget.propertyToEdit!;
+      _selectedType = p.type;
+      _titleController.text = p.title;
+      _priceController.text = p.price.replaceAll(RegExp(r'[^0-9]'), '');
+      _depositController.text = p.securityDeposit?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+      _maintenanceController.text = p.maintenanceCharges?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+      _addressController.text = p.locationStr;
+      _phoneController.text = p.ownerPhone;
+      _whatsappController.text = p.ownerWhatsapp ?? '';
+      _descriptionController.text = p.description ?? '';
+      _existingImages = List.from(p.imageUrls);
+      _latitude = p.latitude;
+      _longitude = p.longitude;
+      
+      if (p.type == 'PG') {
+        _pgGender = p.genderPreference ?? _pgGender;
+        _pgSharing = p.sharingType ?? _pgSharing;
+        _pgAcType = p.acType ?? _pgAcType;
+        _pgBathroom = p.bathroomType ?? _pgBathroom;
+        _pgCleaning = p.cleanlinessInfo ?? _pgCleaning;
+        _pgFoodPlan = p.foodDetails ?? _pgFoodPlan;
+        _pgFoodType = p.foodQuality ?? _pgFoodType;
+        _pgWaterSupply = p.waterSupply ?? _pgWaterSupply;
+        _pgDrinkingWater = p.drinkingWater ?? _pgDrinkingWater;
+        _pgPowerBackup = p.powerBackup ?? _pgPowerBackup;
+        _pgCurfew = p.gateRules ?? _pgCurfew;
+        _pgNotice = p.noticePeriod ?? _pgNotice;
+        _pgManagement = p.managementInfo ?? _pgManagement;
+        _pgSelectedAmenities.clear();
+        _pgSelectedAmenities.addAll(p.features);
+      } else {
+        _rentalBhk = p.bhkType ?? _rentalBhk;
+        _rentalFurnishing = p.furnishingStatus ?? _rentalFurnishing;
+        _rentalBeds = p.beds.isNotEmpty ? p.beds : _rentalBeds;
+        _rentalBaths = p.baths.isNotEmpty ? p.baths : _rentalBaths;
+        _rentalArea = p.area.isNotEmpty ? p.area.replaceAll(RegExp(r'[^0-9]'), '') : _rentalArea;
+        _rentalAgreement = p.agreementDuration ?? _rentalAgreement;
+        _rentalNotice = p.noticePeriod ?? _rentalNotice;
+        _rentalWaterBill = p.billsInfo ?? _rentalWaterBill;
+        _rentalEbMeter = p.meterStatus ?? _rentalEbMeter;
+        _rentalTenantPref = p.tenantPreference ?? _rentalTenantPref;
+        _rentalPetPolicy = p.petPolicy ?? _rentalPetPolicy;
+        _rentalParking = p.parkingInfo ?? _rentalParking;
+        _rentalSelectedFeatures.clear();
+        _rentalSelectedFeatures.addAll(p.features);
+      }
     }
   }
 
@@ -287,6 +343,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       tenantPreference: !isPg ? _rentalTenantPref : null,
       petPolicy: !isPg ? _rentalPetPolicy : null,
       parkingInfo: !isPg ? _rentalParking : null,
+      status: _isEditing ? widget.propertyToEdit!.status : 'pending',
     );
 
     _uploadAndSaveProperty(newProperty);
@@ -296,16 +353,52 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     setState(() => _isSubmitting = true);
     try {
       final supabase = Supabase.instance.client;
-      List<String> uploadedUrls = [];
+      List<String> uploadedUrls = List.from(_existingImages);
+
+      // 1. Load watermark once
+      img.Image? watermarkImage;
+      try {
+        final ByteData watermarkData = await rootBundle.load('assets/watermarkofrental.png');
+        watermarkImage = img.decodeImage(watermarkData.buffer.asUint8List());
+      } catch (e) {
+        debugPrint('Failed to load watermark: $e');
+      }
 
       for (var file in _selectedImages) {
         final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
-        if (kIsWeb) {
-          final bytes = await file.readAsBytes();
-          await supabase.storage.from('property_images').uploadBinary(fileName, bytes);
-        } else {
-          await supabase.storage.from('property_images').upload(fileName, File(file.path));
+        final originalBytes = await file.readAsBytes();
+        
+        Uint8List bytesToUpload = originalBytes;
+        
+        // Apply watermark if possible
+        if (watermarkImage != null) {
+          final originalImg = img.decodeImage(originalBytes);
+          if (originalImg != null) {
+            // Scale watermark to be reasonable relative to the image
+            // E.g., make it 25% of the image width
+            int targetWatermarkWidth = (originalImg.width * 0.25).toInt().clamp(50, 800);
+            img.Image scaledWatermark = img.copyResize(watermarkImage, width: targetWatermarkWidth);
+            
+            // Bottom Right with 20px padding
+            int padding = 20;
+            int dstX = originalImg.width - scaledWatermark.width - padding;
+            int dstY = originalImg.height - scaledWatermark.height - padding;
+            
+            // Apply overlay
+            img.compositeImage(originalImg, scaledWatermark, dstX: dstX, dstY: dstY);
+            
+            // Re-encode to JPG
+            bytesToUpload = Uint8List.fromList(img.encodeJpg(originalImg, quality: 85));
+          }
         }
+        
+        // Upload the bytes
+        await supabase.storage.from('property_images').uploadBinary(
+          fileName, 
+          bytesToUpload,
+          fileOptions: const FileOptions(contentType: 'image/jpeg')
+        );
+        
         final url = supabase.storage.from('property_images').getPublicUrl(fileName);
         uploadedUrls.add(url);
       }
@@ -316,12 +409,16 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         propertyJson['image_urls'] = uploadedUrls;
       }
 
-      await supabase.from('properties').insert(propertyJson);
+      if (_isEditing) {
+        await supabase.from('properties').update(propertyJson).eq('id', widget.propertyToEdit!.id!);
+      } else {
+        await supabase.from('properties').insert(propertyJson);
+      }
 
       if (mounted) {
         widget.onPropertyCreated?.call(newProperty); // Optional if using refresh
         Navigator.pop(context);
-        AppSnackbar.success(context, '$_selectedType property posted successfully! It is pending admin approval.');
+        AppSnackbar.success(context, _isEditing ? 'Property updated successfully!' : '$_selectedType property posted successfully! It is pending admin approval.');
       }
     } catch (e) {
       if (mounted) {
@@ -357,7 +454,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
+                    _isEditing ? 'Edit ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}' : 'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
                     style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 2),
@@ -479,8 +576,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                     }
                   },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
+              // Inherits from global theme
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
             ),
@@ -657,7 +753,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('${_selectedImages.length} Photos Selected', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text('${_existingImages.length + _selectedImages.length} Photos Selected', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                       TextButton.icon(
                         onPressed: _pickImages,
                         icon: const Icon(Icons.add_photo_alternate, size: 18, color: Colors.black),
@@ -670,8 +766,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                     height: 90,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount: _selectedImages.length,
+                      itemCount: _existingImages.length + _selectedImages.length,
                       itemBuilder: (context, index) {
+                        final isExisting = index < _existingImages.length;
                         return Stack(
                           children: [
                             Container(
@@ -681,9 +778,11 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
                                 image: DecorationImage(
-                                  image: kIsWeb 
-                                      ? NetworkImage(_selectedImages[index].path) as ImageProvider 
-                                      : FileImage(File(_selectedImages[index].path)), 
+                                  image: isExisting 
+                                      ? NetworkImage(_existingImages[index]) as ImageProvider
+                                      : (kIsWeb 
+                                          ? NetworkImage(_selectedImages[index - _existingImages.length].path) as ImageProvider 
+                                          : FileImage(File(_selectedImages[index - _existingImages.length].path)) as ImageProvider),
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -692,7 +791,15 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                               top: 4,
                               right: 14,
                               child: GestureDetector(
-                                onTap: () => setState(() => _selectedImages.removeAt(index)),
+                                onTap: () {
+                                  setState(() {
+                                    if (isExisting) {
+                                      _existingImages.removeAt(index);
+                                    } else {
+                                      _selectedImages.removeAt(index - _existingImages.length);
+                                    }
+                                  });
+                                },
                                 child: Container(
                                   padding: const EdgeInsets.all(3),
                                   decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),

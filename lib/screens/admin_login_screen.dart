@@ -142,8 +142,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
-                    foregroundColor: Colors.white,
+                    // Inherits from global theme
                     elevation: 8,
                     shadowColor: Colors.black.withValues(alpha: 0.4),
                   ),

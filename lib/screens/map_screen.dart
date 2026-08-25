@@ -108,7 +108,7 @@ class MapScreen extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: () => _startDirections(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black,
+                    // Inherits from global theme
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),

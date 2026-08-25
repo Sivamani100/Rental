@@ -440,7 +440,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   child: ElevatedButton(
                     onPressed: () => _launchPhone(widget.property.ownerPhone),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      // Inherits from global theme
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       elevation: 0,
