@@ -1,4 +1,4 @@
-package com.example.rental
+package com.arkiolabs.rental
 
 import io.flutter.embedding.android.FlutterActivity
 
