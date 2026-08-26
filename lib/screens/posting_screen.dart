@@ -454,101 +454,107 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   Widget build(BuildContext context) {
     final double maxDialogHeight = MediaQuery.of(context).size.height * 0.88;
 
-    return Container(
-      constraints: BoxConstraints(maxHeight: maxDialogHeight),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-        left: 16,
-        right: 16,
-        top: 16,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with Step indicator
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _isEditing ? 'Edit ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}' : 'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
-                    style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Step $_currentStep of $_totalSteps: ${_getStepTitle()}',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                  ),
-                ],
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: BoxConstraints(maxHeight: maxDialogHeight),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 16,
+          right: 16,
+          top: 16,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with Step indicator
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isEditing ? 'Edit ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}' : 'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
+                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Step $_currentStep of $_totalSteps: ${_getStepTitle()}',
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.black54),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            if (_sheetErrorMessage != null)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                margin: const EdgeInsets.only(top: 10, bottom: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFECEC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Iconsax.warning_2, color: Colors.red, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _sheetErrorMessage!,
+                        style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _sheetErrorMessage = null),
+                      child: const Icon(Icons.close, color: Colors.red, size: 16),
+                    ),
+                  ],
+                ),
               ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, color: Colors.black54),
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-          if (_sheetErrorMessage != null)
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.only(top: 10, bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFECEC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.shade300),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Iconsax.warning_2, color: Colors.red, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _sheetErrorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600),
+            const SizedBox(height: 20),
+            // Step Progress Indicator Bar
+            Row(
+              children: List.generate(_totalSteps, (index) {
+                final stepIndex = index + 1;
+                final isPassed = stepIndex <= _currentStep;
+                return Expanded(
+                  child: Container(
+                    height: 4,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: isPassed ? Colors.black : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => setState(() => _sheetErrorMessage = null),
-                    child: const Icon(Icons.close, color: Colors.red, size: 16),
-                  ),
-                ],
-              ),
+                );
+              }),
             ),
-          const SizedBox(height: 20),
-          // Step Progress Indicator Bar
-          Row(
-            children: List.generate(_totalSteps, (index) {
-              final stepIndex = index + 1;
-              final isPassed = stepIndex <= _currentStep;
-              return Expanded(
-                child: Container(
-                  height: 4,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: isPassed ? Colors.black : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+            const SizedBox(height: 24),
+            // Scrollable Content
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _buildStepContent(),
                 ),
-              );
-            }),
-          ),
-          const SizedBox(height: 24),
-          // Scrollable Content
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: _buildStepContent(),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _buildActionButtons(),
-        ],
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20.0),
+              child: _buildActionButtons(),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -297,8 +297,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _refreshLocationFast(updateFeed: true);
     _startAutoLocationRefresh();
 
-    // Ensure loading displays for at least 30s before revealing empty state
-    _emptyStateTimer = Timer(const Duration(seconds: 30), () {
+    // Show loading animation for 2 seconds before revealing state
+    _emptyStateTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() {
           _canShowEmptyState = true;
@@ -667,8 +667,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
       onRefresh: () async {
         HapticFeedback.mediumImpact();
-        await _refreshLocationFast(updateFeed: true);
-        await _fetchProperties();
+        final refreshFuture = Future.wait([
+          _refreshLocationFast(updateFeed: true),
+          _fetchProperties(),
+        ]);
+        // Keep the pull-to-refresh spinner spinning for 2 seconds
+        await Future.wait([
+          refreshFuture,
+          Future.delayed(const Duration(seconds: 2)),
+        ]);
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -688,23 +695,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       children: [
         BouncingButton(
           onTap: () {
-            AppSnackbar.success(context, 'Reloading location...');
             _refreshLocationFast(updateFeed: true);
           },
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: Colors.black.withValues(alpha: 0.06),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: const Icon(Iconsax.location, color: Colors.black, size: 24),
+            child: _isRefreshingLocation
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                    ),
+                  )
+                : const Icon(Iconsax.location, color: Colors.black, size: 22),
           ),
         ),
         const SizedBox(width: 12),
@@ -941,12 +956,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Pull down to refresh or check back later!',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
               ],
