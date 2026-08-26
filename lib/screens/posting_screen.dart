@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image/image.dart' as img;
 import '../widgets/app_snackbar.dart';
+import '../widgets/bouncing_button.dart';
 import 'home_screen.dart' show PropertyModel;
 
 class PostBottomSheet extends StatefulWidget {
@@ -454,107 +455,101 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   Widget build(BuildContext context) {
     final double maxDialogHeight = MediaQuery.of(context).size.height * 0.88;
 
-    return SafeArea(
-      top: false,
-      child: Container(
-        constraints: BoxConstraints(maxHeight: maxDialogHeight),
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 16,
-          right: 16,
-          top: 16,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with Step indicator
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _isEditing ? 'Edit ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}' : 'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
-                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Step $_currentStep of $_totalSteps: ${_getStepTitle()}',
-                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Colors.black54),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
-            ),
-            if (_sheetErrorMessage != null)
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                margin: const EdgeInsets.only(top: 10, bottom: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFECEC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade300),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Iconsax.warning_2, color: Colors.red, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _sheetErrorMessage!,
-                        style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => setState(() => _sheetErrorMessage = null),
-                      child: const Icon(Icons.close, color: Colors.red, size: 16),
-                    ),
-                  ],
-                ),
+    return Container(
+      constraints: BoxConstraints(maxHeight: maxDialogHeight),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        left: 16,
+        right: 16,
+        top: 16,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with Step indicator
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isEditing ? 'Edit ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}' : 'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
+                    style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Step $_currentStep of $_totalSteps: ${_getStepTitle()}',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  ),
+                ],
               ),
-            const SizedBox(height: 20),
-            // Step Progress Indicator Bar
-            Row(
-              children: List.generate(_totalSteps, (index) {
-                final stepIndex = index + 1;
-                final isPassed = stepIndex <= _currentStep;
-                return Expanded(
-                  child: Container(
-                    height: 4,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: isPassed ? Colors.black : Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close, color: Colors.black54),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+          if (_sheetErrorMessage != null)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              margin: const EdgeInsets.only(top: 10, bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFECEC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade300),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Iconsax.warning_2, color: Colors.red, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _sheetErrorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ),
-                );
-              }),
-            ),
-            const SizedBox(height: 24),
-            // Scrollable Content
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: _buildStepContent(),
-                ),
+                  GestureDetector(
+                    onTap: () => setState(() => _sheetErrorMessage = null),
+                    child: const Icon(Icons.close, color: Colors.red, size: 16),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20.0),
-              child: _buildActionButtons(),
+          const SizedBox(height: 20),
+          // Step Progress Indicator Bar
+          Row(
+            children: List.generate(_totalSteps, (index) {
+              final stepIndex = index + 1;
+              final isPassed = stepIndex <= _currentStep;
+              return Expanded(
+                child: Container(
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: isPassed ? Colors.black : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 24),
+          // Scrollable Content
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: _buildStepContent(),
+              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          _buildActionButtons(),
+        ],
       ),
     );
   }
@@ -598,28 +593,32 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   }
 
   // ==========================================
-  // ACTION BUTTONS
+  // ACTION BUTTONS (20px margin from bottom)
   // ==========================================
   Widget _buildActionButtons() {
     return Row(
       children: [
         if (_currentStep > 1)
           Expanded(
-            child: OutlinedButton(
-              onPressed: _isSubmitting ? null : () => setState(() => _currentStep--),
-              style: OutlinedButton.styleFrom(
+            child: BouncingButton(
+              onTap: _isSubmitting ? null : () => setState(() => _currentStep--),
+              child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                side: const BorderSide(color: Colors.black, width: 1.5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.black, width: 1.5),
+                  color: Colors.white,
+                ),
+                alignment: Alignment.center,
+                child: const Text('Back', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
               ),
-              child: const Text('Back', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
         if (_currentStep > 1) const SizedBox(width: 12),
         Expanded(
           flex: 2,
-          child: ElevatedButton(
-            onPressed: _isSubmitting
+          child: BouncingButton(
+            onTap: _isSubmitting
                 ? null
                 : () {
                     if (_currentStep < _totalSteps) {
@@ -628,17 +627,27 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                       _submitProperty();
                     }
                   },
-            style: ElevatedButton.styleFrom(
-              // Inherits from global theme
+            child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-            ),
-            child: _isSubmitting
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : Text(
-                    _currentStep == _totalSteps ? 'Post Property' : 'Next Step',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: _isSubmitting
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Text(
+                      _currentStep == _totalSteps ? 'Post Property' : 'Next Step',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
           ),
         ),
       ],

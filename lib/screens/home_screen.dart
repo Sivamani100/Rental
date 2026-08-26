@@ -695,50 +695,53 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       children: [
         BouncingButton(
           onTap: () {
+            HapticFeedback.selectionClick();
             _refreshLocationFast(updateFeed: true);
           },
           child: Container(
-            padding: const EdgeInsets.all(12),
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: Colors.white,
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: _isRefreshingLocation
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                    ),
-                  )
-                : const Icon(Iconsax.location, color: Colors.black, size: 22),
+            alignment: Alignment.center,
+            child: const Icon(Iconsax.location, color: Colors.black, size: 24),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 _currentCity,
                 style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                  height: 1.15,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
+              const SizedBox(height: 2),
               Text(
                 _currentArea,
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: Colors.grey.shade500,
+                  fontWeight: FontWeight.w400,
+                  height: 1.15,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
