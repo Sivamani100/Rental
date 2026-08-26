@@ -704,13 +704,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              border: Border.all(
+                color: Colors.black.withValues(alpha: 0.06),
+                width: 1,
+              ),
             ),
             alignment: Alignment.center,
             child: const Icon(Iconsax.location, color: Colors.black, size: 24),
