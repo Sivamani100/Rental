@@ -7,8 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_snackbar.dart';
 import 'posting_screen.dart';
 import 'property_details_screen.dart';
-import 'admin_dashboard_screen.dart';
-import 'admin_login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -270,8 +268,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _currentSearchRadiusKm = 5;
 
   final _supabase = Supabase.instance.client;
-  int _locationTapCount = 0;
-  DateTime? _lastLocationTapTime;
   Timer? _autoLocationTimer;
   Timer? _emptyStateTimer;
   bool _isRefreshingLocation = false;
@@ -595,81 +591,71 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     return Scaffold(
-      extendBody: true,
+      backgroundColor: const Color(0xFFFBF7F7),
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(
-                left: 16.0,
-                right: 16.0,
-                top: 20.0,
-                bottom: 8.0,
-              ),
-              child: _buildHeader(context),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(
-                  left: 16.0,
-                  right: 16.0,
-                  bottom: 8.0,
-                ),
-                child: Column(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 650),
+            child: Stack(
+              children: [
+                Column(
                   children: [
-                    const SizedBox(height: 24),
-                    _buildPropertyList(),
-                    const SizedBox(
-                      height: 100,
-                    ), // padding for floating bottom bar
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 16.0,
+                        right: 16.0,
+                        top: 20.0,
+                        bottom: 8.0,
+                      ),
+                      child: _buildHeader(context),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          bottom: 8.0,
+                        ),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 24),
+                            _buildPropertyList(),
+                            const SizedBox(
+                              height: 100,
+                            ), // padding for floating bottom bar
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
+                // Pinned floating bottom toggle with 20px bottom margin
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 20,
+                  child: SafeArea(
+                    top: false,
+                    child: _buildBottomToggle(),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [_buildBottomToggle()],
           ),
         ),
       ),
     );
   }
 
-  void _handleAdminTap() {
-    final now = DateTime.now();
-    if (_lastLocationTapTime == null ||
-        now.difference(_lastLocationTapTime!) > const Duration(seconds: 1)) {
-      _locationTapCount = 1;
-    } else {
-      _locationTapCount++;
-    }
-    _lastLocationTapTime = now;
-
-    if (_locationTapCount >= 3) {
-      _locationTapCount = 0;
-      _showAdminLoginScreen();
-    }
-  }
-
-  void _showAdminLoginScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AdminLoginScreen()),
-    ).then((_) => _fetchProperties());
-  }
-
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
         GestureDetector(
-          onTap: _handleAdminTap,
+          onTap: () {
+            AppSnackbar.success(context, 'Reloading location...');
+            _refreshLocationFast(updateFeed: true);
+          },
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(

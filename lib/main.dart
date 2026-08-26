@@ -1,11 +1,17 @@
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/home_screen.dart';
+import 'screens/admin_login_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -21,7 +27,12 @@ Future<void> main() async {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoYndudGVpYWhlZmpmcG9qYXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2NDIwNTQsImV4cCI6MjEwMzIxODA1NH0.CnP-ogYh7FwPY9cqBRTX2oS6NqTT-mXgPsSyDDCADC8',
   );
 
-  runApp(const RentalApp());
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => const RentalApp(),
+    ),
+  );
 }
 
 class RentalApp extends StatelessWidget {
@@ -38,6 +49,8 @@ class RentalApp extends StatelessWidget {
         systemNavigationBarIconBrightness: Brightness.dark,
       ),
       child: MaterialApp(
+        locale: DevicePreview.locale(context),
+        builder: DevicePreview.appBuilder,
         title: 'Rental App',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -78,10 +91,48 @@ class RentalApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const HomeScreen(),
+        onGenerateRoute: (settings) {
+          final rawName = settings.name ?? '/';
+          final uri = Uri.parse(rawName);
+          final path = uri.path.toLowerCase();
+
+          if (path == '/admin' ||
+              path == '/admin/' ||
+              path == 'admin' ||
+              path.startsWith('/admin')) {
+            final session = Supabase.instance.client.auth.currentSession;
+            if (session != null) {
+              return MaterialPageRoute(
+                settings: settings,
+                builder: (_) => const AdminDashboardScreen(),
+              );
+            }
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const AdminLoginScreen(),
+            );
+          }
+
+          if (path == '/admin/login') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const AdminLoginScreen(),
+            );
+          }
+
+          if (path == '/admin/dashboard') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const AdminDashboardScreen(),
+            );
+          }
+
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => const HomeScreen(),
+          );
+        },
       ),
     );
   }
 }
-
-

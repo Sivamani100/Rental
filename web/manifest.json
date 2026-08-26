@@ -1,11 +1,11 @@
 {
-    "name": "rental",
-    "short_name": "rental",
+    "name": "Rental App",
+    "short_name": "Rental",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FFEB3A",
+    "theme_color": "#FFEB3A",
+    "description": "Find your perfect rental house or PG near you.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

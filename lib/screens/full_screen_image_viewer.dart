@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -44,6 +45,22 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
           child: CircularProgressIndicator(),
         ),
         errorWidget: (context, url, error) => const Center(
+          child: Icon(Iconsax.image, size: 64, color: Colors.white54),
+        ),
+      );
+    } else if (path.startsWith('assets/')) {
+      return Image.asset(
+        path,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Center(
+          child: Icon(Iconsax.image, size: 64, color: Colors.white54),
+        ),
+      );
+    } else if (kIsWeb) {
+      return Image.network(
+        path,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Center(
           child: Icon(Iconsax.image, size: 64, color: Colors.white54),
         ),
       );

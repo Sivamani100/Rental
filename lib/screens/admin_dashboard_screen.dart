@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/app_snackbar.dart';
 import 'home_screen.dart' show PropertyModel;
-import 'property_details_screen.dart';
 import 'posting_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -122,7 +121,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Iconsax.arrow_left_2, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, '/');
+            }
+          },
         ),
         title: const Text(
           'Admin Dashboard',
@@ -138,11 +143,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             icon: const Icon(Iconsax.refresh, color: Colors.black),
             onPressed: _fetchProperties,
           ),
+          IconButton(
+            icon: const Icon(Iconsax.logout, color: Colors.redAccent),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await _supabase.auth.signOut();
+              if (mounted) {
+                AppSnackbar.success(context, 'Logged out successfully');
+                Navigator.pushReplacementNamed(context, '/admin');
+              }
+            },
+          ),
         ],
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           // Analytics Cards
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -210,11 +229,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           return _buildAdminPropertyCard(filtered[index]);
                         },
                       ),
-          )
+          ),
         ],
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(

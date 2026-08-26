@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -29,6 +30,64 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   bool _hasReviewed = false;
   String? _deviceId;
   Map<String, dynamic>? _myReview;
+
+  Widget _buildCarouselImage(String imagePath) {
+    if (imagePath.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: imagePath,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(
+          color: Colors.grey.shade300,
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        errorWidget: (context, url, error) => Container(
+          color: Colors.grey.shade300,
+          child: const Center(
+            child: Icon(Iconsax.image, color: Colors.grey, size: 40),
+          ),
+        ),
+      );
+    } else if (imagePath.startsWith('assets/')) {
+      return Image.asset(
+        imagePath,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: Colors.grey.shade300,
+          child: const Center(
+            child: Icon(Iconsax.image, color: Colors.grey, size: 40),
+          ),
+        ),
+      );
+    } else if (kIsWeb) {
+      return Image.network(
+        imagePath,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: Colors.grey.shade300,
+          child: const Center(
+            child: Icon(Iconsax.image, color: Colors.grey, size: 40),
+          ),
+        ),
+      );
+    } else {
+      return Image.file(
+        File(imagePath),
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: Colors.grey.shade300,
+          child: const Center(
+            child: Icon(Iconsax.image, color: Colors.grey, size: 40),
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -84,13 +143,16 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFBF7F7),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image Carousel and Top Bar Stack
-            Stack(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 650),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Image Carousel and Top Bar Stack
+                Stack(
+                  children: [
                 SizedBox(
                   height: 350,
                   child: PageView.builder(
@@ -114,35 +176,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             ),
                           );
                         },
-                        child: imagePath.startsWith('http')
-                            ? CachedNetworkImage(
-                                imageUrl: imagePath,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => Container(
-                                  color: Colors.grey.shade300,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                ),
-                                errorWidget: (context, url, error) => Container(
-                                  color: Colors.grey.shade300,
-                                  child: const Center(
-                                    child: Icon(Iconsax.image, color: Colors.grey, size: 40),
-                                  ),
-                                ),
-                              )
-                            : Image.file(
-                                File(imagePath),
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  color: Colors.grey.shade300,
-                                  child: const Center(
-                                    child: Icon(Iconsax.image, color: Colors.grey, size: 40),
-                                  ),
-                                ),
-                              ),
+                        child: _buildCarouselImage(imagePath),
                       );
                     },
                   ),
@@ -569,60 +603,61 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 ),
               ),
             ],
+          ),
         ),
       ),
-      // Sticky Bottom Action Bar
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(color: Colors.grey.shade200, width: 1),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              offset: const Offset(0, -4),
-              blurRadius: 16,
+    ),
+  // Sticky Bottom Action Bar
+  bottomNavigationBar: Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      border: Border(
+        top: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.05),
+          offset: const Offset(0, -4),
+          blurRadius: 16,
+        ),
+      ],
+    ),
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => _launchPhone(widget.property.ownerPhone),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Contact Owner',
+                  style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: () => _launchWhatsApp(widget.property.ownerPhone),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF25D366), // WhatsApp Green
+                padding: const EdgeInsets.all(14),
+                shape: const CircleBorder(),
+                elevation: 0,
+              ),
+              child: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 22),
             ),
           ],
         ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _launchPhone(widget.property.ownerPhone),
-                    style: ElevatedButton.styleFrom(
-                      // Inherits from global theme
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Contact Owner',
-                      style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: () => _launchWhatsApp(widget.property.ownerPhone),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366), // WhatsApp Green
-                    padding: const EdgeInsets.all(14),
-                    shape: const CircleBorder(),
-                    elevation: 0,
-                  ),
-                  child: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 22),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
+    ),
+  ),
     );
   }
 
