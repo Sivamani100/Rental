@@ -119,9 +119,14 @@ class RentalApp extends StatelessWidget {
             );
           }
 
+          String? propertyId = uri.queryParameters['propertyId'] ?? uri.queryParameters['id'];
+          if (path.startsWith('/property/')) {
+            propertyId = path.replaceFirst('/property/', '').trim();
+          }
+
           return MaterialPageRoute(
             settings: settings,
-            builder: (_) => const HomeScreen(),
+            builder: (_) => HomeScreen(initialPropertyId: propertyId),
           );
         },
       ),

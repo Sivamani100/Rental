@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
@@ -249,7 +250,9 @@ class PropertyModel {
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String? initialPropertyId;
+
+  const HomeScreen({super.key, this.initialPropertyId});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -273,6 +276,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Timer? _emptyStateTimer;
   bool _isRefreshingLocation = false;
   bool _canShowEmptyState = false;
+  bool _hasOpenedInitialProperty = false;
 
   @override
   void initState() {
@@ -296,6 +300,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _fetchProperties();
     _refreshLocationFast(updateFeed: true);
     _startAutoLocationRefresh();
+    _checkAndOpenInitialProperty();
 
     // Show loading animation for 2 seconds before revealing state
     _emptyStateTimer = Timer(const Duration(seconds: 2), () {
@@ -305,6 +310,44 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
       }
     });
+  }
+
+  void _checkAndOpenInitialProperty() async {
+    if (_hasOpenedInitialProperty) return;
+    String? targetId = widget.initialPropertyId;
+    if (targetId == null && kIsWeb) {
+      targetId = Uri.base.queryParameters['propertyId'] ?? Uri.base.queryParameters['id'];
+    }
+
+    if (targetId != null && targetId.isNotEmpty) {
+      _hasOpenedInitialProperty = true;
+      try {
+        PropertyModel? found;
+        try {
+          found = _allProperties.firstWhere((p) => p.id == targetId);
+        } catch (_) {}
+
+        if (found == null) {
+          final res = await _supabase.from('properties').select().eq('id', targetId).maybeSingle();
+          if (res != null) {
+            found = PropertyModel.fromJson(res);
+          }
+        }
+
+        if (found != null && mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PropertyDetailsScreen(property: found!),
+                ),
+              );
+            }
+          });
+        }
+      } catch (_) {}
+    }
   }
 
   void _startAutoLocationRefresh() {
@@ -347,6 +390,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _allProperties = decoded.map((e) => PropertyModel.fromJson(e)).toList();
           _isInitialLoading = false;
         });
+        _checkAndOpenInitialProperty();
       }
 
       // Fetch fresh data from network (only approved properties)
@@ -365,6 +409,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               .toList();
           _isInitialLoading = false;
         });
+        _checkAndOpenInitialProperty();
       }
     } catch (e) {
       if (mounted) {

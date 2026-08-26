@@ -7,7 +7,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import '../widgets/app_snackbar.dart';
+import '../widgets/bouncing_button.dart';
 import 'home_screen.dart' show PropertyModel;
 import 'map_screen.dart';
 import 'full_screen_image_viewer.dart';
@@ -139,6 +142,63 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     }
   }
 
+  Future<void> _shareProperty() async {
+    HapticFeedback.selectionClick();
+    final propertyId = widget.property.id ?? '';
+    final shareUrl = 'https://rental.arkio.in/?propertyId=$propertyId';
+    final shareText = 'Check out "${widget.property.title}" (${widget.property.type == 'PG' ? 'PG / Hostel' : 'Rental House'}) for ${widget.property.price} on Arkio Rental:\n$shareUrl';
+
+    try {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: shareText,
+          subject: widget.property.title,
+        ),
+      );
+    } catch (_) {
+      try {
+        await Share.share(shareText, subject: widget.property.title);
+      } catch (e) {
+        await Clipboard.setData(ClipboardData(text: shareUrl));
+        if (mounted) {
+          AppSnackbar.success(context, 'Link copied to clipboard!');
+        }
+      }
+    }
+  }
+
+  Widget _buildTopIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    Color? iconColor,
+    Color? backgroundColor,
+  }) {
+    return BouncingButton(
+      onTap: onTap,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: backgroundColor ?? Colors.white.withValues(alpha: 0.94),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          color: iconColor ?? Colors.black,
+          size: 20,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -187,25 +247,36 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildIconButton(
-                          icon: Iconsax.arrow_left_2,
+                        _buildTopIconButton(
+                          icon: Iconsax.arrow_left,
                           onTap: () => Navigator.pop(context),
                         ),
-                        if (widget.property.isAvailable)
-                          _buildIconButton(
-                            icon: Iconsax.slash,
-                            onTap: _showAvailabilityBottomSheet,
-                          )
-                        else
-                          _buildIconButton(
-                            icon: Iconsax.refresh,
-                            onTap: () {
-                              setState(() {
-                                widget.property.isAvailable = true;
-                              });
-                              AppSnackbar.success(context, 'Revoked to Available');
-                            },
-                          ),
+                        Row(
+                          children: [
+                            _buildTopIconButton(
+                              icon: Iconsax.share,
+                              onTap: _shareProperty,
+                            ),
+                            const SizedBox(width: 10),
+                            if (widget.property.isAvailable)
+                              _buildTopIconButton(
+                                icon: Iconsax.slash,
+                                onTap: _showAvailabilityBottomSheet,
+                                iconColor: Colors.black,
+                              )
+                            else
+                              _buildTopIconButton(
+                                icon: Iconsax.refresh,
+                                onTap: () {
+                                  setState(() {
+                                    widget.property.isAvailable = true;
+                                  });
+                                  AppSnackbar.success(context, 'Revoked to Available');
+                                },
+                                iconColor: Colors.green.shade700,
+                              ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -718,37 +789,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildIconButton({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.55),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.7),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(icon, color: const Color(0xFF1E1E1E), size: 20),
-          ),
-        ),
-      ),
     );
   }
 
