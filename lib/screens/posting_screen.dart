@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image/image.dart' as img;
 import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
+import '../theme/app_theme.dart';
 import 'home_screen.dart' show PropertyModel;
 
 class PostBottomSheet extends StatefulWidget {
@@ -453,10 +454,15 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final double maxDialogHeight = MediaQuery.of(context).size.height * 0.88;
 
     return Container(
       constraints: BoxConstraints(maxHeight: maxDialogHeight),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkScaffold : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         left: 16,
@@ -475,18 +481,26 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 children: [
                   Text(
                     _isEditing ? 'Edit ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}' : 'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
-                    style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Step $_currentStep of $_totalSteps: ${_getStepTitle()}',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
               IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, color: Colors.black54),
+                icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54),
                 visualDensity: VisualDensity.compact,
               ),
             ],
@@ -529,7 +543,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   height: 4,
                   margin: const EdgeInsets.symmetric(horizontal: 2),
                   decoration: BoxDecoration(
-                    color: isPassed ? Colors.black : Colors.grey.shade300,
+                    color: isPassed
+                        ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                        : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -596,6 +612,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   // ACTION BUTTONS (20px margin from bottom)
   // ==========================================
   Widget _buildActionButtons() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: [
         if (_currentStep > 1)
@@ -606,11 +624,21 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.black, width: 1.5),
-                  color: Colors.white,
+                  border: Border.all(
+                    color: isDark ? AppTheme.darkBorder : Colors.black,
+                    width: 1.5,
+                  ),
+                  color: isDark ? AppTheme.darkCard : Colors.white,
                 ),
                 alignment: Alignment.center,
-                child: const Text('Back', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Back',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ),
@@ -630,15 +658,26 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: Colors.black,
+                color: isDark ? AppTheme.primaryYellow : Colors.black,
                 borderRadius: BorderRadius.circular(30),
               ),
               alignment: Alignment.center,
               child: _isSubmitting
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: isDark ? Colors.black : Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : Text(
                       _currentStep == _totalSteps ? 'Post Property' : 'Next Step',
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: isDark ? Colors.black : Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
             ),
           ),
@@ -686,7 +725,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     required String imagePath,
     required IconData icon,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isSelected = _selectedType == typeKey;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -695,16 +736,18 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? (isSelected ? AppTheme.darkCardElevated : AppTheme.darkCard) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? Colors.black : Colors.grey.shade300,
+            color: isSelected
+                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
             width: isSelected ? 2.5 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
+                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   )
@@ -724,8 +767,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 errorBuilder: (context, error, stackTrace) => Container(
                   width: 90,
                   height: 90,
-                  color: Colors.grey.shade200,
-                  child: Icon(icon, size: 36, color: Colors.black54),
+                  color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade200,
+                  child: Icon(icon, size: 36, color: isDark ? AppTheme.primaryYellow : Colors.black54),
                 ),
               ),
             ),
@@ -736,7 +779,13 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 children: [
                   Row(
                     children: [
-                      Icon(icon, size: 18, color: isSelected ? Colors.black : Colors.grey.shade700),
+                      Icon(
+                        icon,
+                        size: 18,
+                        color: isSelected
+                            ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                            : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -744,7 +793,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isSelected ? Colors.black : Colors.black87,
+                            color: isSelected
+                                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                                : (isDark ? Colors.white : Colors.black87),
                           ),
                         ),
                       ),
@@ -753,7 +804,11 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   const SizedBox(height: 6),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.3),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                      height: 1.3,
+                    ),
                   ),
                 ],
               ),
@@ -761,7 +816,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
             const SizedBox(width: 16),
             Icon(
               isSelected ? Iconsax.tick_circle : Iconsax.record,
-              color: isSelected ? Colors.black : Colors.grey.shade300,
+              color: isSelected
+                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                  : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
               size: 28,
             ),
           ],
@@ -774,6 +831,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   // STEP 2: PHOTOS & BASIC DETAILS
   // ==========================================
   Widget _buildStep2PhotosAndBasics() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       key: const ValueKey(2),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -787,17 +846,37 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   height: 130,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? AppTheme.darkCard : Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade300, width: 1.5),
+                    border: Border.all(
+                      color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                      width: 1.5,
+                    ),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Iconsax.camera, size: 36, color: Colors.grey.shade400),
+                      Icon(
+                        Iconsax.camera,
+                        size: 36,
+                        color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
+                      ),
                       const SizedBox(height: 8),
-                      Text('Tap to Upload Photos', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 14)),
-                      Text('Add clear photos of room, bath & hall', style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                      Text(
+                        'Tap to Upload Photos',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.grey.shade700,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        'Add clear photos of room, bath & hall',
+                        style: TextStyle(
+                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -808,11 +887,29 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('${_existingImages.length + _selectedImages.length} Photos Selected', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text(
+                        '${_existingImages.length + _selectedImages.length} Photos Selected',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
                       TextButton.icon(
                         onPressed: _pickImages,
-                        icon: const Icon(Iconsax.gallery_add, size: 18, color: Colors.black),
-                        label: const Text('Add More', style: TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold)),
+                        icon: Icon(
+                          Iconsax.gallery_add,
+                          size: 18,
+                          color: isDark ? AppTheme.primaryYellow : Colors.black,
+                        ),
+                        label: Text(
+                          'Add More',
+                          style: TextStyle(
+                            color: isDark ? AppTheme.primaryYellow : Colors.black,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       )
                     ],
                   ),
@@ -931,7 +1028,14 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 14),
-        const Text('Location & Address', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        Text(
+          'Location & Address',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isDark ? AppTheme.darkTextSecondary : Colors.black,
+          ),
+        ),
         const SizedBox(height: 8),
         _locationAddress.isEmpty
             ? SizedBox(
@@ -939,32 +1043,62 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 child: OutlinedButton.icon(
                   onPressed: _isLoadingLocation ? null : _grabCurrentLocation,
                   icon: _isLoadingLocation
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Iconsax.location5, color: Colors.black, size: 18),
+                      ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: isDark ? AppTheme.primaryYellow : Colors.black,
+                          ),
+                        )
+                      : Icon(
+                          Iconsax.location5,
+                          color: isDark ? AppTheme.primaryYellow : Colors.black,
+                          size: 18,
+                        ),
                   label: Text(
                     _isLoadingLocation ? 'Pinning GPS Location...' : 'Pin Current GPS Location',
-                    style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 13),
+                    style: TextStyle(
+                      color: isDark ? AppTheme.primaryYellow : Colors.black,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                    side: const BorderSide(color: Colors.black),
+                    side: BorderSide(
+                      color: isDark ? AppTheme.primaryYellow : Colors.black,
+                    ),
                   ),
                 ),
               )
             : Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? AppTheme.darkCard : Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.green.shade300),
+                  border: Border.all(
+                    color: isDark ? AppTheme.primaryYellow : Colors.green.shade300,
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Iconsax.location5, color: Colors.green, size: 20),
+                    Icon(
+                      Iconsax.location5,
+                      color: isDark ? AppTheme.primaryYellow : Colors.green,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(_locationAddress, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                      child: Text(
+                        _locationAddress,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
                     ),
                     GestureDetector(
                       onTap: () => setState(() {
@@ -1466,6 +1600,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   // STEP 6: CONTACT & REVIEW
   // ==========================================
   Widget _buildStep6ContactAndReview() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       key: const ValueKey(6),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1498,9 +1634,11 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? AppTheme.darkCard : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(
+              color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1511,18 +1649,26 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   Expanded(
                     child: Text(
                       _titleController.text.isNotEmpty ? _titleController.text : 'Property Title',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.black,
+                      color: isDark ? AppTheme.primaryYellow : Colors.black,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       _selectedType,
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: isDark ? Colors.black : Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -1531,16 +1677,26 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               Text(
                 '₹${_priceController.text.isNotEmpty ? _priceController.text : '0'}/month'
                 '${_depositController.text.isNotEmpty ? " • Deposit: ₹${_depositController.text}" : ""}',
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.green),
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppTheme.primaryYellow : Colors.green,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 _addressController.text.isNotEmpty
                     ? _addressController.text
                     : (_locationAddress.isNotEmpty ? _locationAddress : 'Location Pinned'),
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
+                ),
               ),
-              const Divider(height: 20),
+              Divider(
+                height: 20,
+                color: isDark ? AppTheme.darkBorder : null,
+              ),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -1550,11 +1706,20 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                     .map((item) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
+                            color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.grey.shade300),
+                            border: Border.all(
+                              color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                            ),
                           ),
-                          child: Text(item, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                          child: Text(
+                            item,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.black87,
+                            ),
+                          ),
                         ))
                     .toList(),
               ),
@@ -1570,13 +1735,19 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   // ==========================================
 
   Widget _buildSectionHeader(String title, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.black),
+        Icon(icon, size: 18, color: isDark ? AppTheme.primaryYellow : Colors.black),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
+          ),
         ),
       ],
     );
@@ -1591,10 +1762,19 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     int maxLines = 1,
     Function(String)? onChanged,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isDark ? AppTheme.darkTextSecondary : Colors.black,
+          ),
+        ),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
@@ -1602,24 +1782,37 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           keyboardType: keyboardType,
           maxLines: maxLines,
           onChanged: onChanged,
-          style: const TextStyle(fontSize: 14),
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.white : Colors.black,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+            hintStyle: TextStyle(
+              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
+              fontSize: 13,
+            ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: isDark ? AppTheme.darkCard : Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(
+                color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: Colors.grey.shade300),
+              borderSide: BorderSide(
+                color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Colors.black, width: 1.5),
+              borderSide: BorderSide(
+                color: isDark ? AppTheme.primaryYellow : Colors.black,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -1632,6 +1825,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     required String selected,
     required Function(String) onSelected,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -1642,16 +1837,22 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             decoration: BoxDecoration(
-              color: isSelected ? Colors.black : Colors.white,
+              color: isSelected
+                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                  : (isDark ? AppTheme.darkCard : Colors.white),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? Colors.black : Colors.grey.shade300,
+                color: isSelected
+                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                    : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
               ),
             ),
             child: Text(
               opt,
               style: TextStyle(
-                color: isSelected ? Colors.white : Colors.black87,
+                color: isSelected
+                    ? (isDark ? Colors.black : Colors.white)
+                    : (isDark ? AppTheme.darkTextSecondary : Colors.black87),
                 fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               ),
@@ -1666,6 +1867,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     required List<String> options,
     required Set<String> selectedSet,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -1684,23 +1887,33 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? Colors.black : Colors.white,
+              color: isSelected
+                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                  : (isDark ? AppTheme.darkCard : Colors.white),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isSelected ? Colors.black : Colors.grey.shade300,
+                color: isSelected
+                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                    : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isSelected) ...[
-                  const Icon(Iconsax.tick_circle, color: Colors.white, size: 14),
+                  Icon(
+                    Iconsax.tick_circle,
+                    color: isDark ? Colors.black : Colors.white,
+                    size: 14,
+                  ),
                   const SizedBox(width: 5),
                 ],
                 Text(
                   opt,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.grey.shade800,
+                    color: isSelected
+                        ? (isDark ? Colors.black : Colors.white)
+                        : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade800),
                     fontSize: 12.5,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   ),

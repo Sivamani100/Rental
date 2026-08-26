@@ -3,6 +3,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/app_snackbar.dart';
+import '../theme/app_theme.dart';
 import 'home_screen.dart' show PropertyModel;
 import 'posting_screen.dart';
 
@@ -113,14 +114,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     int pendingCount = _properties.where((p) => p.status == 'pending').length;
     int pendingPhotosCount = _properties.where((p) => p.suggestedPhotos.any((photo) => photo['status'] == 'pending')).length;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F9),
+      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF7F7F9),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Iconsax.arrow_left_2, color: Colors.black),
+          icon: Icon(Iconsax.arrow_left_2, color: isDark ? Colors.white : Colors.black),
           onPressed: () {
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
@@ -129,10 +132,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             }
           },
         ),
-        title: const Text(
+        title: Text(
           'Admin Dashboard',
           style: TextStyle(
-            color: Colors.black,
+            color: isDark ? Colors.white : Colors.black,
             fontSize: 20,
             fontWeight: FontWeight.bold,
             letterSpacing: -0.5,
@@ -140,7 +143,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Iconsax.refresh, color: Colors.black),
+            icon: Icon(Iconsax.refresh, color: isDark ? Colors.white : Colors.black),
             onPressed: _fetchProperties,
           ),
           IconButton(
@@ -202,22 +205,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Text(
               '${filtered.length} Properties',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+              ),
             ),
           ),
 
           // Property List
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Colors.black))
+                ? Center(
+                    child: CircularProgressIndicator(
+                      color: isDark ? AppTheme.primaryYellow : Colors.black,
+                    ),
+                  )
                 : filtered.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Iconsax.folder_cross, size: 64, color: Colors.grey.shade300),
+                            Icon(
+                              Iconsax.folder_cross,
+                              size: 64,
+                              color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                            ),
                             const SizedBox(height: 16),
-                            Text('No properties found.', style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
+                            Text(
+                              'No properties found.',
+                              style: TextStyle(
+                                color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
+                                fontSize: 16,
+                              ),
+                            ),
                           ],
                         ),
                       )
@@ -238,14 +259,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 }
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.transparent,
+        ),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.1),
+            color: color.withValues(alpha: isDark ? 0.2 : 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -258,12 +284,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             title,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -271,24 +305,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildFilterChip(String value, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSelected = _filter == value;
+
     return GestureDetector(
       onTap: () => setState(() => _filter = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.black : Colors.white,
+          color: isSelected
+              ? (isDark ? AppTheme.primaryYellow : Colors.black)
+              : (isDark ? AppTheme.darkCard : Colors.white),
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: isSelected ? Colors.black : Colors.grey.shade300),
+          border: Border.all(
+            color: isSelected
+                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+          ),
           boxShadow: isSelected
-              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4))]
+              ? [BoxShadow(color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.2), blurRadius: 8, offset: const Offset(0, 4))]
               : [],
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey.shade700,
+            color: isSelected
+                ? (isDark ? Colors.black : Colors.white)
+                : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
             fontSize: 13,
           ),
@@ -298,6 +342,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Widget _buildAdminPropertyCard(PropertyModel prop) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     Color statusColor = Colors.grey;
     if (prop.status == 'pending') statusColor = Colors.orange;
     if (prop.status == 'approved') statusColor = Colors.green;
@@ -306,11 +351,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.transparent,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -335,13 +383,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     placeholder: (context, url) => Container(
                       height: 100,
                       width: 100,
-                      color: Colors.grey.shade100,
+                      color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade100,
                       child: const Center(child: CircularProgressIndicator()),
                     ),
                     errorWidget: (context, url, error) => Container(
                       height: 100,
                       width: 100,
-                      color: Colors.grey.shade100,
+                      color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade100,
                       child: const Center(child: Icon(Iconsax.image, color: Colors.grey)),
                     ),
                   ),
@@ -361,25 +409,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              prop.status?.toUpperCase() ?? 'UNKNOWN',
+                              (prop.status ?? 'UNKNOWN').toUpperCase(),
                               style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
                             ),
                           ),
                           const Spacer(),
-                          Text(prop.type, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue)),
+                          Text(
+                            prop.type,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppTheme.primaryYellow : Colors.blue,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
                         prop.title,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, height: 1.2),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         prop.price,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? AppTheme.primaryYellow : Colors.black87,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -389,7 +453,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           Expanded(
                             child: Text(
                               prop.locationStr,
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -403,7 +470,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
           
-          const Divider(height: 1, color: Color(0xFFEEEEEE)),
+          Divider(
+            height: 1,
+            color: isDark ? AppTheme.darkBorder : const Color(0xFFEEEEEE),
+          ),
           
           // Action Buttons
           Padding(
@@ -448,7 +518,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      backgroundColor: const Color(0xFFF7F7F9),
+                      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF7F7F9),
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                       ),

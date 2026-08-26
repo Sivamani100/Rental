@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_snackbar.dart';
+import '../theme/app_theme.dart';
 import 'admin_dashboard_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
@@ -91,13 +92,15 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F9),
+      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF7F7F9),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Iconsax.arrow_left_2, color: Colors.black),
+          icon: Icon(Iconsax.arrow_left_2, color: isDark ? Colors.white : Colors.black),
           onPressed: () {
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
@@ -120,7 +123,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.black,
+                      color: isDark ? AppTheme.primaryYellow : Colors.black,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -130,18 +133,22 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                         )
                       ],
                     ),
-                    child: const Icon(Iconsax.shield_tick, color: Colors.white, size: 44),
+                    child: Icon(
+                      Iconsax.shield_tick,
+                      color: isDark ? Colors.black : Colors.white,
+                      size: 44,
+                    ),
                   ),
                   const SizedBox(height: 28),
                   
                   // Title
-                  const Text(
+                  Text(
                     'Admin Portal',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       letterSpacing: -0.5,
-                      color: Colors.black,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -150,7 +157,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 14.5,
-                      color: Colors.grey.shade600,
+                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
                       height: 1.4,
                     ),
                   ),
@@ -159,11 +166,14 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   // Email Input Field
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? AppTheme.darkCard : Colors.white,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? AppTheme.darkBorder : Colors.transparent,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
+                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -172,17 +182,28 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     child: TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Admin Email',
-                        hintStyle: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.w400),
-                        prefixIcon: const Icon(Iconsax.sms, color: Colors.black54, size: 20),
+                        hintStyle: TextStyle(
+                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        prefixIcon: Icon(
+                          Iconsax.sms,
+                          color: isDark ? AppTheme.darkTextSecondary : Colors.black54,
+                          size: 20,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: isDark ? AppTheme.darkCard : Colors.white,
                         contentPadding: const EdgeInsets.symmetric(vertical: 18),
                       ),
                     ),
@@ -193,11 +214,14 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                   // Password Input Field
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? AppTheme.darkCard : Colors.white,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? AppTheme.darkBorder : Colors.transparent,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
+                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -206,13 +230,30 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     child: TextField(
                       controller: _passwordController,
                       obscureText: _isObscure,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: 1),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'Enter Password',
-                        hintStyle: TextStyle(color: Colors.grey.shade400, letterSpacing: 0, fontWeight: FontWeight.w400),
-                        prefixIcon: const Icon(Iconsax.lock, color: Colors.black54, size: 20),
+                        hintStyle: TextStyle(
+                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
+                          letterSpacing: 0,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        prefixIcon: Icon(
+                          Iconsax.lock,
+                          color: isDark ? AppTheme.darkTextSecondary : Colors.black54,
+                          size: 20,
+                        ),
                         suffixIcon: IconButton(
-                          icon: Icon(_isObscure ? Iconsax.eye_slash : Iconsax.eye, color: Colors.black54, size: 20),
+                          icon: Icon(
+                            _isObscure ? Iconsax.eye_slash : Iconsax.eye,
+                            color: isDark ? AppTheme.darkTextSecondary : Colors.black54,
+                            size: 20,
+                          ),
                           onPressed: () => setState(() => _isObscure = !_isObscure),
                         ),
                         border: OutlineInputBorder(
@@ -220,7 +261,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           borderSide: BorderSide.none,
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: isDark ? AppTheme.darkCard : Colors.white,
                         contentPadding: const EdgeInsets.symmetric(vertical: 18),
                       ),
                       onSubmitted: (_) => _handleLogin(),
@@ -238,7 +279,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFFEB3A),
                         foregroundColor: Colors.black,
-                        elevation: 2,
+                        elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       child: _isLoading

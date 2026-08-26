@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
+import '../theme/app_theme.dart';
 import 'home_screen.dart' show PropertyModel;
 import 'map_screen.dart';
 import 'full_screen_image_viewer.dart';
@@ -172,6 +173,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     required VoidCallback onTap,
     Color? iconColor,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return BouncingButton(
       onTap: onTap,
       child: ClipRRect(
@@ -182,24 +185,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.65),
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.55)
+                  : Colors.white.withValues(alpha: 0.7),
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.8),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
             alignment: Alignment.center,
             child: Icon(
               icon,
-              color: iconColor ?? const Color(0xFF1E1E1E),
+              color: iconColor ?? (isDark ? Colors.white : const Color(0xFF1E1E1E)),
               size: 20,
             ),
           ),
@@ -210,8 +204,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF7F7),
+      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 650),
@@ -271,7 +267,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               _buildGlassIconButton(
                                 icon: Iconsax.slash,
                                 onTap: _showAvailabilityBottomSheet,
-                                iconColor: const Color(0xFF1E1E1E),
+                                iconColor: isDark ? Colors.white : const Color(0xFF1E1E1E),
                               )
                             else
                               _buildGlassIconButton(
@@ -282,7 +278,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   });
                                   AppSnackbar.success(context, 'Revoked to Available');
                                 },
-                                iconColor: Colors.green.shade700,
+                                iconColor: Colors.green.shade400,
                               ),
                           ],
                         ),
@@ -333,12 +329,16 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.black,
+                                      color: isDark ? AppTheme.primaryYellow : Colors.black,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
                                       widget.property.type == 'PG' ? 'PG / Hostel' : 'Rental House/Flat',
-                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                        color: isDark ? Colors.black : Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                   if (widget.property.reviewCount > 0) ...[
@@ -355,11 +355,18 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                           const SizedBox(width: 4),
                                           Text(
                                             widget.property.averageRating.toStringAsFixed(1),
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 11,
+                                              color: isDark ? Colors.white : Colors.black,
+                                            ),
                                           ),
                                           Text(
                                             ' (${widget.property.reviewCount})',
-                                            style: TextStyle(color: Colors.grey.shade700, fontSize: 11),
+                                            style: TextStyle(
+                                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
+                                              fontSize: 11,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -370,7 +377,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 widget.property.title,
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, height: 1.2),
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.2,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
                               ),
                             ],
                           ),
@@ -381,12 +393,20 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           children: [
                             Text(
                               widget.property.price,
-                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppTheme.primaryYellow : Colors.black,
+                              ),
                             ),
                             if (widget.property.securityDeposit != null)
                               Text(
                                 'Deposit: ${widget.property.securityDeposit}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                           ],
                         ),
@@ -397,12 +417,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     // Location
                     Row(
                       children: [
-                        const Icon(Iconsax.location5, color: Colors.grey, size: 18),
+                        const Icon(Iconsax.location5, color: Color(0xFFF59E0B), size: 18),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             widget.property.locationStr,
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                            style: TextStyle(
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                       ],
@@ -413,10 +436,20 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: _showContributePhotosSheet,
-                        icon: const Icon(Iconsax.camera, size: 18, color: Colors.black),
-                        label: const Text('Contribute Photos', style: TextStyle(color: Colors.black)),
+                        icon: Icon(
+                          Iconsax.camera,
+                          size: 18,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                        label: Text(
+                          'Contribute Photos',
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        ),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.black, width: 1.2),
+                          side: BorderSide(
+                            color: isDark ? AppTheme.darkBorder : Colors.black,
+                            width: 1.2,
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
@@ -440,27 +473,29 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF9F9FB),
+                        color: isDark ? AppTheme.darkCard : const Color(0xFFF9F9FB),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(
+                          color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+                        ),
                       ),
                       child: Column(
                         children: [
                           _buildDetailRow('Security Deposit', widget.property.securityDeposit ?? '1-2 Months Rent', Iconsax.wallet_3),
-                          const Divider(height: 16),
+                          Divider(height: 16, color: isDark ? AppTheme.darkBorder : null),
                           _buildDetailRow('Notice Period', widget.property.noticePeriod ?? '1 Month', Iconsax.calendar),
-                          const Divider(height: 16),
+                          Divider(height: 16, color: isDark ? AppTheme.darkBorder : null),
                           _buildDetailRow('Agreement / Lock-in', widget.property.agreementDuration ?? '11 Months Standard', Iconsax.document_text),
                           if (widget.property.maintenanceCharges != null) ...[
-                            const Divider(height: 16),
+                            Divider(height: 16, color: isDark ? AppTheme.darkBorder : null),
                             _buildDetailRow('Maintenance', widget.property.maintenanceCharges!, Iconsax.receipt_item),
                           ],
                           if (widget.property.type == 'PG' && widget.property.perDayWithFood != null && widget.property.perDayWithFood!.isNotEmpty) ...[
-                            const Divider(height: 16),
+                            Divider(height: 16, color: isDark ? AppTheme.darkBorder : null),
                             _buildDetailRow('Per Day (With Food)', '₹${widget.property.perDayWithFood}/day', Iconsax.calendar),
                           ],
                           if (widget.property.type == 'PG' && widget.property.perDayWithoutFood != null && widget.property.perDayWithoutFood!.isNotEmpty) ...[
-                            const Divider(height: 16),
+                            Divider(height: 16, color: isDark ? AppTheme.darkBorder : null),
                             _buildDetailRow('Per Day (Without Food)', '₹${widget.property.perDayWithoutFood}/day', Iconsax.calendar_1),
                           ],
                         ],
@@ -469,15 +504,23 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     const SizedBox(height: 24),
 
                     // Description
-                    const Text(
+                    Text(
                       'Description',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       widget.property.description ??
                           'Well-maintained property with essential amenities, good ventilation, and peaceful surroundings.',
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade700, height: 1.5),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
+                        height: 1.5,
+                      ),
                     ),
                     const SizedBox(height: 24),
 
@@ -568,9 +611,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Features & Amenities',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           _buildFeaturesList(filteredFeatures),
@@ -583,26 +630,50 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Reviews & Ratings',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
                         ),
                         _hasReviewed
                             ? OutlinedButton.icon(
                                 onPressed: _showAddReviewSheet,
-                                icon: const Icon(Iconsax.edit, size: 16, color: Colors.black),
-                                label: const Text('Edit Review', style: TextStyle(color: Colors.black)),
+                                icon: Icon(
+                                  Iconsax.edit,
+                                  size: 16,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                                label: Text(
+                                  'Edit Review',
+                                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                                ),
                                 style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Colors.black, width: 1.2),
+                                  side: BorderSide(
+                                    color: isDark ? AppTheme.darkBorder : Colors.black,
+                                    width: 1.2,
+                                  ),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                                 ),
                               )
                             : OutlinedButton.icon(
                                 onPressed: _showAddReviewSheet,
-                                icon: const Icon(Iconsax.edit, size: 16, color: Colors.black),
-                                label: const Text('Write a Review', style: TextStyle(color: Colors.black)),
+                                icon: Icon(
+                                  Iconsax.edit,
+                                  size: 16,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                                label: Text(
+                                  'Write a Review',
+                                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                                ),
                                 style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: Colors.black, width: 1.2),
+                                  side: BorderSide(
+                                    color: isDark ? AppTheme.darkBorder : Colors.black,
+                                    width: 1.2,
+                                  ),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                                 ),
                               ),
@@ -610,18 +681,24 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     ),
                     const SizedBox(height: 12),
                     if (widget.property.reviews.isEmpty)
-                      const Text(
+                      Text(
                         'No reviews yet. Be the first to review!',
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(
+                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey,
+                        ),
                       )
                     else
                       ...widget.property.reviews.map((r) => _buildReviewItem(r)),
                     const SizedBox(height: 28),
 
                     // Location Map
-                    const Text(
+                    Text(
                       'Location Map',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     GestureDetector(
@@ -642,7 +719,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         width: double.infinity,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(
+                            color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                          ),
                         ),
                         clipBehavior: Clip.antiAlias,
                         child: IgnorePointer(
@@ -690,13 +769,16 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   // Sticky Bottom Action Bar
   bottomNavigationBar: Container(
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: isDark ? AppTheme.darkCard : Colors.white,
       border: Border(
-        top: BorderSide(color: Colors.grey.shade200, width: 1),
+        top: BorderSide(
+          color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+          width: 1,
+        ),
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.05),
+          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
           offset: const Offset(0, -4),
           blurRadius: 16,
         ),
@@ -712,6 +794,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               child: ElevatedButton(
                 onPressed: () => _launchPhone(widget.property.ownerPhone),
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFEB3A),
+                  foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   elevation: 0,
@@ -742,9 +826,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   void _showAvailabilityBottomSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -754,9 +840,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Is this house/PG still vacant?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -766,10 +856,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: isDark ? AppTheme.darkBorder : Colors.black),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
-                      child: const Text('Yes', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'Yes',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -802,37 +899,61 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Widget _buildStatItem(IconData icon, String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F9),
+        color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF7F7F9),
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.transparent,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 20, color: Colors.black87),
+          Icon(icon, size: 20, color: isDark ? AppTheme.primaryYellow : Colors.black87),
           const SizedBox(width: 8),
-          Flexible(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildDetailRow(String label, String value, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.grey.shade700),
+        Icon(icon, size: 18, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             label,
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
         Text(
           value,
-          style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black87,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );
@@ -852,26 +973,36 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Widget _buildSectionTitle(String title, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: [
-        Icon(icon, size: 18, color: Colors.black),
+        Icon(icon, size: 18, color: isDark ? AppTheme.primaryYellow : Colors.black),
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildInfoBox(List<String> items) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9F9FB),
+        color: isDark ? AppTheme.darkCard : const Color(0xFFF9F9FB),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -885,23 +1016,23 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               text: TextSpan(
                 style: TextStyle(
                   fontSize: 13.5,
-                  color: Colors.grey.shade800,
+                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade800,
                   height: 1.35,
                   fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
                 ),
                 children: [
                   TextSpan(
                     text: '$label: ',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: isDark ? Colors.white : Colors.black,
                     ),
                   ),
                   TextSpan(
                     text: value,
                     style: TextStyle(
                       fontWeight: FontWeight.w400,
-                      color: Colors.grey.shade800,
+                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade800,
                     ),
                   ),
                 ],
@@ -910,7 +1041,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           } else {
             textWidget = Text(
               item,
-              style: TextStyle(fontSize: 13.5, color: Colors.grey.shade800, height: 1.35),
+              style: TextStyle(
+                fontSize: 13.5,
+                color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade800,
+                height: 1.35,
+              ),
             );
           }
 
@@ -924,8 +1059,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   child: Container(
                     width: 5,
                     height: 5,
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white70 : Colors.black54,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -1013,13 +1148,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Widget _buildFeaturesList(List<String> features) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1036,7 +1175,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 Expanded(
                   child: Text(
                     feature,
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade800, height: 1.4),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? AppTheme.darkTextPrimary : Colors.grey.shade800,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
@@ -1048,13 +1191,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Widget _buildReviewItem(dynamic review) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9F9FB),
+        color: isDark ? AppTheme.darkCard : const Color(0xFFF9F9FB),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1071,14 +1218,21 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               const Spacer(),
               Text(
                 review['date'] ?? '',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(
+                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             review['text'] ?? '',
-            style: const TextStyle(fontSize: 14, height: 1.4),
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.4,
+              color: isDark ? AppTheme.darkTextPrimary : Colors.black87,
+            ),
           ),
           if (review['photos'] != null && (review['photos'] as List).isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -1123,6 +1277,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   void _showAddReviewSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     int _rating = _myReview != null ? (_myReview!['rating'] as num).toInt() : 0;
     final TextEditingController _reviewController = TextEditingController(text: _myReview != null ? _myReview!['text'] : '');
     List<File> _selectedPhotos = [];
@@ -1131,7 +1286,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
         return StatefulBuilder(
@@ -1145,7 +1300,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Write a Review', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Write a Review',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1168,9 +1330,20 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   TextField(
                     controller: _reviewController,
                     maxLines: 4,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
                     decoration: InputDecoration(
                       hintText: 'Share your experience...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      hintStyle: TextStyle(color: isDark ? AppTheme.darkTextSecondary : Colors.grey),
+                      filled: isDark,
+                      fillColor: isDark ? AppTheme.darkCard : Colors.transparent,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDark ? AppTheme.darkBorder : Colors.grey),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1186,15 +1359,22 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             });
                           }
                         },
-                        icon: const Icon(Iconsax.camera),
-                        label: const Text('Add Photos'),
+                        icon: Icon(Iconsax.camera, color: isDark ? AppTheme.primaryYellow : Colors.black),
+                        label: Text('Add Photos', style: TextStyle(color: isDark ? AppTheme.primaryYellow : Colors.black)),
                       ),
                     ],
                   ),
                   if (_myReview != null && _myReview!['photos'] != null && _myReview!['photos'].isNotEmpty) ...[
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8.0, bottom: 4.0),
-                      child: Text('Existing Photos:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                      child: Text(
+                        'Existing Photos:',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
                     ),
                     SizedBox(
                       height: 60,
@@ -1239,9 +1419,16 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     const SizedBox(height: 12),
                   ],
                   if (_selectedPhotos.isNotEmpty) ...[
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 4.0),
-                      child: Text('New Photos:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4.0),
+                      child: Text(
+                        'New Photos:',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     SizedBox(
@@ -1352,12 +1539,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               }
                             },
                       style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark ? AppTheme.primaryYellow : Colors.black,
+                        foregroundColor: isDark ? Colors.black : Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
                       child: _isSubmitting
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white))
-                          : const Text('Submit Review'),
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black))
+                          : Text('Submit Review', style: TextStyle(color: isDark ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -1371,13 +1560,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   void _showContributePhotosSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     List<File> _suggestedPhotos = [];
     bool _isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
         return StatefulBuilder(
@@ -1393,10 +1583,23 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Contribute Photos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(
+                    'Contribute Photos',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Help others by adding more photos of this property. Your photos will appear after admin approval.',
-                      style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.4)),
+                  Text(
+                    'Help others by adding more photos of this property. Your photos will appear after admin approval.',
+                    style: TextStyle(
+                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   
                   if (_suggestedPhotos.isNotEmpty) ...[
@@ -1448,10 +1651,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         });
                       }
                     },
-                    icon: const Icon(Iconsax.gallery_add, color: Colors.black),
-                    label: const Text('Select Photos', style: TextStyle(color: Colors.black)),
+                    icon: Icon(Iconsax.gallery_add, color: isDark ? AppTheme.primaryYellow : Colors.black),
+                    label: Text('Select Photos', style: TextStyle(color: isDark ? AppTheme.primaryYellow : Colors.black)),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.black, width: 1.2),
+                      side: BorderSide(color: isDark ? AppTheme.darkBorder : Colors.black, width: 1.2),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                     ),
                   ),
@@ -1501,12 +1704,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.black,
+                        backgroundColor: isDark ? AppTheme.primaryYellow : Colors.black,
+                        foregroundColor: isDark ? Colors.black : Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
                       child: _isSubmitting
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Submit Photos', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: isDark ? Colors.black : Colors.white, strokeWidth: 2))
+                          : Text('Submit Photos', style: TextStyle(color: isDark ? Colors.black : Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

@@ -14,6 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lottie/lottie.dart';
+import '../theme/app_theme.dart';
+import '../theme/theme_provider.dart';
 
 class PropertyModel {
   final String? id;
@@ -542,9 +544,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (_isInitialLoading && _allProperties.isEmpty && !_canShowEmptyState) {
       return Scaffold(
-        backgroundColor: const Color(0xFFFBF7F7),
+        backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
         body: SizedBox.expand(
           child: Center(
             child: Padding(
@@ -564,10 +568,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Loading...',
                     style: TextStyle(
-                      color: Colors.black87,
+                      color: isDark ? Colors.white : Colors.black87,
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                     ),
@@ -583,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     if (!_hasLocationPermission) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -598,20 +602,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 32),
-                  const Text(
+                  Text(
                     'Location Access Required',
                     style: TextStyle(
-                      color: Colors.black87,
+                      color: isDark ? Colors.white : Colors.black87,
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'We need your location to show you the best properties around you in ascending order of distance. Please allow location access to continue.',
                     style: TextStyle(
-                      color: Colors.black54,
+                      color: isDark ? AppTheme.darkTextSecondary : Colors.black54,
                       fontSize: 15,
                       height: 1.4,
                     ),
@@ -625,15 +629,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                       decoration: BoxDecoration(
-                        color: Colors.black,
+                        color: isDark ? AppTheme.primaryYellow : Colors.black,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Iconsax.setting_2, color: Colors.white, size: 20),
-                          SizedBox(width: 8),
-                          Text('Open Settings', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          Icon(
+                            Iconsax.setting_2,
+                            color: isDark ? Colors.black : Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Open Settings',
+                            style: TextStyle(
+                              color: isDark ? Colors.black : Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -647,7 +662,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFBF7F7),
+      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
       body: SafeArea(
         bottom: false,
         child: Center(
@@ -736,6 +751,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: [
         BouncingButton(
@@ -747,15 +764,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? AppTheme.darkCard : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.black.withValues(alpha: 0.06),
+                color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
                 width: 1,
               ),
             ),
             alignment: Alignment.center,
-            child: const Icon(Iconsax.location, color: Colors.black, size: 24),
+            child: Icon(
+              Iconsax.location,
+              color: isDark ? Colors.white : Colors.black,
+              size: 24,
+            ),
           ),
         ),
         const SizedBox(width: 14),
@@ -766,10 +787,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             children: [
               Text(
                 _currentCity,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: Colors.black,
+                  color: isDark ? Colors.white : Colors.black,
                   height: 1.15,
                 ),
                 maxLines: 1,
@@ -780,7 +801,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _currentArea,
                 style: TextStyle(
                   fontSize: 13.5,
-                  color: Colors.grey.shade500,
+                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
                   fontWeight: FontWeight.w400,
                   height: 1.15,
                 ),
@@ -790,12 +811,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ],
           ),
         ),
+        // Dark / Light Mode Toggle Button (Hidden for now, available for later activation)
+        if (false) ...[
+          BouncingButton(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              ThemeController.instance.toggleTheme();
+            },
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
+                  width: 1,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                isDark ? Iconsax.sun_1 : Iconsax.moon,
+                color: isDark ? const Color(0xFFFFEB3A) : const Color(0xFF141416),
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+        ],
         BouncingButton(
           onTap: () {
             showModalBottomSheet(
               context: context,
               isScrollControlled: true,
-              backgroundColor: const Color(0xFFFBF7F7),
+              backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
@@ -821,11 +870,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               children: [
                 Container(
                   padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black : Colors.white,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Iconsax.add, color: Colors.black, size: 19),
+                  child: Icon(
+                    Iconsax.add,
+                    color: isDark ? const Color(0xFFFFEB3A) : Colors.black,
+                    size: 19,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 const Text(
@@ -845,15 +898,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildBottomToggle() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 40),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.transparent,
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -879,7 +938,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 decoration: BoxDecoration(
                   color: _selectedTypeIndex == 0
                       ? const Color(0xFFFFEB3A)
-                      : Colors.white,
+                      : (isDark ? AppTheme.darkCard : Colors.white),
                   borderRadius: BorderRadius.circular(26),
                 ),
                 alignment: Alignment.center,
@@ -888,7 +947,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   style: TextStyle(
                     color: _selectedTypeIndex == 0
                         ? Colors.black
-                        : Colors.grey.shade500,
+                        : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
@@ -914,7 +973,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 decoration: BoxDecoration(
                   color: _selectedTypeIndex == 1
                       ? const Color(0xFFFFEB3A)
-                      : Colors.white,
+                      : (isDark ? AppTheme.darkCard : Colors.white),
                   borderRadius: BorderRadius.circular(26),
                 ),
                 alignment: Alignment.center,
@@ -923,7 +982,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   style: TextStyle(
                     color: _selectedTypeIndex == 1
                         ? Colors.black
-                        : Colors.grey.shade500,
+                        : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
@@ -937,6 +996,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildPropertyList(List<PropertyModel> properties, String typeStr) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (properties.isEmpty) {
       if (!_canShowEmptyState && _isInitialLoading) {
         return SizedBox(
@@ -957,10 +1018,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Finding nearest listings...',
                   style: TextStyle(
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -989,8 +1050,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 const SizedBox(height: 4),
                 Text(
                   'No $typeStr found within ${_currentSearchRadiusKm}km radius.',
-                  style: const TextStyle(
-                    color: Colors.black87,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1059,15 +1120,21 @@ class PropertyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return BouncingButton(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppTheme.darkCard : Colors.white,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? AppTheme.darkBorder : Colors.transparent,
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
               blurRadius: 14,
               offset: const Offset(0, 4),
             ),
@@ -1094,14 +1161,14 @@ class PropertyCard extends StatelessWidget {
                     fadeOutDuration: const Duration(milliseconds: 150),
                     placeholder: (context, url) => Container(
                       height: 200,
-                      color: Colors.grey.shade100,
+                      color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade100,
                       child: Center(
-                        child: Icon(Iconsax.image, color: Colors.grey.shade400, size: 30),
+                        child: Icon(Iconsax.image, color: Colors.grey.shade500, size: 30),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
                       height: 200,
-                      color: Colors.grey[200],
+                      color: isDark ? AppTheme.darkCardElevated : Colors.grey[200],
                       child: const Center(
                         child: Icon(Iconsax.image, color: Colors.grey),
                       ),
@@ -1115,8 +1182,14 @@ class PropertyCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.92),
+                        color: isDark
+                            ? AppTheme.darkCard.withValues(alpha: 0.94)
+                            : Colors.white.withValues(alpha: 0.92),
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark ? AppTheme.darkBorder : Colors.transparent,
+                          width: 1,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
@@ -1132,11 +1205,18 @@ class PropertyCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             property.averageRating.toStringAsFixed(1),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
                           ),
                           Text(
                             ' (${property.reviewCount})',
-                            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                            style: TextStyle(
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ),
@@ -1237,19 +1317,21 @@ class PropertyCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           property.title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
                             height: 1.2,
+                            color: isDark ? Colors.white : Colors.black,
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         property.price,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
+                          color: isDark ? AppTheme.primaryYellow : Colors.black,
                         ),
                       ),
                     ],
@@ -1270,7 +1352,7 @@ class PropertyCard extends StatelessWidget {
                               ? '${property.locationStr} • ${_formatDistance(distanceInMeters!)}'
                               : property.locationStr,
                           style: TextStyle(
-                            color: Colors.grey.shade700,
+                            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                           ),
@@ -1289,13 +1371,16 @@ class PropertyCard extends StatelessWidget {
                       children: property.tags.map((tag) {
                         return Padding(
                           padding: const EdgeInsets.only(right: 8.0),
-                          child: _buildTag(tag),
+                          child: _buildTag(context, tag),
                         );
                       }).toList(),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                  Divider(
+                    height: 1,
+                    color: isDark ? AppTheme.darkBorder : const Color(0xFFEEEEEE),
+                  ),
                   const SizedBox(height: 14),
                   // Bottom Row (Beds, Baths, Area)
                   if (property.type == 'PG')
@@ -1305,25 +1390,25 @@ class PropertyCard extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          _buildBottomInfo(Iconsax.moon5, property.beds),
+                          _buildBottomInfo(context, Iconsax.moon5, property.beds),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14.0),
                             child: Container(
                               height: 16,
                               width: 1,
-                              color: Colors.grey.shade300,
+                              color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
                             ),
                           ),
-                          _buildBottomInfo(Iconsax.drop, property.baths),
+                          _buildBottomInfo(context, Iconsax.drop, property.baths),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14.0),
                             child: Container(
                               height: 16,
                               width: 1,
-                              color: Colors.grey.shade300,
+                              color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
                             ),
                           ),
-                          _buildBottomInfo(Iconsax.maximize4, property.area),
+                          _buildBottomInfo(context, Iconsax.maximize4, property.area),
                         ],
                       ),
                     )
@@ -1332,19 +1417,19 @@ class PropertyCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _buildBottomInfo(Iconsax.moon5, property.beds),
+                        _buildBottomInfo(context, Iconsax.moon5, property.beds),
                         Container(
                           height: 16,
                           width: 1,
-                          color: Colors.grey.shade300,
+                          color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
                         ),
-                        _buildBottomInfo(Iconsax.drop, property.baths),
+                        _buildBottomInfo(context, Iconsax.drop, property.baths),
                         Container(
                           height: 16,
                           width: 1,
-                          color: Colors.grey.shade300,
+                          color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
                         ),
-                        _buildBottomInfo(Iconsax.maximize4, property.area),
+                        _buildBottomInfo(context, Iconsax.maximize4, property.area),
                       ],
                     ),
                   if (property.type == 'PG' && 
@@ -1353,7 +1438,10 @@ class PropertyCard extends StatelessWidget {
                     Column(
                       children: [
                         const SizedBox(height: 14),
-                        const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                        Divider(
+                          height: 1,
+                          color: isDark ? AppTheme.darkBorder : const Color(0xFFEEEEEE),
+                        ),
                         const SizedBox(height: 14),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -1370,7 +1458,11 @@ class PropertyCard extends StatelessWidget {
                                     Flexible(
                                       child: Text(
                                         '₹${property.perDayWithFood}/day with food',
-                                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500),
+                                        style: TextStyle(
+                                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -1384,7 +1476,7 @@ class PropertyCard extends StatelessWidget {
                               Container(
                                 height: 16,
                                 width: 1,
-                                color: Colors.grey.shade300,
+                                color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
                               ),
                             if (property.perDayWithoutFood != null && property.perDayWithoutFood!.isNotEmpty)
                               Expanded(
@@ -1397,7 +1489,11 @@ class PropertyCard extends StatelessWidget {
                                     Flexible(
                                       child: Text(
                                         '₹${property.perDayWithoutFood}/day without food',
-                                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500),
+                                        style: TextStyle(
+                                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -1419,18 +1515,22 @@ class PropertyCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTag(String text) {
+  Widget _buildTag(BuildContext context, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkCardElevated : Colors.white,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+        ),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.grey.shade700,
+          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
@@ -1438,7 +1538,9 @@ class PropertyCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomInfo(IconData icon, String text) {
+  Widget _buildBottomInfo(BuildContext context, IconData icon, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1448,7 +1550,7 @@ class PropertyCard extends StatelessWidget {
         Text(
           text,
           style: TextStyle(
-            color: Colors.grey.shade600,
+            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -1467,13 +1569,19 @@ class SkeletonPropertyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppTheme.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.transparent,
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1504,7 +1612,9 @@ class SkeletonPropertyCard extends StatelessWidget {
                     width: 56,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: isDark
+                          ? AppTheme.darkCardElevated.withValues(alpha: 0.8)
+                          : Colors.white.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
@@ -1549,7 +1659,10 @@ class SkeletonPropertyCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                  Divider(
+                    height: 1,
+                    color: isDark ? AppTheme.darkBorder : const Color(0xFFEEEEEE),
+                  ),
                   const SizedBox(height: 14),
                   // Bottom stats row
                   const Row(
@@ -1599,6 +1712,8 @@ class _ShimmerEffectState extends State<ShimmerEffect>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -1608,11 +1723,17 @@ class _ShimmerEffectState extends State<ShimmerEffect>
             return LinearGradient(
               begin: const Alignment(-1.0, -0.3),
               end: const Alignment(1.0, 0.3),
-              colors: const [
-                Color(0xFFEBEBF2),
-                Color(0xFFF7F7FC),
-                Color(0xFFEBEBF2),
-              ],
+              colors: isDark
+                  ? const [
+                      Color(0xFF1E1E28),
+                      Color(0xFF2B2B38),
+                      Color(0xFF1E1E28),
+                    ]
+                  : const [
+                      Color(0xFFEBEBF2),
+                      Color(0xFFF7F7FC),
+                      Color(0xFFEBEBF2),
+                    ],
               stops: [
                 (_controller.value - 0.3).clamp(0.0, 1.0),
                 _controller.value.clamp(0.0, 1.0),
@@ -1641,11 +1762,13 @@ class SkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: const Color(0xFFEBEBF2),
+        color: isDark ? const Color(0xFF1E1E28) : const Color(0xFFEBEBF2),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
