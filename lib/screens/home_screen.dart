@@ -9,6 +9,10 @@ import 'posting_screen.dart';
 import 'property_details_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:lottie/lottie.dart';
 
 class PropertyModel {
   final String? id;
@@ -35,6 +39,10 @@ class PropertyModel {
   final String? noticePeriod;
   final String? agreementDuration;
   final String? description;
+  final String? perDayWithFood;
+  final String? perDayWithoutFood;
+  List<dynamic> reviews;
+  List<dynamic> suggestedPhotos;
 
   // PG Specific details
   final String? genderPreference; // Boys, Girls, Co-Living
@@ -88,6 +96,8 @@ class PropertyModel {
     this.noticePeriod,
     this.agreementDuration,
     this.description,
+    this.perDayWithFood,
+    this.perDayWithoutFood,
     this.genderPreference,
     this.sharingType,
     this.foodDetails,
@@ -112,7 +122,21 @@ class PropertyModel {
     this.tenantPreference,
     this.petPolicy,
     this.parkingInfo,
-  });
+    List<dynamic>? reviews,
+    List<dynamic>? suggestedPhotos,
+  }) : reviews = reviews ?? [],
+       suggestedPhotos = suggestedPhotos ?? [];
+  
+  double get averageRating {
+    if (reviews.isEmpty) return 0.0;
+    double sum = 0;
+    for (var r in reviews) {
+      sum += (r['rating'] as num?)?.toDouble() ?? 0.0;
+    }
+    return sum / reviews.length;
+  }
+  
+  int get reviewCount => reviews.length;
 
   factory PropertyModel.fromJson(Map<String, dynamic> json) {
     return PropertyModel(
@@ -135,9 +159,13 @@ class PropertyModel {
       status: json['status'] ?? 'pending',
       securityDeposit: json['security_deposit'],
       maintenanceCharges: json['maintenance_charges'],
+      reviews: json['reviews'] != null ? List<dynamic>.from(json['reviews']) : [],
+      suggestedPhotos: json['suggested_photos'] != null ? List<dynamic>.from(json['suggested_photos']) : [],
       noticePeriod: json['notice_period'],
       agreementDuration: json['agreement_duration'],
       description: json['description'],
+      perDayWithFood: json['per_day_with_food'],
+      perDayWithoutFood: json['per_day_without_food'],
       genderPreference: json['gender_preference'],
       sharingType: json['sharing_type'],
       foodDetails: json['food_details'],
@@ -188,6 +216,8 @@ class PropertyModel {
       'notice_period': noticePeriod,
       'agreement_duration': agreementDuration,
       'description': description,
+      'per_day_with_food': perDayWithFood,
+      'per_day_without_food': perDayWithoutFood,
       'gender_preference': genderPreference,
       'sharing_type': sharingType,
       'food_details': foodDetails,
@@ -212,6 +242,8 @@ class PropertyModel {
       'tenant_preference': tenantPreference,
       'pet_policy': petPolicy,
       'parking_info': parkingInfo,
+      'reviews': reviews,
+      'suggested_photos': suggestedPhotos,
     };
   }
 }
@@ -223,13 +255,15 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedTypeIndex = 0; // 0 for Rental, 1 for PG
 
   Position? _currentPosition;
   String _currentCity = 'Fetching location...';
   String _currentArea = 'Please wait';
   bool _isLoadingLocation = true;
+  bool _hasLocationPermission = true;
+  bool _isInitialLoading = true;
 
   List<PropertyModel> _allProperties = [];
   List<PropertyModel> _filteredProperties = [];
@@ -238,10 +272,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final _supabase = Supabase.instance.client;
   int _locationTapCount = 0;
   DateTime? _lastLocationTapTime;
+  Timer? _autoLocationTimer;
+  Timer? _emptyStateTimer;
+  bool _isRefreshingLocation = false;
+  bool _canShowEmptyState = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentPosition = Position(
       latitude: 17.6868,
       longitude: 83.2185,
@@ -254,18 +293,73 @@ class _HomeScreenState extends State<HomeScreen> {
       altitudeAccuracy: 0,
       headingAccuracy: 0,
     );
-    _currentCity = 'Visakhapatnam';
-    _currentArea = 'Andhra Pradesh, India';
+    _currentCity = 'Not found';
+    _currentArea = 'Location unknown';
     _fetchProperties();
-    _refreshLocationFast();
+    _refreshLocationFast(updateFeed: true);
+    _startAutoLocationRefresh();
+
+    // Ensure loading displays for at least 30s before revealing empty state
+    _emptyStateTimer = Timer(const Duration(seconds: 30), () {
+      if (mounted) {
+        setState(() {
+          _canShowEmptyState = true;
+        });
+      }
+    });
+  }
+
+  void _startAutoLocationRefresh() {
+    _autoLocationTimer?.cancel();
+    _autoLocationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        _refreshLocationFast(updateFeed: false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _emptyStateTimer?.cancel();
+    _autoLocationTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startAutoLocationRefresh();
+      _refreshLocationFast(updateFeed: false);
+    } else if (state == AppLifecycleState.paused) {
+      _autoLocationTimer?.cancel();
+    }
   }
 
   Future<void> _fetchProperties() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Load cached properties first
+      final String? cachedData = prefs.getString('cached_properties');
+      if (cachedData != null && mounted) {
+        final List<dynamic> decoded = jsonDecode(cachedData);
+        setState(() {
+          _allProperties = decoded.map((e) => PropertyModel.fromJson(e)).toList();
+          _filterProperties();
+          _isLoadingLocation = false;
+          _isInitialLoading = false;
+        });
+      }
+
+      // Fetch fresh data from network
       final data = await _supabase
           .from('properties')
           .select()
           .eq('status', 'approved');
+
+      // Update cache
+      await prefs.setString('cached_properties', jsonEncode(data));
 
       if (mounted) {
         setState(() {
@@ -274,39 +368,61 @@ class _HomeScreenState extends State<HomeScreen> {
               .toList();
           _filterProperties();
           _isLoadingLocation = false;
+          _isInitialLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, 'Failed to fetch properties: $e');
-        setState(() => _isLoadingLocation = false);
+        // If we have cached properties, just log or ignore the error to allow offline mode
+        if (_allProperties.isNotEmpty) {
+           AppSnackbar.error(context, 'Offline mode: Showing cached properties.');
+        } else {
+           AppSnackbar.error(context, 'Failed to fetch properties: $e');
+        }
+        setState(() {
+          _isLoadingLocation = false;
+          _isInitialLoading = false;
+        });
       }
     }
   }
 
-  Future<void> _refreshLocationFast() async {
+  Future<void> _refreshLocationFast({bool updateFeed = false}) async {
+    if (_isRefreshingLocation) return;
+    _isRefreshingLocation = true;
+
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
+      if (!serviceEnabled) {
+        if (mounted) setState(() { _hasLocationPermission = false; _isLoadingLocation = false; });
+        return;
+      }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied ||
             permission == LocationPermission.deniedForever) {
+          if (mounted) setState(() { _hasLocationPermission = false; _isLoadingLocation = false; });
           return;
         }
       }
 
-      Position? position = await Geolocator.getLastKnownPosition();
+      if (mounted) setState(() { _hasLocationPermission = true; });
 
-      position ??= await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.low,
-          timeLimit: Duration(seconds: 2),
-        ),
-      );
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 3),
+          ),
+        );
+      } catch (_) {
+        position = await Geolocator.getLastKnownPosition();
+      }
 
+      if (position == null) return;
       if (!mounted) return;
       _currentPosition = position;
 
@@ -328,18 +444,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (mounted) {
         setState(() {
-          _filterProperties();
+          if (updateFeed || _filteredProperties.isEmpty) {
+            _filterProperties();
+          }
+          _isLoadingLocation = false;
         });
       }
     } catch (_) {
       // Fallback already pre-rendered
+    } finally {
+      _isRefreshingLocation = false;
     }
   }
 
   void _filterProperties() {
     if (_currentPosition == null) return;
 
-    final selectedTypeStr = _selectedTypeIndex == 0 ? 'Rental' : 'PG';
+    final selectedTypeStr = _selectedTypeIndex == 0 ? 'PG' : 'Rental';
     int searchRadiusKm = 5;
     List<PropertyModel> tempFiltered = [];
 
@@ -376,6 +497,103 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if ((_isInitialLoading || _filteredProperties.isEmpty) && !_canShowEmptyState) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFFBF7F7),
+        body: SizedBox.expand(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Transform.scale(
+                    scale: 2.8,
+                    child: Lottie.asset(
+                      'assets/loadingg.json',
+                      width: 170,
+                      height: 170,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Loading...',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (!_hasLocationPermission) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Lottie.asset(
+                    'assets/location.json',
+                    width: 250,
+                    height: 250,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'Location Access Required',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'We need your location to show you the best properties around you. Please allow location access in your device settings to continue.',
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: 15,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Geolocator.openAppSettings();
+                    },
+                    icon: const Icon(Iconsax.setting_2, size: 20),
+                    label: const Text('Open Settings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       extendBody: true,
       body: SafeArea(
@@ -458,7 +676,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.location_on, color: Colors.black, size: 24),
+            child: const Icon(Iconsax.location, color: Colors.black, size: 24),
           ),
         ),
         const SizedBox(width: 12),
@@ -489,43 +707,48 @@ class _HomeScreenState extends State<HomeScreen> {
             showModalBottomSheet(
               context: context,
               isScrollControlled: true,
-              backgroundColor: const Color(0xFFF7F7F9),
+              backgroundColor: const Color(0xFFFBF7F7),
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               builder: (_) => PostBottomSheet(
                 currentLocation: _currentPosition,
                 onPropertyCreated: (newProp) {
+                  // Instant local update while backend syncs
                   setState(() {
                     _allProperties.insert(0, newProp);
                     _filterProperties();
                   });
                 },
               ),
-            );
+            ).then((_) {
+              // Refresh fully from database to get IDs and fresh data
+              _fetchProperties();
+            });
           },
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.fromLTRB(6, 6, 14, 6),
             decoration: BoxDecoration(
               color: const Color(0xFFFFEB3A),
               borderRadius: BorderRadius.circular(30),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(6),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.add, color: Colors.black, size: 16),
+                  child: const Icon(Iconsax.add, color: Colors.black, size: 19),
                 ),
                 const SizedBox(width: 8),
                 const Text(
                   'Post',
                   style: TextStyle(
                     color: Colors.black,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                     fontSize: 15,
                   ),
                 ),
@@ -572,12 +795,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  'Rental',
+                  'PG / Hostel',
                   style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: _selectedTypeIndex == 0
-                        ? FontWeight.w800
-                        : FontWeight.w600,
+                    color: _selectedTypeIndex == 0
+                        ? Colors.black
+                        : Colors.grey.shade500,
+                    fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
                 ),
@@ -602,12 +825,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  'PG',
+                  'Rental',
                   style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: _selectedTypeIndex == 1
-                        ? FontWeight.w800
-                        : FontWeight.w600,
+                    color: _selectedTypeIndex == 1
+                        ? Colors.black
+                        : Colors.grey.shade500,
+                    fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),
                 ),
@@ -620,26 +843,70 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPropertyList() {
-    if (_isLoadingLocation) {
-      return Column(
-        children: List.generate(
-          3,
-          (index) => const Padding(
-            padding: EdgeInsets.only(bottom: 20),
-            child: SkeletonPropertyCard(),
-          ),
-        ),
-      );
-    }
-
     if (_filteredProperties.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(32.0),
+      if (!_canShowEmptyState) {
+        return SizedBox(
+          height: MediaQuery.of(context).size.height * 0.65,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Transform.scale(
+                    scale: 2.8,
+                    child: Lottie.asset(
+                      'assets/loadingg.json',
+                      width: 170,
+                      height: 170,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Loading...',
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      return SizedBox(
+        height: MediaQuery.of(context).size.height * 0.6,
         child: Center(
-          child: Text(
-            'No properties found within ${_currentSearchRadiusKm}km radius.',
-            style: const TextStyle(color: Colors.grey, fontSize: 16),
-            textAlign: TextAlign.center,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Lottie.asset(
+                  'assets/Nothing founded.json',
+                  width: 300,
+                  height: 300,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'No properties found within ${_currentSearchRadiusKm}km radius.',
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -693,14 +960,21 @@ class PropertyCard extends StatelessWidget {
                     topLeft: Radius.circular(20),
                     topRight: Radius.circular(20),
                   ),
-                  child: Image.network(
-                    property.imageUrls.isNotEmpty
+                  child: CachedNetworkImage(
+                    imageUrl: property.imageUrls.isNotEmpty
                         ? property.imageUrls.first
                         : '',
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
+                    placeholder: (context, url) => Container(
+                      height: 200,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
                       height: 200,
                       color: Colors.grey[200],
                       child: const Center(
@@ -709,6 +983,40 @@ class PropertyCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (property.reviewCount > 0)
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          )
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Iconsax.star1, color: Colors.amber, size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            property.averageRating.toStringAsFixed(1),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          Text(
+                            ' (${property.reviewCount})',
+                            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: 12,
                   right: 12,
@@ -827,24 +1135,118 @@ class PropertyCard extends StatelessWidget {
                   const Divider(height: 1, color: Color(0xFFEEEEEE)),
                   const SizedBox(height: 14),
                   // Bottom Row (Beds, Baths, Area)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildBottomInfo(Iconsax.moon5, property.beds),
-                      Container(
-                        height: 16,
-                        width: 1,
-                        color: Colors.grey.shade300,
+                  if (property.type == 'PG')
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          _buildBottomInfo(Iconsax.moon5, property.beds),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                            child: Container(
+                              height: 16,
+                              width: 1,
+                              color: Colors.grey.shade300,
+                            ),
+                          ),
+                          _buildBottomInfo(Iconsax.drop, property.baths),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                            child: Container(
+                              height: 16,
+                              width: 1,
+                              color: Colors.grey.shade300,
+                            ),
+                          ),
+                          _buildBottomInfo(Iconsax.maximize4, property.area),
+                        ],
                       ),
-                      _buildBottomInfo(Iconsax.drop, property.baths),
-                      Container(
-                        height: 16,
-                        width: 1,
-                        color: Colors.grey.shade300,
-                      ),
-                      _buildBottomInfo(Iconsax.maximize4, property.area),
-                    ],
-                  ),
+                    )
+                  else
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        _buildBottomInfo(Iconsax.moon5, property.beds),
+                        Container(
+                          height: 16,
+                          width: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                        _buildBottomInfo(Iconsax.drop, property.baths),
+                        Container(
+                          height: 16,
+                          width: 1,
+                          color: Colors.grey.shade300,
+                        ),
+                        _buildBottomInfo(Iconsax.maximize4, property.area),
+                      ],
+                    ),
+                  if (property.type == 'PG' && 
+                     ((property.perDayWithFood != null && property.perDayWithFood!.isNotEmpty) || 
+                      (property.perDayWithoutFood != null && property.perDayWithoutFood!.isNotEmpty)))
+                    Column(
+                      children: [
+                        const SizedBox(height: 14),
+                        const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                        const SizedBox(height: 14),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (property.perDayWithFood != null && property.perDayWithFood!.isNotEmpty)
+                              Expanded(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Icon(Iconsax.calendar5, color: Colors.grey.shade500, size: 16),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        '₹${property.perDayWithFood}/day with food',
+                                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            if ((property.perDayWithFood != null && property.perDayWithFood!.isNotEmpty) &&
+                                (property.perDayWithoutFood != null && property.perDayWithoutFood!.isNotEmpty))
+                              Container(
+                                height: 16,
+                                width: 1,
+                                color: Colors.grey.shade300,
+                              ),
+                            if (property.perDayWithoutFood != null && property.perDayWithoutFood!.isNotEmpty)
+                              Expanded(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Icon(Iconsax.calendar_15, color: Colors.grey.shade500, size: 16),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        '₹${property.perDayWithoutFood}/day without food',
+                                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -875,6 +1277,8 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildBottomInfo(IconData icon, String text) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(icon, size: 16, color: Colors.grey.shade500),
         const SizedBox(width: 6),

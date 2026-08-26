@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> imageUrls;
@@ -36,10 +37,13 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
 
   Widget _buildImageWidget(String path) {
     if (path.startsWith('http')) {
-      return Image.network(
-        path,
+      return CachedNetworkImage(
+        imageUrl: path,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => const Center(
+        placeholder: (context, url) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+        errorWidget: (context, url, error) => const Center(
           child: Icon(Iconsax.image, size: 64, color: Colors.white54),
         ),
       );
@@ -102,7 +106,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                               width: 1.2,
                             ),
                           ),
-                          child: const Icon(Icons.close, color: Colors.white, size: 22),
+                          child: const Icon(Iconsax.close_circle, color: Colors.white, size: 22),
                         ),
                       ),
                     ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/app_snackbar.dart';
 import 'home_screen.dart' show PropertyModel;
+import 'property_details_screen.dart';
 import 'posting_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -104,11 +106,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     final filtered = _filter == 'all'
         ? _properties
-        : _properties.where((p) => p.status == _filter).toList();
+        : _filter == 'pending_photos'
+            ? _properties.where((p) => p.suggestedPhotos.any((photo) => photo['status'] == 'pending')).toList()
+            : _properties.where((p) => p.status == _filter).toList();
 
     int total = _properties.length;
     int pendingCount = _properties.where((p) => p.status == 'pending').length;
-    int approvedCount = _properties.where((p) => p.status == 'approved').length;
+    int pendingPhotosCount = _properties.where((p) => p.suggestedPhotos.any((photo) => photo['status'] == 'pending')).length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F9),
@@ -148,7 +152,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 const SizedBox(width: 12),
                 Expanded(child: _buildStatCard('Pending', pendingCount.toString(), Iconsax.clock, Colors.orange)),
                 const SizedBox(width: 12),
-                Expanded(child: _buildStatCard('Approved', approvedCount.toString(), Iconsax.verify, Colors.green)),
+                Expanded(child: _buildStatCard('Photos', pendingPhotosCount.toString(), Iconsax.gallery, Colors.purple)),
               ],
             ),
           ),
@@ -162,6 +166,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Row(
               children: [
                 _buildFilterChip('pending', 'Pending Review'),
+                const SizedBox(width: 10),
+                _buildFilterChip('pending_photos', 'Pending Photos'),
                 const SizedBox(width: 10),
                 _buildFilterChip('approved', 'Approved Live'),
                 const SizedBox(width: 10),
@@ -300,12 +306,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 // Image
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: Image.network(
-                    prop.imageUrls.isNotEmpty ? prop.imageUrls.first : '',
+                  child: CachedNetworkImage(
+                    imageUrl: prop.imageUrls.isNotEmpty ? prop.imageUrls.first : '',
                     height: 100,
                     width: 100,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
+                    placeholder: (context, url) => Container(
+                      height: 100,
+                      width: 100,
+                      color: Colors.grey.shade100,
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (context, url, error) => Container(
                       height: 100,
                       width: 100,
                       color: Colors.grey.shade100,
@@ -443,8 +455,99 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ],
             ),
           ),
+          
+          // Pending Photos Section
+          if (_filter == 'pending_photos' && prop.suggestedPhotos.any((photo) => photo['status'] == 'pending'))
+            Container(
+              padding: const EdgeInsets.all(12),
+              color: Colors.purple.withValues(alpha: 0.05),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Pending Photo Contributions:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  ...prop.suggestedPhotos.where((photo) => photo['status'] == 'pending').map((photo) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: CachedNetworkImage(
+                              imageUrl: photo['url'],
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _approvePhoto(prop, photo),
+                              icon: const Icon(Iconsax.tick_circle, size: 16),
+                              label: const Text('Approve'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _rejectPhoto(prop, photo),
+                              icon: const Icon(Iconsax.close_circle, size: 16),
+                              label: const Text('Reject'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                side: const BorderSide(color: Colors.red),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  Future<void> _approvePhoto(PropertyModel prop, dynamic photo) async {
+    try {
+      final updatedImageUrls = List<String>.from(prop.imageUrls)..add(photo['url']);
+      final updatedSuggestedPhotos = List<dynamic>.from(prop.suggestedPhotos)..remove(photo);
+
+      await _supabase.from('properties').update({
+        'image_urls': updatedImageUrls,
+        'suggested_photos': updatedSuggestedPhotos,
+      }).eq('id', prop.id!);
+
+      AppSnackbar.success(context, 'Photo approved and added to property');
+      _fetchProperties();
+    } catch (e) {
+      AppSnackbar.error(context, 'Error approving photo: $e');
+    }
+  }
+
+  Future<void> _rejectPhoto(PropertyModel prop, dynamic photo) async {
+    try {
+      final updatedSuggestedPhotos = List<dynamic>.from(prop.suggestedPhotos)..remove(photo);
+
+      await _supabase.from('properties').update({
+        'suggested_photos': updatedSuggestedPhotos,
+      }).eq('id', prop.id!);
+
+      AppSnackbar.success(context, 'Photo rejected and removed');
+      _fetchProperties();
+    } catch (e) {
+      AppSnackbar.error(context, 'Error rejecting photo: $e');
+    }
   }
 }

@@ -49,7 +49,7 @@ class RentalApp extends StatelessWidget {
             onSecondary: Colors.white,
           ),
           useMaterial3: true,
-          scaffoldBackgroundColor: const Color(0xFFF7F7F9),
+          scaffoldBackgroundColor: const Color(0xFFFBF7F7),
           elevatedButtonTheme: ElevatedButtonThemeData(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFFEB3A),

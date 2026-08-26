@@ -46,6 +46,10 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _whatsappController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _perDayWithFoodController = TextEditingController();
+  final TextEditingController _perDayWithoutFoodController = TextEditingController();
+  final TextEditingController _latController = TextEditingController();
+  final TextEditingController _lngController = TextEditingController();
 
   // Location & Submission State
   bool _isLoadingLocation = false;
@@ -129,6 +133,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       _phoneController.text = p.ownerPhone;
       _whatsappController.text = p.ownerWhatsapp ?? '';
       _descriptionController.text = p.description ?? '';
+      _perDayWithFoodController.text = p.perDayWithFood ?? '';
+      _perDayWithoutFoodController.text = p.perDayWithoutFood ?? '';
       _existingImages = List.from(p.imageUrls);
       _latitude = p.latitude;
       _longitude = p.longitude;
@@ -166,6 +172,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _rentalSelectedFeatures.addAll(p.features);
       }
     }
+    
+    _latController.text = _latitude.toString();
+    _lngController.text = _longitude.toString();
   }
 
   @override
@@ -178,6 +187,10 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     _phoneController.dispose();
     _whatsappController.dispose();
     _descriptionController.dispose();
+    _perDayWithFoodController.dispose();
+    _perDayWithoutFoodController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
     super.dispose();
   }
 
@@ -200,7 +213,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     setState(() => _isLoadingLocation = true);
     try {
       Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.best),
       );
       List<Placemark> placemarks = await Geocoding().placemarkFromCoordinates(
         position.latitude,
@@ -216,6 +229,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       setState(() {
         _latitude = position.latitude;
         _longitude = position.longitude;
+        _latController.text = _latitude.toString();
+        _lngController.text = _longitude.toString();
         _locationAddress = areaName.isNotEmpty ? areaName : 'Lat: ${position.latitude}, Lng: ${position.longitude}';
         _addressController.text = _locationAddress;
       });
@@ -260,14 +275,6 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       if (_pgAcType.contains('AC')) tags.add(_pgAcType);
       tags.addAll(_pgSelectedAmenities.take(2));
 
-      features.add(_pgFoodPlan);
-      features.add(_pgDrinkingWater);
-      features.add(_pgWaterSupply);
-      features.add(_pgPowerBackup);
-      features.add(_pgBathroom);
-      features.add(_pgCleaning);
-      features.add(_pgManagement);
-      features.add(_pgCurfew);
       features.addAll(_pgSelectedAmenities);
     } else {
       tags.add(_rentalBhk);
@@ -275,12 +282,6 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       tags.add(_rentalParking);
       tags.addAll(_rentalSelectedFeatures.take(2));
 
-      features.add(_rentalBhk);
-      features.add(_rentalFurnishing);
-      features.add(_rentalEbMeter);
-      features.add(_rentalWaterBill);
-      features.add(_rentalTenantPref);
-      features.add(_rentalPetPolicy);
       features.addAll(_rentalSelectedFeatures);
     }
 
@@ -290,8 +291,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       locationStr: _addressController.text.trim().isNotEmpty
           ? _addressController.text.trim()
           : (_locationAddress.isNotEmpty ? _locationAddress : 'Visakhapatnam, Andhra Pradesh'),
-      latitude: _latitude,
-      longitude: _longitude,
+      latitude: double.tryParse(_latController.text.trim()) ?? _latitude,
+      longitude: double.tryParse(_lngController.text.trim()) ?? _longitude,
       imageUrls: _selectedImages.isNotEmpty
           ? _selectedImages.map((f) => f.path).toList()
           : [
@@ -322,28 +323,30 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       genderPreference: isPg ? _pgGender : null,
       sharingType: isPg ? _pgSharing : null,
       foodDetails: isPg ? '$_pgFoodPlan ($_pgFoodType)' : null,
-      drinkingWater: isPg ? _pgDrinkingWater : 'RO Purified Water',
-      waterSupply: isPg ? _pgWaterSupply : '24/7 Corporation & Borewell',
-      powerBackup: isPg ? _pgPowerBackup : 'Inverter Wiring Ready',
+      drinkingWater: isPg ? _pgDrinkingWater : null,
+      waterSupply: isPg ? _pgWaterSupply : null,
+      powerBackup: isPg ? _pgPowerBackup : null,
       acType: isPg ? _pgAcType : null,
       bathroomType: isPg ? '$_pgBathroom ($_pgToiletType)' : null,
       cleanlinessInfo: isPg ? _pgCleaning : null,
-      securityInfo: isPg ? '24/7 CCTV, Guard & Biometric Access' : 'Gated Security',
-      verificationPolicy: isPg ? 'Police & ID Verification Mandatory' : 'ID & Agreement Required',
+      securityInfo: isPg ? '24/7 CCTV & Gated Security' : null,
+      verificationPolicy: isPg ? 'Police & ID Verification Mandatory' : null,
       managementInfo: isPg ? _pgManagement : null,
       gateRules: isPg ? _pgCurfew : null,
+      perDayWithFood: isPg && _perDayWithFoodController.text.trim().isNotEmpty ? _perDayWithFoodController.text.trim() : null,
+      perDayWithoutFood: isPg && _perDayWithoutFoodController.text.trim().isNotEmpty ? _perDayWithoutFoodController.text.trim() : null,
       // Rental specifics
       bhkType: !isPg ? _rentalBhk : null,
       furnishingStatus: !isPg ? _rentalFurnishing : null,
-      plumbingStatus: !isPg ? 'Taps, showers & plumbing tested leak-free' : null,
-      seepageStatus: !isPg ? 'Zero seepage, freshly painted surfaces' : null,
-      electricalStatus: !isPg ? 'Switches & sockets tested, modern MCB' : null,
+      plumbingStatus: null,
+      seepageStatus: null,
+      electricalStatus: null,
       meterStatus: !isPg ? _rentalEbMeter : null,
-      billsInfo: !isPg ? '$_rentalEbMeter, Water: $_rentalWaterBill' : null,
+      billsInfo: !isPg ? (_rentalWaterBill.isNotEmpty ? '$_rentalEbMeter, Water: $_rentalWaterBill' : _rentalEbMeter) : null,
       tenantPreference: !isPg ? _rentalTenantPref : null,
       petPolicy: !isPg ? _rentalPetPolicy : null,
       parkingInfo: !isPg ? _rentalParking : null,
-      status: _isEditing ? widget.propertyToEdit!.status : 'pending',
+      status: _isEditing ? widget.propertyToEdit!.status : 'approved',
     );
 
     _uploadAndSaveProperty(newProperty);
@@ -418,7 +421,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       if (mounted) {
         widget.onPropertyCreated?.call(newProperty); // Optional if using refresh
         Navigator.pop(context);
-        AppSnackbar.success(context, _isEditing ? 'Property updated successfully!' : '$_selectedType property posted successfully! It is pending admin approval.');
+        AppSnackbar.success(context, _isEditing ? 'Property updated successfully!' : '$_selectedType property posted successfully!');
       }
     } catch (e) {
       if (mounted) {
@@ -465,7 +468,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 ],
               ),
               IconButton(
-                icon: const Icon(Icons.close),
+                icon: const Icon(Iconsax.close_circle),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -705,7 +708,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
             ),
             const SizedBox(width: 16),
             Icon(
-              isSelected ? Icons.check_circle : Icons.circle_outlined,
+              isSelected ? Iconsax.tick_circle : Iconsax.record,
               color: isSelected ? Colors.black : Colors.grey.shade300,
               size: 28,
             ),
@@ -725,7 +728,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       children: [
         _buildSectionHeader('Upload Photos', Iconsax.camera),
         const SizedBox(height: 8),
-        _selectedImages.isEmpty
+        _selectedImages.isEmpty && _existingImages.isEmpty
             ? GestureDetector(
                 onTap: _pickImages,
                 child: Container(
@@ -756,7 +759,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                       Text('${_existingImages.length + _selectedImages.length} Photos Selected', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                       TextButton.icon(
                         onPressed: _pickImages,
-                        icon: const Icon(Icons.add_photo_alternate, size: 18, color: Colors.black),
+                        icon: const Icon(Iconsax.gallery_add, size: 18, color: Colors.black),
                         label: const Text('Add More', style: TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold)),
                       )
                     ],
@@ -803,7 +806,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                                 child: Container(
                                   padding: const EdgeInsets.all(3),
                                   decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
-                                  child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                  child: const Icon(Iconsax.close_circle, color: Colors.white, size: 14),
                                 ),
                               ),
                             ),
@@ -844,6 +847,30 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
             ),
           ],
         ),
+        if (_selectedType == 'PG') ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildCustomInput(
+                  controller: _perDayWithFoodController,
+                  label: 'Per Day (With Food) ₹',
+                  hint: 'e.g. 300',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCustomInput(
+                  controller: _perDayWithoutFoodController,
+                  label: 'Per Day (Without Food) ₹',
+                  hint: 'e.g. 200',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 12),
         _buildCustomInput(
           controller: _maintenanceController,
@@ -892,7 +919,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                         _locationAddress = '';
                         _addressController.clear();
                       }),
-                      child: const Icon(Icons.cancel, color: Colors.redAccent, size: 18),
+                      child: const Icon(Iconsax.close_circle, color: Colors.redAccent, size: 18),
                     ),
                   ],
                 ),
@@ -903,6 +930,28 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           label: 'Complete Address / Landmark',
           hint: 'e.g. Near Satyam Junction, MVP Colony, Visakhapatnam',
           maxLines: 2,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildCustomInput(
+                controller: _latController,
+                label: 'Latitude',
+                hint: 'e.g. 17.6868',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildCustomInput(
+                controller: _lngController,
+                label: 'Longitude',
+                hint: 'e.g. 83.2185',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1593,7 +1642,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isSelected) ...[
-                  const Icon(Icons.check, color: Colors.white, size: 14),
+                  const Icon(Iconsax.tick_circle, color: Colors.white, size: 14),
                   const SizedBox(width: 5),
                 ],
                 Text(
