@@ -1,0 +1,9 @@
+{
+  "name": "rental",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "vercel-build": "bash build.sh",
+    "build": "bash build.sh"
+  }
+}
