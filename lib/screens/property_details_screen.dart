@@ -167,33 +167,42 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     }
   }
 
-  Widget _buildTopIconButton({
+  Widget _buildGlassIconButton({
     required IconData icon,
     required VoidCallback onTap,
     Color? iconColor,
-    Color? backgroundColor,
   }) {
     return BouncingButton(
       onTap: onTap,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: backgroundColor ?? Colors.white.withValues(alpha: 0.94),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.65),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.8),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Icon(
-          icon,
-          color: iconColor ?? Colors.black,
-          size: 20,
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              color: iconColor ?? const Color(0xFF1E1E1E),
+              size: 20,
+            ),
+          ),
         ),
       ),
     );
@@ -247,25 +256,25 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildTopIconButton(
-                          icon: Iconsax.arrow_left,
+                        _buildGlassIconButton(
+                          icon: Iconsax.arrow_left_2,
                           onTap: () => Navigator.pop(context),
                         ),
                         Row(
                           children: [
-                            _buildTopIconButton(
-                              icon: Iconsax.share,
+                            _buildGlassIconButton(
+                              icon: Icons.share_rounded,
                               onTap: _shareProperty,
                             ),
                             const SizedBox(width: 10),
                             if (widget.property.isAvailable)
-                              _buildTopIconButton(
+                              _buildGlassIconButton(
                                 icon: Iconsax.slash,
                                 onTap: _showAvailabilityBottomSheet,
-                                iconColor: Colors.black,
+                                iconColor: const Color(0xFF1E1E1E),
                               )
                             else
-                              _buildTopIconButton(
+                              _buildGlassIconButton(
                                 icon: Iconsax.refresh,
                                 onTap: () {
                                   setState(() {

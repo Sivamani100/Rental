@@ -632,13 +632,6 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               alignment: Alignment.center,
               child: _isSubmitting
