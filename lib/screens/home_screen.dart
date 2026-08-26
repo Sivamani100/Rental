@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_snackbar.dart';
+import '../widgets/bouncing_button.dart';
 import 'posting_screen.dart';
 import 'property_details_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -254,17 +256,16 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  int _selectedTypeIndex = 0; // 0 for Rental, 1 for PG
+  int _selectedTypeIndex = 0; // 0 for PG / Hostel, 1 for Rental
+  late final PageController _pageController;
 
   Position? _currentPosition;
   String _currentCity = 'Fetching location...';
   String _currentArea = 'Please wait';
-  bool _isLoadingLocation = true;
   bool _hasLocationPermission = true;
   bool _isInitialLoading = true;
 
   List<PropertyModel> _allProperties = [];
-  List<PropertyModel> _filteredProperties = [];
   int _currentSearchRadiusKm = 5;
 
   final _supabase = Supabase.instance.client;
@@ -276,6 +277,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedTypeIndex);
     WidgetsBinding.instance.addObserver(this);
     _currentPosition = Position(
       latitude: 17.6868,
@@ -316,6 +318,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _pageController.dispose();
     _emptyStateTimer?.cancel();
     _autoLocationTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -342,13 +345,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final List<dynamic> decoded = jsonDecode(cachedData);
         setState(() {
           _allProperties = decoded.map((e) => PropertyModel.fromJson(e)).toList();
-          _filterProperties();
-          _isLoadingLocation = false;
           _isInitialLoading = false;
         });
       }
 
-      // Fetch fresh data from network
+      // Fetch fresh data from network (only approved properties)
       final data = await _supabase
           .from('properties')
           .select()
@@ -362,21 +363,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _allProperties = (data as List)
               .map((e) => PropertyModel.fromJson(e))
               .toList();
-          _filterProperties();
-          _isLoadingLocation = false;
           _isInitialLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        // If we have cached properties, just log or ignore the error to allow offline mode
         if (_allProperties.isNotEmpty) {
            AppSnackbar.error(context, 'Offline mode: Showing cached properties.');
         } else {
            AppSnackbar.error(context, 'Failed to fetch properties: $e');
         }
         setState(() {
-          _isLoadingLocation = false;
           _isInitialLoading = false;
         });
       }
@@ -390,7 +387,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) setState(() { _hasLocationPermission = false; _isLoadingLocation = false; });
+        if (mounted) setState(() { _hasLocationPermission = false; });
         return;
       }
 
@@ -399,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied ||
             permission == LocationPermission.deniedForever) {
-          if (mounted) setState(() { _hasLocationPermission = false; _isLoadingLocation = false; });
+          if (mounted) setState(() { _hasLocationPermission = false; });
           return;
         }
       }
@@ -437,15 +434,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           });
         }
       } catch (_) {}
-
-      if (mounted) {
-        setState(() {
-          if (updateFeed || _filteredProperties.isEmpty) {
-            _filterProperties();
-          }
-          _isLoadingLocation = false;
-        });
-      }
     } catch (_) {
       // Fallback already pre-rendered
     } finally {
@@ -453,10 +441,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _filterProperties() {
-    if (_currentPosition == null) return;
+  List<PropertyModel> _getSortedPropertiesForType(String selectedTypeStr) {
+    if (_currentPosition == null) return [];
 
-    final selectedTypeStr = _selectedTypeIndex == 0 ? 'PG' : 'Rental';
     int searchRadiusKm = 5;
     List<PropertyModel> tempFiltered = [];
 
@@ -482,18 +469,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }).toList();
 
       if (tempFiltered.isNotEmpty) {
-        break; // Found properties!
+        break;
       }
-      searchRadiusKm += 5; // Expand search by 5km
+      searchRadiusKm += 5;
     }
 
-    _filteredProperties = tempFiltered;
+    // Sort strictly in ascending order by distance (closest first: 20m, 30m, 1.2km, etc.)
+    tempFiltered.sort((a, b) {
+      double distA = Geolocator.distanceBetween(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+        a.latitude,
+        a.longitude,
+      );
+      double distB = Geolocator.distanceBetween(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+        b.latitude,
+        b.longitude,
+      );
+      return distA.compareTo(distB);
+    });
+
     _currentSearchRadiusKm = searchRadiusKm > 50 ? 50 : searchRadiusKm;
+    return tempFiltered;
   }
 
   @override
   Widget build(BuildContext context) {
-    if ((_isInitialLoading || _filteredProperties.isEmpty) && !_canShowEmptyState) {
+    if (_isInitialLoading && _allProperties.isEmpty && !_canShowEmptyState) {
       return Scaffold(
         backgroundColor: const Color(0xFFFBF7F7),
         body: SizedBox.expand(
@@ -560,7 +564,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'We need your location to show you the best properties around you. Please allow location access in your device settings to continue.',
+                    'We need your location to show you the best properties around you in ascending order of distance. Please allow location access to continue.',
                     style: TextStyle(
                       color: Colors.black54,
                       fontSize: 15,
@@ -569,17 +573,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  ElevatedButton.icon(
-                    onPressed: () {
+                  BouncingButton(
+                    onTap: () {
                       Geolocator.openAppSettings();
                     },
-                    icon: const Icon(Iconsax.setting_2, size: 20),
-                    label: const Text('Open Settings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
+                    child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Iconsax.setting_2, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text('Open Settings', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -611,21 +622,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: _buildHeader(context),
                     ),
                     Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          right: 16.0,
-                          bottom: 8.0,
-                        ),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 24),
-                            _buildPropertyList(),
-                            const SizedBox(
-                              height: 100,
-                            ), // padding for floating bottom bar
-                          ],
-                        ),
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _selectedTypeIndex = index;
+                          });
+                          HapticFeedback.selectionClick();
+                        },
+                        children: [
+                          _buildTabContent('PG'),
+                          _buildTabContent('Rental'),
+                        ],
                       ),
                     ),
                   ],
@@ -648,10 +656,37 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildTabContent(String typeStr) {
+    final properties = _getSortedPropertiesForType(typeStr);
+
+    return RefreshIndicator(
+      color: Colors.black,
+      backgroundColor: const Color(0xFFFFEB3A),
+      displacement: 32,
+      edgeOffset: 8,
+      triggerMode: RefreshIndicatorTriggerMode.anywhere,
+      onRefresh: () async {
+        HapticFeedback.mediumImpact();
+        await _refreshLocationFast(updateFeed: true);
+        await _fetchProperties();
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        padding: const EdgeInsets.only(
+          left: 16.0,
+          right: 16.0,
+          top: 16.0,
+          bottom: 120.0, // Generous space to float above bottom toggle
+        ),
+        child: _buildPropertyList(properties, typeStr == 'PG' ? 'PG / Hostel' : 'Rental'),
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
-        GestureDetector(
+        BouncingButton(
           onTap: () {
             AppSnackbar.success(context, 'Reloading location...');
             _refreshLocationFast(updateFeed: true);
@@ -661,6 +696,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: const Icon(Iconsax.location, color: Colors.black, size: 24),
           ),
@@ -688,7 +730,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ],
           ),
         ),
-        GestureDetector(
+        BouncingButton(
           onTap: () {
             showModalBottomSheet(
               context: context,
@@ -700,15 +742,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               builder: (_) => PostBottomSheet(
                 currentLocation: _currentPosition,
                 onPropertyCreated: (newProp) {
-                  // Instant local update while backend syncs
-                  setState(() {
-                    _allProperties.insert(0, newProp);
-                    _filterProperties();
-                  });
+                  // Property is pending admin review - do not inject into live feed
+                  _fetchProperties();
                 },
               ),
             ).then((_) {
-              // Refresh fully from database to get IDs and fresh data
               _fetchProperties();
             });
           },
@@ -717,6 +755,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             decoration: BoxDecoration(
               color: const Color(0xFFFFEB3A),
               borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -734,7 +779,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   'Post',
                   style: TextStyle(
                     color: Colors.black,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     fontSize: 15,
                   ),
                 ),
@@ -755,7 +800,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -764,14 +809,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: Row(
         children: [
           Expanded(
-            child: GestureDetector(
+            child: BouncingButton(
               onTap: () {
                 setState(() {
                   _selectedTypeIndex = 0;
-                  _filterProperties();
                 });
+                _pageController.animateToPage(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOutCubic,
+                );
               },
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: _selectedTypeIndex == 0
@@ -794,14 +844,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
           Expanded(
-            child: GestureDetector(
+            child: BouncingButton(
               onTap: () {
                 setState(() {
                   _selectedTypeIndex = 1;
-                  _filterProperties();
                 });
+                _pageController.animateToPage(
+                  1,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOutCubic,
+                );
               },
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: _selectedTypeIndex == 1
@@ -828,47 +883,44 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildPropertyList() {
-    if (_filteredProperties.isEmpty) {
-      if (!_canShowEmptyState) {
+  Widget _buildPropertyList(List<PropertyModel> properties, String typeStr) {
+    if (properties.isEmpty) {
+      if (!_canShowEmptyState && _isInitialLoading) {
         return SizedBox(
-          height: MediaQuery.of(context).size.height * 0.65,
+          height: MediaQuery.of(context).size.height * 0.55,
           child: Center(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Transform.scale(
-                    scale: 2.8,
-                    child: Lottie.asset(
-                      'assets/loadingg.json',
-                      width: 170,
-                      height: 170,
-                      fit: BoxFit.contain,
-                    ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Transform.scale(
+                  scale: 2.5,
+                  child: Lottie.asset(
+                    'assets/loadingg.json',
+                    width: 160,
+                    height: 160,
+                    fit: BoxFit.contain,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Loading...',
-                    style: TextStyle(
-                      color: Colors.black87,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Finding nearest listings...',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
-                ],
-              ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
         );
       }
 
       return SizedBox(
-        height: MediaQuery.of(context).size.height * 0.6,
+        height: MediaQuery.of(context).size.height * 0.55,
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32.0),
@@ -877,18 +929,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               children: [
                 Lottie.asset(
                   'assets/Nothing founded.json',
-                  width: 300,
-                  height: 300,
+                  width: 260,
+                  height: 260,
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'No properties found within ${_currentSearchRadiusKm}km radius.',
+                  'No $typeStr found within ${_currentSearchRadiusKm}km radius.',
                   style: const TextStyle(
                     color: Colors.black87,
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Pull down to refresh or check back later!',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -899,11 +957,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     return Column(
-      children: _filteredProperties.map((prop) {
+      children: properties.map((prop) {
+        double? distance;
+        if (_currentPosition != null) {
+          distance = Geolocator.distanceBetween(
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
+            prop.latitude,
+            prop.longitude,
+          );
+        }
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 20),
           child: PropertyCard(
             property: prop,
+            distanceInMeters: distance,
             onTap: () {
               Navigator.push(
                 context,
@@ -923,18 +992,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
 class PropertyCard extends StatelessWidget {
   final PropertyModel property;
+  final double? distanceInMeters;
   final VoidCallback onTap;
 
-  const PropertyCard({super.key, required this.property, required this.onTap});
+  const PropertyCard({
+    super.key,
+    required this.property,
+    this.distanceInMeters,
+    required this.onTap,
+  });
+
+  String _formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()}m away';
+    } else {
+      return '${(meters / 1000).toStringAsFixed(1)}km away';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return BouncingButton(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -953,11 +1043,13 @@ class PropertyCard extends StatelessWidget {
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    fadeInDuration: const Duration(milliseconds: 300),
+                    fadeOutDuration: const Duration(milliseconds: 150),
                     placeholder: (context, url) => Container(
                       height: 200,
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: CircularProgressIndicator(),
+                      color: Colors.grey.shade100,
+                      child: Center(
+                        child: Icon(Iconsax.image, color: Colors.grey.shade400, size: 30),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
@@ -976,7 +1068,7 @@ class PropertyCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: Colors.white.withValues(alpha: 0.92),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
@@ -1003,6 +1095,41 @@ class PropertyCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                // Distance badge overlay on bottom-left of image
+                if (distanceInMeters != null)
+                  Positioned(
+                    bottom: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Iconsax.location, color: Color(0xFFFFEB3A), size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatDistance(distanceInMeters!),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 Positioned(
                   top: 12,
                   right: 12,
@@ -1012,7 +1139,7 @@ class PropertyCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
+                      color: Colors.black.withValues(alpha: 0.65),
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Text(
@@ -1020,7 +1147,7 @@ class PropertyCard extends StatelessWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -1081,21 +1208,24 @@ class PropertyCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // Location
+                  // Location with Location Icon and Distance
                   Row(
                     children: [
                       const Icon(
-                        Iconsax.location5,
-                        color: Colors.grey,
+                        Iconsax.location,
+                        color: Color(0xFFF59E0B),
                         size: 16,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          property.locationStr,
+                          distanceInMeters != null
+                              ? '${property.locationStr} • ${_formatDistance(distanceInMeters!)}'
+                              : property.locationStr,
                           style: TextStyle(
-                            color: Colors.grey.shade600,
+                            color: Colors.grey.shade700,
                             fontSize: 13,
+                            fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

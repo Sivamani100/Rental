@@ -42,7 +42,7 @@ class AppSnackbar {
         margin: const EdgeInsets.only(
           left: 24,
           right: 24,
-          bottom: 24,
+          bottom: 96,
         ),
         duration: duration,
         dismissDirection: DismissDirection.down,

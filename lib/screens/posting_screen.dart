@@ -54,9 +54,19 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   // Location & Submission State
   bool _isLoadingLocation = false;
   bool _isSubmitting = false;
+  String? _sheetErrorMessage;
   String _locationAddress = '';
   double _latitude = 17.6868;
   double _longitude = 83.2185;
+
+  void _showSheetError(String message) {
+    setState(() => _sheetErrorMessage = message);
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted && _sheetErrorMessage == message) {
+        setState(() => _sheetErrorMessage = null);
+      }
+    });
+  }
 
   // --- PG Specific State ---
   String _pgGender = 'Boys Only';
@@ -204,7 +214,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, 'Failed to pick images');
+        _showSheetError('Failed to pick images: $e');
       }
     }
   }
@@ -239,7 +249,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, 'Failed to get location. Enter address manually.');
+        _showSheetError('Failed to get location. Enter address manually.');
       }
     } finally {
       if (mounted) {
@@ -250,17 +260,17 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
 
   void _submitProperty() {
     if (_titleController.text.trim().isEmpty) {
-      AppSnackbar.error(context, 'Please enter a property title');
+      _showSheetError('Please enter a property title');
       setState(() => _currentStep = 2);
       return;
     }
     if (_priceController.text.trim().isEmpty) {
-      AppSnackbar.error(context, 'Please enter monthly rent');
+      _showSheetError('Please enter monthly rent');
       setState(() => _currentStep = 2);
       return;
     }
     if (_phoneController.text.trim().isEmpty) {
-      AppSnackbar.error(context, 'Please provide owner contact number');
+      _showSheetError('Please provide owner contact number');
       return;
     }
 
@@ -346,7 +356,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       tenantPreference: !isPg ? _rentalTenantPref : null,
       petPolicy: !isPg ? _rentalPetPolicy : null,
       parkingInfo: !isPg ? _rentalParking : null,
-      status: _isEditing ? widget.propertyToEdit!.status : 'approved',
+      status: _isEditing ? widget.propertyToEdit!.status : 'pending',
     );
 
     _uploadAndSaveProperty(newProperty);
@@ -419,13 +429,19 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       }
 
       if (mounted) {
-        widget.onPropertyCreated?.call(newProperty); // Optional if using refresh
+        widget.onPropertyCreated?.call(newProperty);
         Navigator.pop(context);
-        AppSnackbar.success(context, _isEditing ? 'Property updated successfully!' : '$_selectedType property posted successfully!');
+        AppSnackbar.success(
+          context,
+          _isEditing
+              ? 'Property updated successfully!'
+              : 'Listing submitted for review! It will appear once approved by admin.',
+          duration: const Duration(seconds: 4),
+        );
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, 'Failed to post property: $e');
+        _showSheetError('Failed to post property: $e');
       }
     } finally {
       if (mounted) {
@@ -468,11 +484,39 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 ],
               ),
               IconButton(
-                icon: const Icon(Iconsax.close_circle),
                 onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close, color: Colors.black54),
+                visualDensity: VisualDensity.compact,
               ),
             ],
           ),
+          if (_sheetErrorMessage != null)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              margin: const EdgeInsets.only(top: 10, bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFECEC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade300),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Iconsax.warning_2, color: Colors.red, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _sheetErrorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() => _sheetErrorMessage = null),
+                    child: const Icon(Icons.close, color: Colors.red, size: 16),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 20),
           // Step Progress Indicator Bar
           Row(
