@@ -275,9 +275,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   final _supabase = Supabase.instance.client;
   Timer? _autoLocationTimer;
-  Timer? _emptyStateTimer;
   bool _isRefreshingLocation = false;
-  bool _canShowEmptyState = false;
   bool _hasOpenedInitialProperty = false;
 
   @override
@@ -285,33 +283,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     _pageController = PageController(initialPage: _selectedTypeIndex);
     WidgetsBinding.instance.addObserver(this);
-    _currentPosition = Position(
-      latitude: 17.6868,
-      longitude: 83.2185,
-      timestamp: DateTime.now(),
-      accuracy: 0,
-      altitude: 0,
-      heading: 0,
-      speed: 0,
-      speedAccuracy: 0,
-      altitudeAccuracy: 0,
-      headingAccuracy: 0,
-    );
+    _currentPosition = null; // Do not mock position, wait for real GPS
     _currentCity = 'Finding location...';
     _currentArea = 'Detecting your area...';
-    _fetchProperties();
-    _refreshLocationFast(updateFeed: true);
-    _startAutoLocationRefresh();
-    _checkAndOpenInitialProperty();
+    _isInitialLoading = true;
+    _initAppAndLocation();
+  }
 
-    // Show loading animation for 2 seconds before revealing state
-    _emptyStateTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _canShowEmptyState = true;
-        });
-      }
-    });
+  Future<void> _initAppAndLocation() async {
+    final propFuture = _fetchProperties();
+    final locFuture = _refreshLocationFast(updateFeed: true);
+    await Future.wait([propFuture, locFuture]);
+
+    if (mounted) {
+      setState(() {
+        _isInitialLoading = false;
+      });
+      _startAutoLocationRefresh();
+      _checkAndOpenInitialProperty();
+    }
   }
 
   void _checkAndOpenInitialProperty() async {
@@ -364,7 +354,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _pageController.dispose();
-    _emptyStateTimer?.cancel();
     _autoLocationTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -390,7 +379,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final List<dynamic> decoded = jsonDecode(cachedData);
         setState(() {
           _allProperties = decoded.map((e) => PropertyModel.fromJson(e)).toList();
-          _isInitialLoading = false;
         });
         _checkAndOpenInitialProperty();
       }
@@ -409,7 +397,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _allProperties = (data as List)
               .map((e) => PropertyModel.fromJson(e))
               .toList();
-          _isInitialLoading = false;
         });
         _checkAndOpenInitialProperty();
       }
@@ -420,9 +407,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         } else {
            AppSnackbar.error(context, 'Failed to fetch properties: $e');
         }
-        setState(() {
-          _isInitialLoading = false;
-        });
       }
     }
   }
@@ -559,7 +543,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (_isInitialLoading && _allProperties.isEmpty && !_canShowEmptyState) {
+    if (_isInitialLoading || (_currentPosition == null && _hasLocationPermission)) {
       return Scaffold(
         backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
         body: SizedBox.expand(
@@ -582,7 +566,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Loading...',
+                    'Finding location...',
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black87,
                       fontSize: 22,
@@ -1027,37 +1011,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildEmptyState(String typeStr) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    if (!_canShowEmptyState && _isInitialLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Transform.scale(
-              scale: 2.5,
-              child: Lottie.asset(
-                'assets/loadingg.json',
-                width: 160,
-                height: 160,
-                fit: BoxFit.contain,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Finding nearest listings...',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
 
     return Center(
       child: Padding(
