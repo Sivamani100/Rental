@@ -765,7 +765,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildHeader(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isLocating = _currentCity.contains('Finding') || _isRefreshingLocation;
 
     return Row(
       children: [
@@ -790,22 +789,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             alignment: Alignment.center,
-            child: _isRefreshingLocation
-                ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isDark ? const Color(0xFFFFEB3A) : Colors.black,
-                      ),
-                    ),
-                  )
-                : Icon(
-                    Iconsax.location,
-                    color: isDark ? Colors.white : Colors.black,
-                    size: 24,
-                  ),
+            child: Icon(
+              Iconsax.location,
+              color: isDark ? Colors.white : Colors.black,
+              size: 24,
+            ),
           ),
         ),
         const SizedBox(width: 14),
@@ -814,34 +802,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      _currentCity,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : Colors.black,
-                        height: 1.15,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (isLocating) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFEB3A),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
-                ],
+              Text(
+                _currentCity,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : Colors.black,
+                  height: 1.15,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 2),
               Text(
