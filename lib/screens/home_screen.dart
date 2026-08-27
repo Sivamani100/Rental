@@ -265,8 +265,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late final PageController _pageController;
 
   Position? _currentPosition;
-  String _currentCity = 'Fetching location...';
-  String _currentArea = 'Please wait';
+  String _currentCity = 'Finding location...';
+  String _currentArea = 'Detecting your area...';
   bool _hasLocationPermission = true;
   bool _isInitialLoading = true;
 
@@ -297,8 +297,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       altitudeAccuracy: 0,
       headingAccuracy: 0,
     );
-    _currentCity = 'Not found';
-    _currentArea = 'Location unknown';
+    _currentCity = 'Finding location...';
+    _currentArea = 'Detecting your area...';
     _fetchProperties();
     _refreshLocationFast(updateFeed: true);
     _startAutoLocationRefresh();
@@ -430,6 +430,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _refreshLocationFast({bool updateFeed = false}) async {
     if (_isRefreshingLocation) return;
     _isRefreshingLocation = true;
+    if (mounted) setState(() {});
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -455,7 +456,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 3),
+            timeLimit: Duration(seconds: 4),
           ),
         );
       } catch (_) {
@@ -469,22 +470,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       try {
         List<Placemark> placemarks = await Geocoding()
             .placemarkFromCoordinates(position.latitude, position.longitude)
-            .timeout(const Duration(seconds: 2));
+            .timeout(const Duration(seconds: 3));
         if (placemarks.isNotEmpty && mounted) {
           final place = placemarks.first;
           setState(() {
             _currentCity =
-                place.locality ?? place.subLocality ?? 'Current City';
+                place.locality ?? place.subLocality ?? place.name ?? 'Finding location...';
             _currentArea =
-                '${place.administrativeArea ?? ''}, ${place.country ?? ''}'
-                    .replaceAll(RegExp(r'^,\s*'), '');
+                '${place.subAdministrativeArea ?? place.administrativeArea ?? ''}, ${place.country ?? ''}'
+                    .replaceAll(RegExp(r'^,\s*'), '')
+                    .replaceAll(RegExp(r',\s*$'), '');
+            if (_currentArea.trim().isEmpty) {
+              _currentArea = 'Detecting your area...';
+            }
           });
         }
-      } catch (_) {}
+      } catch (_) {
+        // Keep smooth 'Finding location...' state
+      }
     } catch (_) {
       // Fallback already pre-rendered
     } finally {
-      _isRefreshingLocation = false;
+      if (mounted) {
+        setState(() {
+          _isRefreshingLocation = false;
+        });
+      } else {
+        _isRefreshingLocation = false;
+      }
     }
   }
 
@@ -752,12 +765,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildHeader(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isLocating = _currentCity.contains('Finding') || _isRefreshingLocation;
 
     return Row(
       children: [
         BouncingButton(
           onTap: () {
             HapticFeedback.selectionClick();
+            setState(() {
+              _currentCity = 'Finding location...';
+              _currentArea = 'Detecting your area...';
+            });
             _refreshLocationFast(updateFeed: true);
           },
           child: Container(
@@ -772,11 +790,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             alignment: Alignment.center,
-            child: Icon(
-              Iconsax.location,
-              color: isDark ? Colors.white : Colors.black,
-              size: 24,
-            ),
+            child: _isRefreshingLocation
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isDark ? const Color(0xFFFFEB3A) : Colors.black,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    Iconsax.location,
+                    color: isDark ? Colors.white : Colors.black,
+                    size: 24,
+                  ),
           ),
         ),
         const SizedBox(width: 14),
@@ -785,16 +814,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                _currentCity,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : Colors.black,
-                  height: 1.15,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      _currentCity,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : Colors.black,
+                        height: 1.15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (isLocating) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFEB3A),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 2),
               Text(
