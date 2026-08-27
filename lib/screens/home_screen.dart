@@ -750,15 +750,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Future.delayed(const Duration(seconds: 2)),
         ]);
       },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        padding: const EdgeInsets.only(
-          left: 16.0,
-          right: 16.0,
-          top: 16.0,
-          bottom: 120.0, // Generous space to float above bottom toggle
-        ),
-        child: _buildPropertyList(properties, typeStr == 'PG' ? 'PG / Hostel' : 'Rental'),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: 16.0,
+              bottom: 120.0, // Space to float above bottom toggle
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight > 140 ? constraints.maxHeight - 140 : 300,
+              ),
+              child: properties.isEmpty
+                  ? Center(
+                      child: _buildEmptyState(typeStr == 'PG' ? 'PG / Hostel' : 'Rental'),
+                    )
+                  : _buildPropertyList(properties),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1012,75 +1025,72 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildPropertyList(List<PropertyModel> properties, String typeStr) {
+  Widget _buildEmptyState(String typeStr) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (properties.isEmpty) {
-      if (!_canShowEmptyState && _isInitialLoading) {
-        return SizedBox(
-          height: MediaQuery.of(context).size.height * 0.55,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Transform.scale(
-                  scale: 2.5,
-                  child: Lottie.asset(
-                    'assets/loadingg.json',
-                    width: 160,
-                    height: 160,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Finding nearest listings...',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+    if (!_canShowEmptyState && _isInitialLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Transform.scale(
+              scale: 2.5,
+              child: Lottie.asset(
+                'assets/loadingg.json',
+                width: 160,
+                height: 160,
+                fit: BoxFit.contain,
+              ),
             ),
-          ),
-        );
-      }
-
-      return SizedBox(
-        height: MediaQuery.of(context).size.height * 0.55,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Lottie.asset(
-                  'assets/Nothing founded.json',
-                  width: 260,
-                  height: 260,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'No $typeStr found within ${_currentSearchRadiusKm}km radius.',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+            const SizedBox(height: 16),
+            Text(
+              'Finding nearest listings...',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
+          ],
         ),
       );
     }
 
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Lottie.asset(
+              'assets/Nothing founded.json',
+              width: 250,
+              height: 250,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No $typeStr found within ${_currentSearchRadiusKm}km radius.',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 19,
+                fontWeight: FontWeight.bold,
+                height: 1.25,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPropertyList(List<PropertyModel> properties) {
     return Column(
       children: properties.map((prop) {
         double? distance;
