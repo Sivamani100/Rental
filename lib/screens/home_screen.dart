@@ -1197,20 +1197,20 @@ class PropertyCard extends StatelessWidget {
                     imageUrl: property.imageUrls.isNotEmpty
                         ? property.imageUrls.first
                         : '',
-                    height: 200,
+                    height: 230,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     fadeInDuration: const Duration(milliseconds: 300),
                     fadeOutDuration: const Duration(milliseconds: 150),
                     placeholder: (context, url) => Container(
-                      height: 200,
+                      height: 230,
                       color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade100,
                       child: Center(
                         child: Icon(Iconsax.image, color: Colors.grey.shade500, size: 30),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 200,
+                      height: 230,
                       color: isDark ? AppTheme.darkCardElevated : Colors.grey[200],
                       child: const Center(
                         child: Icon(Iconsax.image, color: Colors.grey),
@@ -1275,16 +1275,9 @@ class PropertyCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5.5),
                     decoration: BoxDecoration(
                       color: property.isAvailable
-                          ? const Color(0xFF10B981).withValues(alpha: 0.92)
-                          : Colors.redAccent.withValues(alpha: 0.92),
+                          ? const Color(0xFF10B981)
+                          : Colors.redAccent,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
