@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/app_snackbar.dart';
+import '../widgets/bouncing_button.dart';
 
 class MapScreen extends StatelessWidget {
   final double latitude;
@@ -105,24 +106,36 @@ class MapScreen extends StatelessWidget {
               top: false,
               child: SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _startDirections(context),
-                  style: ElevatedButton.styleFrom(
-                    // Inherits from global theme
+                child: BouncingButton(
+                  scaleFactor: 0.96,
+                  onTap: () => _startDirections(context),
+                  child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
+                    decoration: BoxDecoration(
+                      color: Colors.black,
                       borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    elevation: 6,
-                    shadowColor: Colors.black.withValues(alpha: 0.3),
-                  ),
-                  icon: const Icon(Iconsax.routing, color: Colors.white, size: 20),
-                  label: const Text(
-                    'Get Directions',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Iconsax.routing, color: Colors.white, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Get Directions',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

@@ -10,6 +10,8 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
 import 'posting_screen.dart';
 import 'property_details_screen.dart';
+import 'search_screen.dart';
+import 'ai_chat_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -59,7 +61,7 @@ class PropertyModel {
   final String? bathroomType; // Attached, Common, Western/Indian
   final String? cleanlinessInfo; // Daily Room & Bath Housekeeping
   final String? securityInfo; // 24/7 CCTV, Guard, Biometric Entry
-  final String? verificationPolicy; // Police & ID Verification Mandatory
+  final String? verificationPolicy; // ID Verification Mandatory
   final String? managementInfo; // Owner on site, Resident Warden
   final String? gateRules; // No Curfew, 10:30 PM Gate Close, Guests Allowed
 
@@ -494,11 +496,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Increment radius by 5km until we find properties or hit 50km limit
     while (searchRadiusKm <= 50) {
       tempFiltered = _allProperties.where((property) {
-        // 1. Filter by Type (Rental / House vs PG)
+        // 1. Filter by Type (Hostel vs Rental vs Buy)
         if (selectedTypeStr == 'Rental') {
           if (property.type != 'Rental' && property.type != 'House') return false;
+        } else if (selectedTypeStr == 'Buy') {
+          if (property.type != 'Buy' && property.type != 'Sale' && property.type != 'Plot' && property.type != 'Land') return false;
         } else {
-          if (property.type != 'PG') return false;
+          if (property.type != 'PG' && property.type != 'Hostel') return false;
         }
 
         // 2. Filter by distance
@@ -690,6 +694,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         children: [
                           _buildTabContent('PG'),
                           _buildTabContent('Rental'),
+                          _buildTabContent('Buy'),
                         ],
                       ),
                     ),
@@ -715,6 +720,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildTabContent(String typeStr) {
     final properties = _getSortedPropertiesForType(typeStr);
+    String emptyLabel;
+    if (typeStr == 'PG') {
+      emptyLabel = 'Hostels / PGs';
+    } else if (typeStr == 'Buy') {
+      emptyLabel = 'Buy properties';
+    } else {
+      emptyLabel = 'Rentals';
+    }
 
     return RefreshIndicator(
       color: Colors.black,
@@ -750,7 +763,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               child: properties.isEmpty
                   ? Center(
-                      child: _buildEmptyState(typeStr == 'PG' ? 'PG / Hostel' : 'Rental'),
+                      child: _buildEmptyState(emptyLabel),
                     )
                   : _buildPropertyList(properties),
             ),
@@ -853,6 +866,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(width: 10),
         ],
+        // Search Icon Button before Post
+        BouncingButton(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SearchScreen(
+                  properties: _allProperties,
+                  currentPosition: _currentPosition,
+                  initialCategory: _selectedTypeIndex == 0
+                      ? 'PG'
+                      : (_selectedTypeIndex == 1 ? 'Rental' : 'Buy'),
+                ),
+              ),
+            );
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
+                width: 1,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Iconsax.search_normal_1,
+              color: isDark ? Colors.white : Colors.black,
+              size: 20,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
         BouncingButton(
           onTap: () {
             showModalBottomSheet(
@@ -914,98 +964,113 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildBottomToggle() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 40),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: isDark ? AppTheme.darkBorder : Colors.transparent,
-          width: 1,
+    final tabs = ['Hostel', 'Rental', 'Buy'];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Hostel / Rental / Buy Toggle
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: isDark ? AppTheme.darkBorder : Colors.transparent,
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Row(
+              children: List.generate(tabs.length, (index) {
+                final isSelected = _selectedTypeIndex == index;
+                return Expanded(
+                  child: BouncingButton(
+                    onTap: () {
+                      setState(() {
+                        _selectedTypeIndex = index;
+                      });
+                      _pageController.animateToPage(
+                        index,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOutCubic,
+                      );
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFFFFEB3A)
+                            : (isDark ? AppTheme.darkCard : Colors.white),
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        tabs[index],
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.black
+                              : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
+
+        // AI Assistant Floating Button (Hidden for now)
+        if (false) ...[
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
             child: BouncingButton(
               onTap: () {
-                setState(() {
-                  _selectedTypeIndex = 0;
-                });
-                _pageController.animateToPage(
-                  0,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOutCubic,
+                HapticFeedback.mediumImpact();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AiChatScreen(initialProperties: _allProperties),
+                  ),
                 );
               },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Container(
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
-                  color: _selectedTypeIndex == 0
-                      ? const Color(0xFFFFEB3A)
-                      : (isDark ? AppTheme.darkCard : Colors.white),
-                  borderRadius: BorderRadius.circular(26),
+                  color: const Color(0xFFFFEB3A),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.15),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  'PG / Hostel',
-                  style: TextStyle(
-                    color: _selectedTypeIndex == 0
-                        ? Colors.black
-                        : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: BouncingButton(
-              onTap: () {
-                setState(() {
-                  _selectedTypeIndex = 1;
-                });
-                _pageController.animateToPage(
-                  1,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOutCubic,
-                );
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: _selectedTypeIndex == 1
-                      ? const Color(0xFFFFEB3A)
-                      : (isDark ? AppTheme.darkCard : Colors.white),
-                  borderRadius: BorderRadius.circular(26),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Rental',
-                  style: TextStyle(
-                    color: _selectedTypeIndex == 1
-                        ? Colors.black
-                        : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
+                child: const Icon(
+                  Iconsax.magicpen,
+                  color: Colors.black,
+                  size: 24,
                 ),
               ),
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 
@@ -1295,8 +1360,20 @@ class PropertyCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(
-                          property.title,
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: '${property.title} '),
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: Icon(
+                                  Iconsax.verify5,
+                                  size: 16,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
+                            ],
+                          ),
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,

@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .vercel
+.env
+/flutter/
+test_icons.dart

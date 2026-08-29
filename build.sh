@@ -15,6 +15,6 @@ echo "=== Getting dependencies ==="
 flutter pub get
 
 echo "=== Building Flutter Web ==="
-flutter build web --release --base-href "/" --no-tree-shake-icons
+flutter build web --release --no-tree-shake-icons
 
 echo "=== Build finished successfully ==="

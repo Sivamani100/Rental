@@ -28,6 +28,8 @@ dependencies:
   cached_network_image: ^3.4.1
   lottie: ^3.5.1
   share_plus: ^13.3.0
+  webview_flutter: ^4.10.0
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

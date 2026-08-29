@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
@@ -5,6 +6,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/home_screen.dart';
 import 'screens/admin_login_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
+import 'screens/ai_chat_screen.dart';
+import 'services/ai_assistant_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
 
@@ -18,6 +21,9 @@ Future<void> main() async {
     url: 'https://dhbwnteiahefjfpojapz.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoYndudGVpYWhlZmpmcG9qYXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2NDIwNTQsImV4cCI6MjEwMzIxODA1NH0.CnP-ogYh7FwPY9cqBRTX2oS6NqTT-mXgPsSyDDCADC8',
   );
+
+  // Pre-load AI Assistant local chat history and settings instantly
+  AiAssistantService.instance.init();
 
   runApp(const RentalApp());
 }
@@ -50,6 +56,13 @@ class RentalApp extends StatelessWidget {
               final rawName = settings.name ?? '/';
               final uri = Uri.parse(rawName);
               final path = uri.path.toLowerCase();
+
+              if (path == '/ai' || path == '/ai-chat' || path == '/assistant') {
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => const AiChatScreen(),
+                );
+              }
 
               if (path == '/admin' ||
                   path == '/admin/' ||

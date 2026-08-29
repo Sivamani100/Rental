@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:geolocator/geolocator.dart';
@@ -6,8 +7,10 @@ import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image/image.dart' as img;
+import 'package:lottie/lottie.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
 import '../theme/app_theme.dart';
@@ -70,61 +73,333 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     });
   }
 
-  // --- PG Specific State ---
-  String _pgGender = 'Boys Only';
-  String _pgSharing = '2 Sharing';
-  String _pgAcType = 'AC Room';
-  String _pgBathroom = 'Attached Bathroom';
-  String _pgToiletType = 'Western Toilet';
-  String _pgFoodPlan = '3 Meals Included';
-  String _pgFoodType = 'Veg & Non-Veg';
-  String _pgWaterSupply = '24/7 Continuous Water Supply';
-  String _pgDrinkingWater = 'RO Purified + Cool Water Dispenser';
-  String _pgPowerBackup = 'Full Inverter Power Backup';
-  String _pgCleaning = 'Daily Room & Bathroom Cleaning';
-  String _pgCurfew = '10:30 PM Gate Close';
-  String _pgNotice = '15 Days';
-  String _pgManagement = 'Owner on site & Resident Warden';
+  // --- PG Specific State (Clean default: nothing pre-selected) ---
+  String _pgGender = '';
+  String _pgSharing = '';
+  String _pgAcType = '';
+  String _pgBathroom = '';
+  String _pgToiletType = '';
+  String _pgFoodPlan = '';
+  String _pgFoodType = '';
+  String _pgWaterSupply = '';
+  String _pgDrinkingWater = '';
+  String _pgPowerBackup = '';
+  String _pgCleaning = '';
+  String _pgCurfew = '';
+  String _pgNotice = '';
+  String _pgManagement = '';
 
-  final Set<String> _pgSelectedAmenities = {
-    'Bed & Mattress',
-    'Personal Cupboard',
-    'High-Speed Wi-Fi',
-    'Washing Machine',
-    '24/7 Hot Water Geyser',
-    'Common Refrigerator',
-    '24/7 CCTV & Security',
-    'Police & ID Verification',
-    'Hall TV with OTT',
-  };
+  final Set<String> _pgSelectedAmenities = {};
 
-  // --- Rental Specific State ---
-  String _rentalBhk = '2 BHK';
-  String _rentalFurnishing = 'Semi-Furnished';
-  String _rentalBeds = '2 Beds';
-  String _rentalBaths = '2 Baths';
-  String _rentalArea = '1200';
-  String _rentalFloor = '2nd Floor';
-  String _rentalTotalFloors = '4 Floors';
-  String _rentalAgreement = '11 Months Standard';
-  String _rentalNotice = '1 Month';
-  String _rentalWaterBill = 'Included in Maintenance';
-  String _rentalEbMeter = 'Dedicated EB Digital Meter';
-  String _rentalTenantPref = 'Family & Working Professionals';
-  String _rentalPetPolicy = 'Pets Allowed';
-  String _rentalParking = 'Covered Car & Bike Parking';
+  // --- Rental Specific State (Clean default: nothing pre-selected) ---
+  String _rentalBhk = '';
+  String _rentalFurnishing = '';
+  String _rentalBeds = '';
+  String _rentalBaths = '';
+  String _rentalArea = '';
+  String _rentalFloor = '';
+  String _rentalTotalFloors = '';
+  String _rentalAgreement = '';
+  String _rentalNotice = '';
+  String _rentalWaterBill = '';
+  String _rentalEbMeter = '';
+  String _rentalTenantPref = '';
+  String _rentalPetPolicy = '';
+  String _rentalParking = '';
 
-  final Set<String> _rentalSelectedFeatures = {
-    'All Taps & Showers Tested',
-    'Zero Seepage & Freshly Painted',
-    'All Switches & Sockets Checked',
-    'Geyser in Bathrooms',
-    '24/7 Municipal & Borewell Water',
-    'Inverter Wiring Ready',
-    'Lift Available',
-    'Gated Security',
-    'Balcony',
-  };
+  final Set<String> _rentalSelectedFeatures = {};
+
+  // --- Buy / Sale Specific State ---
+  String _buyPropertyType = '';
+  String _buyBhk = '';
+  String _buyFurnishing = '';
+  String _buyBeds = '';
+  String _buyBaths = '';
+  String _buyPlotArea = '';
+  String _buyBuiltUpArea = '';
+  String _buyFacing = '';
+  String _buyConstructionStatus = '';
+  String _buyTotalFloors = '';
+  String _buyOwnershipType = '';
+  String _buyApprovals = '';
+  String _buyRoadWidth = '';
+  String _buyWaterElectricity = '';
+  String _buyPriceNegotiable = '';
+  String _buyParking = '';
+
+  final Set<String> _buySelectedFeatures = {};
+
+  // --- Draft State ---
+  static const String _draftKey = 'posting_draft_v1';
+  bool _hasDraftLoaded = false;
+
+  Future<void> _saveDraft() async {
+    if (_isEditing || _isSubmitting) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftData = {
+        'currentStep': _currentStep,
+        'selectedType': _selectedType,
+        'title': _titleController.text,
+        'price': _priceController.text,
+        'deposit': _depositController.text,
+        'maintenance': _maintenanceController.text,
+        'address': _addressController.text,
+        'locationAddress': _locationAddress,
+        'latitude': _latitude,
+        'longitude': _longitude,
+        'latText': _latController.text,
+        'lngText': _lngController.text,
+        'phone': _phoneController.text,
+        'whatsapp': _whatsappController.text,
+        'description': _descriptionController.text,
+        'perDayWithFood': _perDayWithFoodController.text,
+        'perDayWithoutFood': _perDayWithoutFoodController.text,
+        'imagePaths': _selectedImages.map((f) => f.path).toList(),
+        // PG
+        'pgGender': _pgGender,
+        'pgSharing': _pgSharing,
+        'pgAcType': _pgAcType,
+        'pgBathroom': _pgBathroom,
+        'pgToiletType': _pgToiletType,
+        'pgFoodPlan': _pgFoodPlan,
+        'pgFoodType': _pgFoodType,
+        'pgWaterSupply': _pgWaterSupply,
+        'pgDrinkingWater': _pgDrinkingWater,
+        'pgPowerBackup': _pgPowerBackup,
+        'pgCleaning': _pgCleaning,
+        'pgCurfew': _pgCurfew,
+        'pgNotice': _pgNotice,
+        'pgManagement': _pgManagement,
+        'pgSelectedAmenities': _pgSelectedAmenities.toList(),
+        // Rental
+        'rentalBhk': _rentalBhk,
+        'rentalFurnishing': _rentalFurnishing,
+        'rentalBeds': _rentalBeds,
+        'rentalBaths': _rentalBaths,
+        'rentalArea': _rentalArea,
+        'rentalFloor': _rentalFloor,
+        'rentalTotalFloors': _rentalTotalFloors,
+        'rentalAgreement': _rentalAgreement,
+        'rentalNotice': _rentalNotice,
+        'rentalWaterBill': _rentalWaterBill,
+        'rentalEbMeter': _rentalEbMeter,
+        'rentalTenantPref': _rentalTenantPref,
+        'rentalPetPolicy': _rentalPetPolicy,
+        'rentalParking': _rentalParking,
+        'rentalSelectedFeatures': _rentalSelectedFeatures.toList(),
+        // Buy / Sale
+        'buyPropertyType': _buyPropertyType,
+        'buyBhk': _buyBhk,
+        'buyFurnishing': _buyFurnishing,
+        'buyBeds': _buyBeds,
+        'buyBaths': _buyBaths,
+        'buyPlotArea': _buyPlotArea,
+        'buyBuiltUpArea': _buyBuiltUpArea,
+        'buyFacing': _buyFacing,
+        'buyConstructionStatus': _buyConstructionStatus,
+        'buyTotalFloors': _buyTotalFloors,
+        'buyOwnershipType': _buyOwnershipType,
+        'buyApprovals': _buyApprovals,
+        'buyRoadWidth': _buyRoadWidth,
+        'buyWaterElectricity': _buyWaterElectricity,
+        'buyPriceNegotiable': _buyPriceNegotiable,
+        'buyParking': _buyParking,
+        'buySelectedFeatures': _buySelectedFeatures.toList(),
+      };
+      await prefs.setString(_draftKey, jsonEncode(draftData));
+    } catch (e) {
+      debugPrint('Error saving draft: $e');
+    }
+  }
+
+  Future<void> _loadDraft() async {
+    if (_isEditing) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftStr = prefs.getString(_draftKey);
+      if (draftStr != null && draftStr.isNotEmpty) {
+        final Map<String, dynamic> data = jsonDecode(draftStr);
+        if (mounted) {
+          setState(() {
+            _selectedType = data['selectedType'] ?? 'Rental';
+            _currentStep = (data['currentStep'] as num?)?.toInt() ?? 1;
+            _titleController.text = data['title'] ?? '';
+            _priceController.text = data['price'] ?? '';
+            _depositController.text = data['deposit'] ?? '';
+            _maintenanceController.text = data['maintenance'] ?? '';
+            _addressController.text = data['address'] ?? '';
+            _locationAddress = data['locationAddress'] ?? '';
+            _latitude = (data['latitude'] as num?)?.toDouble() ?? _latitude;
+            _longitude = (data['longitude'] as num?)?.toDouble() ?? _longitude;
+            _latController.text = data['latText'] ?? _latitude.toString();
+            _lngController.text = data['lngText'] ?? _longitude.toString();
+            _phoneController.text = data['phone'] ?? '';
+            _whatsappController.text = data['whatsapp'] ?? '';
+            _descriptionController.text = data['description'] ?? '';
+            _perDayWithFoodController.text = data['perDayWithFood'] ?? '';
+            _perDayWithoutFoodController.text = data['perDayWithoutFood'] ?? '';
+
+            final List<dynamic>? paths = data['imagePaths'];
+            if (paths != null && paths.isNotEmpty) {
+              _selectedImages.clear();
+              for (final p in paths) {
+                if (p is String && p.isNotEmpty && File(p).existsSync()) {
+                  _selectedImages.add(XFile(p));
+                }
+              }
+            }
+
+            // PG
+            _pgGender = data['pgGender'] ?? '';
+            _pgSharing = data['pgSharing'] ?? '';
+            _pgAcType = data['pgAcType'] ?? '';
+            _pgBathroom = data['pgBathroom'] ?? '';
+            _pgToiletType = data['pgToiletType'] ?? '';
+            _pgFoodPlan = data['pgFoodPlan'] ?? '';
+            _pgFoodType = data['pgFoodType'] ?? '';
+            _pgWaterSupply = data['pgWaterSupply'] ?? '';
+            _pgDrinkingWater = data['pgDrinkingWater'] ?? '';
+            _pgPowerBackup = data['pgPowerBackup'] ?? '';
+            _pgCleaning = data['pgCleaning'] ?? '';
+            _pgCurfew = data['pgCurfew'] ?? '';
+            _pgNotice = data['pgNotice'] ?? '';
+            _pgManagement = data['pgManagement'] ?? '';
+            _pgSelectedAmenities.clear();
+            if (data['pgSelectedAmenities'] != null) {
+              _pgSelectedAmenities.addAll(List<String>.from(data['pgSelectedAmenities']));
+            }
+
+            // Rental
+            _rentalBhk = data['rentalBhk'] ?? '';
+            _rentalFurnishing = data['rentalFurnishing'] ?? '';
+            _rentalBeds = data['rentalBeds'] ?? '';
+            _rentalBaths = data['rentalBaths'] ?? '';
+            _rentalArea = data['rentalArea'] ?? '';
+            _rentalFloor = data['rentalFloor'] ?? '';
+            _rentalTotalFloors = data['rentalTotalFloors'] ?? '';
+            _rentalAgreement = data['rentalAgreement'] ?? '';
+            _rentalNotice = data['rentalNotice'] ?? '';
+            _rentalWaterBill = data['rentalWaterBill'] ?? '';
+            _rentalEbMeter = data['rentalEbMeter'] ?? '';
+            _rentalTenantPref = data['rentalTenantPref'] ?? '';
+            _rentalPetPolicy = data['rentalPetPolicy'] ?? '';
+            _rentalParking = data['rentalParking'] ?? '';
+            _rentalSelectedFeatures.clear();
+            if (data['rentalSelectedFeatures'] != null) {
+              _rentalSelectedFeatures.addAll(List<String>.from(data['rentalSelectedFeatures']));
+            }
+
+            // Buy / Sale
+            _buyPropertyType = data['buyPropertyType'] ?? '';
+            _buyBhk = data['buyBhk'] ?? '';
+            _buyFurnishing = data['buyFurnishing'] ?? '';
+            _buyBeds = data['buyBeds'] ?? '';
+            _buyBaths = data['buyBaths'] ?? '';
+            _buyPlotArea = data['buyPlotArea'] ?? '';
+            _buyBuiltUpArea = data['buyBuiltUpArea'] ?? '';
+            _buyFacing = data['buyFacing'] ?? '';
+            _buyConstructionStatus = data['buyConstructionStatus'] ?? '';
+            _buyTotalFloors = data['buyTotalFloors'] ?? '';
+            _buyOwnershipType = data['buyOwnershipType'] ?? '';
+            _buyApprovals = data['buyApprovals'] ?? '';
+            _buyRoadWidth = data['buyRoadWidth'] ?? '';
+            _buyWaterElectricity = data['buyWaterElectricity'] ?? '';
+            _buyPriceNegotiable = data['buyPriceNegotiable'] ?? '';
+            _buyParking = data['buyParking'] ?? '';
+            _buySelectedFeatures.clear();
+            if (data['buySelectedFeatures'] != null) {
+              _buySelectedFeatures.addAll(List<String>.from(data['buySelectedFeatures']));
+            }
+
+            _hasDraftLoaded = true;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading draft: $e');
+    }
+  }
+
+  Future<void> _clearDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftKey);
+    } catch (e) {
+      debugPrint('Error clearing draft: $e');
+    }
+  }
+
+  void _discardDraftAndReset() async {
+    await _clearDraft();
+    setState(() {
+      _currentStep = 1;
+      _selectedType = 'Rental';
+      _titleController.clear();
+      _priceController.clear();
+      _depositController.clear();
+      _maintenanceController.clear();
+      _addressController.clear();
+      _locationAddress = '';
+      _phoneController.clear();
+      _whatsappController.clear();
+      _descriptionController.clear();
+      _perDayWithFoodController.clear();
+      _perDayWithoutFoodController.clear();
+      _selectedImages.clear();
+      _pgGender = '';
+      _pgSharing = '';
+      _pgAcType = '';
+      _pgBathroom = '';
+      _pgToiletType = '';
+      _pgFoodPlan = '';
+      _pgFoodType = '';
+      _pgWaterSupply = '';
+      _pgDrinkingWater = '';
+      _pgPowerBackup = '';
+      _pgCleaning = '';
+      _pgCurfew = '';
+      _pgNotice = '';
+      _pgManagement = '';
+      _pgSelectedAmenities.clear();
+      _rentalBhk = '';
+      _rentalFurnishing = '';
+      _rentalBeds = '';
+      _rentalBaths = '';
+      _rentalArea = '';
+      _rentalFloor = '';
+      _rentalTotalFloors = '';
+      _rentalAgreement = '';
+      _rentalNotice = '';
+      _rentalWaterBill = '';
+      _rentalEbMeter = '';
+      _rentalTenantPref = '';
+      _rentalPetPolicy = '';
+      _rentalParking = '';
+      _rentalSelectedFeatures.clear();
+      _buyPropertyType = '';
+      _buyBhk = '';
+      _buyFurnishing = '';
+      _buyBeds = '';
+      _buyBaths = '';
+      _buyPlotArea = '';
+      _buyBuiltUpArea = '';
+      _buyFacing = '';
+      _buyConstructionStatus = '';
+      _buyTotalFloors = '';
+      _buyOwnershipType = '';
+      _buyApprovals = '';
+      _buyRoadWidth = '';
+      _buyWaterElectricity = '';
+      _buyPriceNegotiable = '';
+      _buyParking = '';
+      _buySelectedFeatures.clear();
+      _hasDraftLoaded = false;
+    });
+    if (mounted) {
+      AppSnackbar.success(context, 'Draft discarded! Form reset.');
+    }
+  }
 
   @override
   void initState() {
@@ -167,6 +442,15 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _pgManagement = p.managementInfo ?? _pgManagement;
         _pgSelectedAmenities.clear();
         _pgSelectedAmenities.addAll(p.features);
+      } else if (p.type == 'Buy' || p.type == 'Sale') {
+        _buyBhk = p.bhkType ?? _buyBhk;
+        _buyFurnishing = p.furnishingStatus ?? _buyFurnishing;
+        _buyBeds = p.beds.isNotEmpty ? p.beds : _buyBeds;
+        _buyBaths = p.baths.isNotEmpty ? p.baths : _buyBaths;
+        _buyBuiltUpArea = p.area.isNotEmpty ? p.area.replaceAll(RegExp(r'[^0-9]'), '') : _buyBuiltUpArea;
+        _buyParking = p.parkingInfo ?? _buyParking;
+        _buySelectedFeatures.clear();
+        _buySelectedFeatures.addAll(p.features);
       } else {
         _rentalBhk = p.bhkType ?? _rentalBhk;
         _rentalFurnishing = p.furnishingStatus ?? _rentalFurnishing;
@@ -183,6 +467,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _rentalSelectedFeatures.clear();
         _rentalSelectedFeatures.addAll(p.features);
       }
+    } else {
+      _loadDraft();
     }
     
     _latController.text = _latitude.toString();
@@ -191,6 +477,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
 
   @override
   void dispose() {
+    _saveDraft();
     _titleController.dispose();
     _priceController.dispose();
     _depositController.dispose();
@@ -213,6 +500,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         setState(() {
           _selectedImages.addAll(images);
         });
+        _saveDraft();
       }
     } catch (e) {
       if (mounted) {
@@ -246,6 +534,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _locationAddress = areaName.isNotEmpty ? areaName : 'Lat: ${position.latitude}, Lng: ${position.longitude}';
         _addressController.text = _locationAddress;
       });
+      _saveDraft();
       if (mounted) {
         AppSnackbar.success(context, 'Location pinned successfully!');
       }
@@ -277,29 +566,79 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     }
 
     final isPg = _selectedType == 'PG';
+    final isBuy = _selectedType == 'Buy';
     final List<String> tags = [];
     final List<String> features = [];
 
     if (isPg) {
-      tags.add(_pgGender);
-      tags.add(_pgSharing);
-      if (_pgFoodPlan.contains('Included')) tags.add('Food Included');
-      if (_pgAcType.contains('AC')) tags.add(_pgAcType);
+      if (_pgGender.isNotEmpty) tags.add(_pgGender);
+      if (_pgSharing.isNotEmpty) tags.add(_pgSharing);
+      if (_pgFoodPlan.isNotEmpty && _pgFoodPlan.contains('Included')) tags.add('Food Included');
+      if (_pgAcType.isNotEmpty && _pgAcType.contains('AC')) tags.add(_pgAcType);
       tags.addAll(_pgSelectedAmenities.take(2));
 
       features.addAll(_pgSelectedAmenities);
+    } else if (isBuy) {
+      tags.add('Buy');
+      if (_buyPropertyType.isNotEmpty) tags.add(_buyPropertyType);
+      if (_buyBhk.isNotEmpty) tags.add(_buyBhk);
+      if (_buyFacing.isNotEmpty) tags.add(_buyFacing);
+      if (_buyConstructionStatus.isNotEmpty) tags.add(_buyConstructionStatus);
+      if (_buyOwnershipType.isNotEmpty) tags.add(_buyOwnershipType);
+      tags.addAll(_buySelectedFeatures.take(2));
+
+      features.addAll(_buySelectedFeatures);
+      if (_buyApprovals.isNotEmpty) features.add(_buyApprovals);
+      if (_buyRoadWidth.isNotEmpty) features.add(_buyRoadWidth);
+      if (_buyWaterElectricity.isNotEmpty) features.add(_buyWaterElectricity);
+      if (_buyOwnershipType.isNotEmpty) features.add(_buyOwnershipType);
+      if (_buyPriceNegotiable.isNotEmpty) features.add(_buyPriceNegotiable);
     } else {
-      tags.add(_rentalBhk);
-      tags.add(_rentalFurnishing);
-      tags.add(_rentalParking);
+      if (_rentalBhk.isNotEmpty) tags.add(_rentalBhk);
+      if (_rentalFurnishing.isNotEmpty) tags.add(_rentalFurnishing);
+      if (_rentalParking.isNotEmpty) tags.add(_rentalParking);
       tags.addAll(_rentalSelectedFeatures.take(2));
 
       features.addAll(_rentalSelectedFeatures);
     }
 
+    String formattedPrice;
+    if (isBuy) {
+      formattedPrice = '₹${_priceController.text.trim()}';
+    } else {
+      formattedPrice = '₹${_priceController.text.trim()}/m';
+    }
+
+    String propBeds;
+    if (isPg) {
+      propBeds = _pgSharing.isNotEmpty ? _pgSharing : '1 Bed';
+    } else if (isBuy) {
+      propBeds = _buyBhk.isNotEmpty ? _buyBhk : '3 BHK';
+    } else {
+      propBeds = _rentalBeds.isNotEmpty ? _rentalBeds : '2 Beds';
+    }
+
+    String propBaths;
+    if (isPg) {
+      propBaths = _pgBathroom.isNotEmpty ? _pgBathroom : '1 Bath';
+    } else if (isBuy) {
+      propBaths = _buyFacing.isNotEmpty ? _buyFacing : (_buyBaths.isNotEmpty ? _buyBaths : 'East Facing');
+    } else {
+      propBaths = _rentalBaths.isNotEmpty ? _rentalBaths : '2 Baths';
+    }
+
+    String propArea;
+    if (isPg) {
+      propArea = '180sqft';
+    } else if (isBuy) {
+      propArea = _buyBuiltUpArea.isNotEmpty ? '${_buyBuiltUpArea}sqft' : (_buyPlotArea.isNotEmpty ? _buyPlotArea : '1800sqft');
+    } else {
+      propArea = '${_rentalArea.isNotEmpty ? _rentalArea : '1200'}sqft';
+    }
+
     final newProperty = PropertyModel(
       title: _titleController.text.trim(),
-      price: '₹${_priceController.text.trim()}/m',
+      price: formattedPrice,
       locationStr: _addressController.text.trim().isNotEmpty
           ? _addressController.text.trim()
           : (_locationAddress.isNotEmpty ? _locationAddress : 'Visakhapatnam, Andhra Pradesh'),
@@ -313,51 +652,59 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   : 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
             ],
       tags: tags.toSet().toList(),
-      beds: isPg ? _pgSharing : _rentalBeds,
-      baths: isPg ? _pgBathroom : _rentalBaths,
-      area: isPg ? '180sqft' : '${_rentalArea.isNotEmpty ? _rentalArea : '1200'}sqft',
-      type: isPg ? 'PG' : 'Rental',
+      beds: propBeds,
+      baths: propBaths,
+      area: propArea,
+      type: isPg ? 'PG' : (isBuy ? 'Buy' : 'Rental'),
       ownerPhone: _phoneController.text.trim(),
       ownerWhatsapp: _whatsappController.text.trim().isNotEmpty
           ? _whatsappController.text.trim()
           : _phoneController.text.trim(),
       features: features.toSet().toList(),
-      securityDeposit: _depositController.text.trim().isNotEmpty ? '₹${_depositController.text.trim()}' : null,
-      maintenanceCharges: _maintenanceController.text.trim().isNotEmpty ? '₹${_maintenanceController.text.trim()}' : 'Included',
-      noticePeriod: isPg ? _pgNotice : _rentalNotice,
-      agreementDuration: isPg ? 'Flexible Monthly' : _rentalAgreement,
+      securityDeposit: isBuy
+          ? (_depositController.text.trim().isNotEmpty ? 'Advance: ₹${_depositController.text.trim()}' : null)
+          : (_depositController.text.trim().isNotEmpty ? '₹${_depositController.text.trim()}' : null),
+      maintenanceCharges: isBuy
+          ? (_maintenanceController.text.trim().isNotEmpty ? _maintenanceController.text.trim() : null)
+          : (_maintenanceController.text.trim().isNotEmpty ? '₹${_maintenanceController.text.trim()}' : 'Included'),
+      noticePeriod: (isPg ? _pgNotice : _rentalNotice).isNotEmpty ? (isPg ? _pgNotice : _rentalNotice) : null,
+      agreementDuration: isBuy
+          ? (_buyOwnershipType.isNotEmpty ? _buyOwnershipType : 'Direct Freehold Sale')
+          : (!isPg && _rentalAgreement.isNotEmpty ? _rentalAgreement : (isPg ? 'Flexible Monthly' : null)),
       description: _descriptionController.text.trim().isNotEmpty
           ? _descriptionController.text.trim()
           : (isPg
               ? 'Well maintained PG with delicious meals, high-speed Wi-Fi, 24/7 security, and clean housekeeping.'
-              : 'Spacious well ventilated property with quality fittings, zero seepage, good water & power supply.'),
+              : (isBuy
+                  ? 'Prime property for sale with 100% clear title, clear documentation, good road access and immediate registration ready.'
+                  : 'Spacious well ventilated property with quality fittings, zero seepage, good water & power supply.')),
       // PG specifics
-      genderPreference: isPg ? _pgGender : null,
-      sharingType: isPg ? _pgSharing : null,
-      foodDetails: isPg ? '$_pgFoodPlan ($_pgFoodType)' : null,
-      drinkingWater: isPg ? _pgDrinkingWater : null,
-      waterSupply: isPg ? _pgWaterSupply : null,
-      powerBackup: isPg ? _pgPowerBackup : null,
-      acType: isPg ? _pgAcType : null,
-      bathroomType: isPg ? '$_pgBathroom ($_pgToiletType)' : null,
-      cleanlinessInfo: isPg ? _pgCleaning : null,
-      securityInfo: isPg ? '24/7 CCTV & Gated Security' : null,
-      verificationPolicy: isPg ? 'Police & ID Verification Mandatory' : null,
-      managementInfo: isPg ? _pgManagement : null,
-      gateRules: isPg ? _pgCurfew : null,
+      genderPreference: isPg && _pgGender.isNotEmpty ? _pgGender : null,
+      sharingType: isPg && _pgSharing.isNotEmpty ? _pgSharing : null,
+      foodDetails: isPg && (_pgFoodPlan.isNotEmpty || _pgFoodType.isNotEmpty) ? '$_pgFoodPlan ${_pgFoodType.isNotEmpty ? "($_pgFoodType)" : ""}'.trim() : null,
+      drinkingWater: isPg && _pgDrinkingWater.isNotEmpty ? _pgDrinkingWater : null,
+      waterSupply: isPg && _pgWaterSupply.isNotEmpty ? _pgWaterSupply : null,
+      powerBackup: isPg && _pgPowerBackup.isNotEmpty ? _pgPowerBackup : null,
+      acType: isPg && _pgAcType.isNotEmpty ? _pgAcType : null,
+      bathroomType: isPg && (_pgBathroom.isNotEmpty || _pgToiletType.isNotEmpty) ? '$_pgBathroom ${_pgToiletType.isNotEmpty ? "($_pgToiletType)" : ""}'.trim() : null,
+      cleanlinessInfo: isPg && _pgCleaning.isNotEmpty ? _pgCleaning : null,
+      securityInfo: isPg ? '24/7 CCTV & Gated Security' : (isBuy ? 'Clear Title & Approvals' : null),
+      verificationPolicy: isPg ? 'ID Verification Mandatory' : (isBuy ? 'Documents Verified' : null),
+      managementInfo: isPg && _pgManagement.isNotEmpty ? _pgManagement : null,
+      gateRules: isPg && _pgCurfew.isNotEmpty ? _pgCurfew : null,
       perDayWithFood: isPg && _perDayWithFoodController.text.trim().isNotEmpty ? _perDayWithFoodController.text.trim() : null,
       perDayWithoutFood: isPg && _perDayWithoutFoodController.text.trim().isNotEmpty ? _perDayWithoutFoodController.text.trim() : null,
-      // Rental specifics
-      bhkType: !isPg ? _rentalBhk : null,
-      furnishingStatus: !isPg ? _rentalFurnishing : null,
+      // Rental / Buy specifics
+      bhkType: isBuy ? (_buyBhk.isNotEmpty ? _buyBhk : null) : (!isPg && _rentalBhk.isNotEmpty ? _rentalBhk : null),
+      furnishingStatus: isBuy ? (_buyFurnishing.isNotEmpty ? _buyFurnishing : null) : (!isPg && _rentalFurnishing.isNotEmpty ? _rentalFurnishing : null),
       plumbingStatus: null,
       seepageStatus: null,
       electricalStatus: null,
-      meterStatus: !isPg ? _rentalEbMeter : null,
-      billsInfo: !isPg ? (_rentalWaterBill.isNotEmpty ? '$_rentalEbMeter, Water: $_rentalWaterBill' : _rentalEbMeter) : null,
-      tenantPreference: !isPg ? _rentalTenantPref : null,
-      petPolicy: !isPg ? _rentalPetPolicy : null,
-      parkingInfo: !isPg ? _rentalParking : null,
+      meterStatus: !isPg && !isBuy && _rentalEbMeter.isNotEmpty ? _rentalEbMeter : (isBuy && _buyWaterElectricity.isNotEmpty ? _buyWaterElectricity : null),
+      billsInfo: isBuy ? (_buyApprovals.isNotEmpty ? _buyApprovals : null) : (!isPg ? (_rentalWaterBill.isNotEmpty ? (_rentalEbMeter.isNotEmpty ? '$_rentalEbMeter, Water: $_rentalWaterBill' : 'Water: $_rentalWaterBill') : (_rentalEbMeter.isNotEmpty ? _rentalEbMeter : null)) : null),
+      tenantPreference: isBuy ? (_buyPriceNegotiable.isNotEmpty ? _buyPriceNegotiable : null) : (!isPg && _rentalTenantPref.isNotEmpty ? _rentalTenantPref : null),
+      petPolicy: isBuy ? (_buyRoadWidth.isNotEmpty ? _buyRoadWidth : null) : (!isPg && _rentalPetPolicy.isNotEmpty ? _rentalPetPolicy : null),
+      parkingInfo: isBuy ? (_buyParking.isNotEmpty ? _buyParking : null) : (!isPg && _rentalParking.isNotEmpty ? _rentalParking : null),
       status: _isEditing ? widget.propertyToEdit!.status : 'pending',
     );
 
@@ -385,29 +732,37 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         
         Uint8List bytesToUpload = originalBytes;
         
-        // Apply watermark if possible
-        if (watermarkImage != null) {
+        // Fast resize and apply watermark if possible
+        try {
           final originalImg = img.decodeImage(originalBytes);
           if (originalImg != null) {
-            // Scale watermark to be reasonable relative to the image
-            // E.g., make it 25% of the image width
-            int targetWatermarkWidth = (originalImg.width * 0.25).toInt().clamp(50, 800);
-            img.Image scaledWatermark = img.copyResize(watermarkImage, width: targetWatermarkWidth);
+            img.Image processedImg = originalImg;
+            // Downscale huge camera photos (e.g. >1280px) for blazing fast upload & smooth performance
+            if (processedImg.width > 1280 || processedImg.height > 1280) {
+              processedImg = processedImg.width > processedImg.height
+                  ? img.copyResize(processedImg, width: 1280)
+                  : img.copyResize(processedImg, height: 1280);
+            }
+
+            if (watermarkImage != null) {
+              int targetWatermarkWidth = (processedImg.width * 0.22).toInt().clamp(50, 400);
+              img.Image scaledWatermark = img.copyResize(watermarkImage, width: targetWatermarkWidth);
+              
+              int padding = 16;
+              int dstX = processedImg.width - scaledWatermark.width - padding;
+              int dstY = processedImg.height - scaledWatermark.height - padding;
+              
+              img.compositeImage(processedImg, scaledWatermark, dstX: dstX, dstY: dstY);
+            }
             
-            // Bottom Right with 20px padding
-            int padding = 20;
-            int dstX = originalImg.width - scaledWatermark.width - padding;
-            int dstY = originalImg.height - scaledWatermark.height - padding;
-            
-            // Apply overlay
-            img.compositeImage(originalImg, scaledWatermark, dstX: dstX, dstY: dstY);
-            
-            // Re-encode to JPG
-            bytesToUpload = Uint8List.fromList(img.encodeJpg(originalImg, quality: 85));
+            bytesToUpload = Uint8List.fromList(img.encodeJpg(processedImg, quality: 82));
           }
+        } catch (imgErr) {
+          debugPrint('Image watermarking fallback: $imgErr');
+          bytesToUpload = originalBytes;
         }
         
-        // Upload the bytes
+        // Upload the bytes to Supabase storage
         await supabase.storage.from('property_images').uploadBinary(
           fileName, 
           bytesToUpload,
@@ -423,11 +778,13 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       if (uploadedUrls.isNotEmpty) {
         propertyJson['image_urls'] = uploadedUrls;
       }
+      propertyJson['status'] = _isEditing ? widget.propertyToEdit!.status : 'pending';
 
       if (_isEditing) {
         await supabase.from('properties').update(propertyJson).eq('id', widget.propertyToEdit!.id!);
       } else {
         await supabase.from('properties').insert(propertyJson);
+        await _clearDraft();
       }
 
       if (mounted) {
@@ -467,48 +824,62 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         left: 16,
         right: 16,
-        top: 16,
+        top: 24,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header with Step indicator
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _isEditing ? 'Edit ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}' : 'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black,
-                    ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _isEditing ? 'Edit ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}' : 'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Step $_currentStep of $_totalSteps: ${_getStepTitle()}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Step $_currentStep of $_totalSteps: ${_getStepTitle()}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                      fontWeight: FontWeight.w500,
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    
+                    IconButton(
+                      onPressed: () {
+                        _saveDraft();
+                        Navigator.pop(context);
+                      },
+                      icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54),
+                      visualDensity: VisualDensity.compact,
                     ),
-                  ),
-                ],
-              ),
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54),
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
           if (_sheetErrorMessage != null)
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.only(top: 10, bottom: 4),
+              margin: const EdgeInsets.only(top: 10, bottom: 4, left: 10, right: 10),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFECEC),
@@ -534,29 +905,33 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
             ),
           const SizedBox(height: 20),
           // Step Progress Indicator Bar
-          Row(
-            children: List.generate(_totalSteps, (index) {
-              final stepIndex = index + 1;
-              final isPassed = stepIndex <= _currentStep;
-              return Expanded(
-                child: Container(
-                  height: 4,
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  decoration: BoxDecoration(
-                    color: isPassed
-                        ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                        : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(2),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: List.generate(_totalSteps, (index) {
+                final stepIndex = index + 1;
+                final isPassed = stepIndex <= _currentStep;
+                return Expanded(
+                  child: Container(
+                    height: 4,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: isPassed
+                          ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                          : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
           const SizedBox(height: 24),
           // Scrollable Content
           Expanded(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
                 child: _buildStepContent(),
@@ -564,7 +939,10 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildActionButtons(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: _buildActionButtons(),
+          ),
         ],
       ),
     );
@@ -577,11 +955,17 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       case 2:
         return 'Photos & Basic Info';
       case 3:
-        return _selectedType == 'PG' ? 'Room, Sharing & In-Room Amenities' : 'Space, BHK & Physical Condition';
+        if (_selectedType == 'PG') return 'Room, Sharing & In-Room Amenities';
+        if (_selectedType == 'Buy') return 'Property Type, Dimensions & Facing';
+        return 'Space, BHK & Physical Condition';
       case 4:
-        return _selectedType == 'PG' ? 'Food, Mess & Utilities' : 'Water, Metering & Bills';
+        if (_selectedType == 'PG') return 'Food, Mess & Utilities';
+        if (_selectedType == 'Buy') return 'Legal Clearances, Approvals & Access';
+        return 'Water, Metering & Bills';
       case 5:
-        return _selectedType == 'PG' ? 'Security, Hygiene & Rules' : 'Agreement, Policies & Guidelines';
+        if (_selectedType == 'PG') return 'Security, Hygiene & Rules';
+        if (_selectedType == 'Buy') return 'Ownership, Amenities & Highlights';
+        return 'Agreement, Policies & Guidelines';
       case 6:
         return 'Owner Contact & Review';
       default:
@@ -596,11 +980,17 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       case 2:
         return _buildStep2PhotosAndBasics();
       case 3:
-        return _selectedType == 'PG' ? _buildStep3PgRooms() : _buildStep3RentalSpace();
+        if (_selectedType == 'PG') return _buildStep3PgRooms();
+        if (_selectedType == 'Buy') return _buildStep3BuySpace();
+        return _buildStep3RentalSpace();
       case 4:
-        return _selectedType == 'PG' ? _buildStep4PgFoodAndUtilities() : _buildStep4RentalUtilitiesAndBills();
+        if (_selectedType == 'PG') return _buildStep4PgFoodAndUtilities();
+        if (_selectedType == 'Buy') return _buildStep4BuyLegalAndAccess();
+        return _buildStep4RentalUtilitiesAndBills();
       case 5:
-        return _selectedType == 'PG' ? _buildStep5PgSecurityAndRules() : _buildStep5RentalAgreementAndRules();
+        if (_selectedType == 'PG') return _buildStep5PgSecurityAndRules();
+        if (_selectedType == 'Buy') return _buildStep5BuyOwnershipAndAmenities();
+        return _buildStep5RentalAgreementAndRules();
       case 6:
         return _buildStep6ContactAndReview();
       default:
@@ -619,22 +1009,23 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         if (_currentStep > 1)
           Expanded(
             child: BouncingButton(
-              onTap: _isSubmitting ? null : () => setState(() => _currentStep--),
+              onTap: _isSubmitting
+                  ? null
+                  : () {
+                      setState(() => _currentStep--);
+                      _saveDraft();
+                    },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
-                    color: isDark ? AppTheme.darkBorder : Colors.black,
-                    width: 1.5,
-                  ),
-                  color: isDark ? AppTheme.darkCard : Colors.white,
+                  color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF2F2F2),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'Back',
                   style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black,
+                    color: isDark ? Colors.white : Colors.black87,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -651,6 +1042,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 : () {
                     if (_currentStep < _totalSteps) {
                       setState(() => _currentStep++);
+                      _saveDraft();
                     } else {
                       _submitProperty();
                     }
@@ -687,141 +1079,420 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   }
 
   // ==========================================
-  // STEP 1: PROPERTY TYPE
+  // STEP 1: PROPERTY TYPE (2 ROWS LAYOUT)
   // ==========================================
   Widget _buildStep1TypeSelection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       key: const ValueKey(1),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'What type of property are you posting?',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          'Select Property Category',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.2),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Choose the category that best matches your listing',
+          style: TextStyle(
+            fontSize: 13,
+            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+          ),
         ),
         const SizedBox(height: 16),
-        _buildTypeCard(
-          title: 'Rental House / Flat',
-          subtitle: 'Independent houses, apartments, flats, or villas for family & bachelors.',
-          typeKey: 'Rental',
-          imagePath: 'assets/rentalimage.png',
-          icon: Iconsax.home_2,
+
+        // ROW 1: Rental & PG side-by-side (2 columns)
+        Row(
+          children: [
+            Expanded(
+              child: _buildCompactTypeCard(
+                title: 'Rental Flat / House',
+                badge: 'Rent',
+                subtitle: 'Flats, villas & apartments',
+                typeKey: 'Rental',
+                lottiePath: 'assets/rental.json',
+                icon: Iconsax.home_2,
+                lottieHeight: 110,
+                lottieScale: 1.55,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildCompactTypeCard(
+                title: 'PG / Co-Living / Hostel',
+                badge: 'Hostel / PG',
+                subtitle: 'Rooms with food & Wi-Fi',
+                typeKey: 'PG',
+                lottiePath: 'assets/hostel.json',
+                icon: Iconsax.building_3,
+                lottieHeight: 85,
+                lottieScale: 1.05,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        _buildTypeCard(
-          title: 'PG / Co-Living / Hostel',
-          subtitle: 'Paying guest accommodations, hostels with food, Wi-Fi, sharing rooms & warden.',
-          typeKey: 'PG',
-          imagePath: 'assets/pgimage.png',
-          icon: Iconsax.building_3,
+        const SizedBox(height: 14),
+
+        // ROW 2: Buy / Sell (Single full-width row)
+        _buildFullWidthBuyCard(
+          title: 'Sell Property (Buy / Sale)',
+          badge: 'House',
+          subtitle: 'List independent houses, luxury villas, flats, commercial buildings, or open plots for buyers.',
+          typeKey: 'Buy',
+          lottiePath: 'assets/buyorsell.json',
+          icon: Iconsax.shop,
         ),
+        const SizedBox(height: 12),
       ],
     );
   }
 
-  Widget _buildTypeCard({
+  Widget _buildCompactTypeCard({
     required String title,
+    required String badge,
     required String subtitle,
     required String typeKey,
-    required String imagePath,
+    required String lottiePath,
+    required IconData icon,
+    required double lottieHeight,
+    required double lottieScale,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isSelected = _selectedType == typeKey;
+
+    return BouncingButton(
+      scaleFactor: 0.97,
+      onTap: () {
+        setState(() {
+          _selectedType = typeKey;
+        });
+        _saveDraft();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        height: 222,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark
+              ? (isSelected ? const Color(0xFF242424) : AppTheme.darkCard.withValues(alpha: 0.85))
+              : (isSelected ? const Color(0xFFFFFDE7).withValues(alpha: 0.95) : Colors.white),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                : (isDark ? AppTheme.darkBorder : Colors.grey.shade200),
+            width: isSelected ? 2.2 : 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? (isDark
+                      ? AppTheme.primaryYellow.withValues(alpha: 0.20)
+                      : Colors.black.withValues(alpha: 0.12))
+                  : Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
+              blurRadius: isSelected ? 14 : 4,
+              offset: isSelected ? const Offset(0, 4) : const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Row: Category tag + Check circle
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? (isDark ? AppTheme.primaryYellow.withValues(alpha: 0.2) : const Color(0xFFFFEB3A))
+                        : (isDark ? AppTheme.darkCardElevated : Colors.grey.shade100),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        size: 13,
+                        color: isSelected
+                            ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                            : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        badge,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected
+                              ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                              : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected
+                        ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: isSelected
+                          ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                          : (isDark ? AppTheme.darkBorder : Colors.grey.shade400),
+                      width: 1.8,
+                    ),
+                  ),
+                  child: isSelected
+                      ? Icon(
+                          Icons.check,
+                          size: 14,
+                          color: isDark ? Colors.black : Colors.white,
+                        )
+                      : null,
+                ),
+              ],
+            ),
+
+            // Lottie Animation Center
+            Expanded(
+              child: Center(
+                child: AnimatedScale(
+                  scale: isSelected ? lottieScale * 1.05 : lottieScale,
+                  duration: const Duration(milliseconds: 250),
+                  child: SizedBox(
+                    height: lottieHeight,
+                    child: Lottie.asset(
+                      lottiePath,
+                      fit: BoxFit.contain,
+                      repeat: true,
+                      animate: true,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Icon(
+                          icon,
+                          size: 40,
+                          color: isDark ? AppTheme.primaryYellow : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Title & Subtitle
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w800,
+                color: isSelected
+                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                    : (isDark ? Colors.white : const Color(0xFF1E1E1E)),
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullWidthBuyCard({
+    required String title,
+    required String badge,
+    required String subtitle,
+    required String typeKey,
+    required String lottiePath,
     required IconData icon,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isSelected = _selectedType == typeKey;
 
-    return GestureDetector(
+    return BouncingButton(
+      scaleFactor: 0.98,
       onTap: () {
         setState(() {
           _selectedType = typeKey;
         });
+        _saveDraft();
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isDark ? (isSelected ? AppTheme.darkCardElevated : AppTheme.darkCard) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          color: isDark
+              ? (isSelected ? const Color(0xFF242424) : AppTheme.darkCard.withValues(alpha: 0.85))
+              : (isSelected ? const Color(0xFFFFFDE7).withValues(alpha: 0.95) : Colors.white),
+          borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isSelected
                 ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
-            width: isSelected ? 2.5 : 1,
+                : (isDark ? AppTheme.darkBorder : Colors.grey.shade200),
+            width: 2.2,
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
-                ]
-              : null,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                imagePath,
-                width: 90,
-                height: 90,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 90,
-                  height: 90,
-                  color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade200,
-                  child: Icon(icon, size: 36, color: isDark ? AppTheme.primaryYellow : Colors.black54),
-                ),
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? (isDark
+                      ? AppTheme.primaryYellow.withValues(alpha: 0.20)
+                      : Colors.black.withValues(alpha: 0.12))
+                  : Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
+              blurRadius: isSelected ? 16 : 5,
+              offset: isSelected ? const Offset(0, 5) : const Offset(0, 2),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left content - aligned from top
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        icon,
-                        size: 18,
-                        color: isSelected
-                            ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                            : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? (isDark ? AppTheme.primaryYellow.withValues(alpha: 0.2) : const Color(0xFFFFEB3A))
+                              : (isDark ? AppTheme.darkCardElevated : Colors.grey.shade100),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              icon,
+                              size: 13,
+                              color: isSelected
+                                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                                  : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              badge,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isSelected
+                                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                                    : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected
-                                ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                                : (isDark ? Colors.white : Colors.black87),
-                          ),
+                      const SizedBox(height: 8),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected
+                              ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                              : (isDark ? Colors.white : const Color(0xFF1E1E1E)),
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'List independent houses, luxury\nvillas, flats, commercial spaces,\nor open plots for buyers.',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                          height: 1.35,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Icon(
-              isSelected ? Iconsax.tick_circle : Iconsax.record,
-              color: isSelected
-                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                  : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
-              size: 28,
-            ),
-          ],
+
+              // Right column: Selection tick & larger animation contained inside
+              SizedBox(
+                width: 155,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected
+                            ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected
+                              ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                              : (isDark ? AppTheme.darkBorder : Colors.grey.shade400),
+                          width: 2,
+                        ),
+                      ),
+                      child: isSelected
+                          ? Icon(
+                              Icons.check,
+                              size: 15,
+                              color: isDark ? Colors.black : Colors.white,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 2),
+                    SizedBox(
+                      height: 135,
+                      width: 155,
+                      child: Transform.scale(
+                        scale: 1.15,
+                        child: Lottie.asset(
+                          lottiePath,
+                          fit: BoxFit.contain,
+                          repeat: true,
+                          animate: true,
+                          errorBuilder: (context, error, stackTrace) => Center(
+                            child: Icon(
+                              icon,
+                              size: 52,
+                              color: isDark ? AppTheme.primaryYellow : Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1027,16 +1698,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           hint: 'e.g. 500 (or leave blank if included)',
           keyboardType: TextInputType.number,
         ),
-        const SizedBox(height: 14),
-        Text(
-          'Location & Address',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isDark ? AppTheme.darkTextSecondary : Colors.black,
-          ),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 20),
+        _buildSectionHeader('Location & Address', Iconsax.location5),
+        const SizedBox(height: 10),
         _locationAddress.isEmpty
             ? SizedBox(
                 width: double.infinity,
@@ -1151,58 +1815,73 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       key: const ValueKey('pg_step3'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Occupancy & Gender Preference', Iconsax.profile_2user),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['Boys Only', 'Girls Only', 'Co-Living (Unisex)'],
-          selected: _pgGender,
-          onSelected: (val) => setState(() => _pgGender = val),
+        _buildQuestionSection(
+          title: 'Occupancy & Gender Preference',
+          subtitle: 'Select who can stay in this PG / Hostel',
+          icon: Iconsax.profile_2user,
+          child: _buildSingleSelectGroup(
+            options: ['Boys Only', 'Girls Only', 'Co-Living (Unisex)'],
+            selected: _pgGender,
+            onSelected: (val) => setState(() => _pgGender = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Room Sharing Type', Iconsax.category),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['Single Room', '2 Sharing', '3 Sharing', '4+ Sharing'],
-          selected: _pgSharing,
-          onSelected: (val) => setState(() => _pgSharing = val),
+        _buildQuestionSection(
+          title: 'Room Sharing Type',
+          subtitle: 'Number of beds / occupants sharing per room',
+          icon: Iconsax.category,
+          child: _buildSingleSelectGroup(
+            options: ['Single Room', '2 Sharing', '3 Sharing', '4+ Sharing'],
+            selected: _pgSharing,
+            onSelected: (val) => setState(() => _pgSharing = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Air Conditioning / Climate', Iconsax.wind_2),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['AC Room', 'Non-AC Room', 'Air Cooler Provided'],
-          selected: _pgAcType,
-          onSelected: (val) => setState(() => _pgAcType = val),
+        _buildQuestionSection(
+          title: 'Air Conditioning / Climate',
+          subtitle: 'Cooling provision provided in rooms',
+          icon: Iconsax.wind_2,
+          child: _buildSingleSelectGroup(
+            options: ['AC Room', 'Non-AC Room', 'Air Cooler Provided'],
+            selected: _pgAcType,
+            onSelected: (val) => setState(() => _pgAcType = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Bathroom Setup', Iconsax.drop),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['Attached Bathroom', 'Common Bathroom (Cleaned Daily)'],
-          selected: _pgBathroom,
-          onSelected: (val) => setState(() => _pgBathroom = val),
+        _buildQuestionSection(
+          title: 'Bathroom Setup',
+          subtitle: 'Washroom attachment and privacy level',
+          icon: Iconsax.drop,
+          child: _buildSingleSelectGroup(
+            options: ['Attached Bathroom', 'Common Bathroom (Cleaned Daily)'],
+            selected: _pgBathroom,
+            onSelected: (val) => setState(() => _pgBathroom = val),
+          ),
         ),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['Western Toilet', 'Indian Toilet', 'Both Available'],
-          selected: _pgToiletType,
-          onSelected: (val) => setState(() => _pgToiletType = val),
+        _buildQuestionSection(
+          title: 'Toilet Fixture Type',
+          subtitle: 'Commode or pan type installed in washrooms',
+          icon: Iconsax.setting_2,
+          child: _buildSingleSelectGroup(
+            options: ['Western Toilet', 'Indian Toilet', 'Both Available'],
+            selected: _pgToiletType,
+            onSelected: (val) => setState(() => _pgToiletType = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('In-Room Furnishings & Essentials', Iconsax.lamp_on),
-        const SizedBox(height: 10),
-        _buildMultiSelectChips(
-          options: [
-            'Bed & Mattress',
-            'Personal Cupboard',
-            'Study Table & Chair',
-            '24/7 Hot Water Geyser',
-            'Balcony / Ventilated Window',
-            'Ceiling Fan & LED Tube',
-            'Mirror & Charging Sockets',
-            'Shoe Rack',
-          ],
-          selectedSet: _pgSelectedAmenities,
+        _buildQuestionSection(
+          title: 'In-Room Furnishings & Essentials',
+          subtitle: 'Tap all items available inside the room',
+          icon: Iconsax.lamp_on,
+          child: _buildMultiSelectChips(
+            options: [
+              'Bed & Mattress',
+              'Personal Cupboard',
+              'Study Table & Chair',
+              '24/7 Hot Water Geyser',
+              'Balcony / Ventilated Window',
+              'Ceiling Fan & LED Tube',
+              'Mirror & Charging Sockets',
+              'Shoe Rack',
+            ],
+            selectedSet: _pgSelectedAmenities,
+          ),
         ),
       ],
     );
@@ -1216,106 +1895,251 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       key: const ValueKey('rental_step3'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('BHK Configuration', Iconsax.home),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4+ BHK / Villa'],
-          selected: _rentalBhk,
-          onSelected: (val) => setState(() {
-            _rentalBhk = val;
-            if (val == '1 RK' || val == '1 BHK') {
-              _rentalBeds = '1 Bed';
-              _rentalBaths = '1 Bath';
-            } else if (val == '2 BHK') {
-              _rentalBeds = '2 Beds';
-              _rentalBaths = '2 Baths';
-            } else if (val == '3 BHK') {
-              _rentalBeds = '3 Beds';
-              _rentalBaths = '3 Baths';
-            }
-          }),
+        _buildQuestionSection(
+          title: 'BHK Configuration',
+          subtitle: 'Select house or apartment layout type',
+          icon: Iconsax.home,
+          child: _buildSingleSelectGroup(
+            options: ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4+ BHK / Villa'],
+            selected: _rentalBhk,
+            onSelected: (val) => setState(() {
+              _rentalBhk = val;
+              if (val == '1 RK' || val == '1 BHK') {
+                _rentalBeds = '1 Bed';
+                _rentalBaths = '1 Bath';
+              } else if (val == '2 BHK') {
+                _rentalBeds = '2 Beds';
+                _rentalBaths = '2 Baths';
+              } else if (val == '3 BHK') {
+                _rentalBeds = '3 Beds';
+                _rentalBaths = '3 Baths';
+              }
+            }),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Furnishing Status', Iconsax.box),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['Unfurnished', 'Semi-Furnished', 'Fully-Furnished'],
-          selected: _rentalFurnishing,
-          onSelected: (val) => setState(() => _rentalFurnishing = val),
+        _buildQuestionSection(
+          title: 'Furnishing Status',
+          subtitle: 'Degree of furniture & fixtures included',
+          icon: Iconsax.box,
+          child: _buildSingleSelectGroup(
+            options: ['Unfurnished', 'Semi-Furnished', 'Fully-Furnished'],
+            selected: _rentalFurnishing,
+            onSelected: (val) => setState(() => _rentalFurnishing = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Space & Floor Details', Iconsax.maximize_45),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildCustomInput(
-                initialValue: _rentalArea,
-                label: 'Carpet Area (sqft)',
-                hint: 'e.g. 1250',
-                keyboardType: TextInputType.number,
-                onChanged: (val) => _rentalArea = val,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildCustomInput(
-                initialValue: _rentalBeds,
-                label: 'Bedrooms',
-                hint: 'e.g. 2 Beds',
-                onChanged: (val) => _rentalBeds = val,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildCustomInput(
-                initialValue: _rentalBaths,
-                label: 'Bathrooms',
-                hint: 'e.g. 2 Baths',
-                onChanged: (val) => _rentalBaths = val,
-              ),
-            ),
-          ],
+        _buildQuestionSection(
+          title: 'Carpet Area & Built-up Space',
+          subtitle: 'Total usable floor area in square feet',
+          icon: Iconsax.maximize_4,
+          child: _buildCustomInput(
+            initialValue: _rentalArea,
+            label: 'Carpet Area (sqft)',
+            hint: 'e.g. 1250',
+            keyboardType: TextInputType.number,
+            onChanged: (val) => _rentalArea = val,
+          ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildCustomInput(
-                initialValue: _rentalFloor,
-                label: 'Property Floor',
-                hint: 'e.g. 2nd Floor',
-                onChanged: (val) => _rentalFloor = val,
+        _buildQuestionSection(
+          title: 'Bedrooms & Bathrooms Count',
+          subtitle: 'Total count of private bedrooms and washrooms',
+          icon: Iconsax.building_3,
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildCustomInput(
+                  initialValue: _rentalBeds,
+                  label: 'Bedrooms',
+                  hint: 'e.g. 2 Beds',
+                  onChanged: (val) => _rentalBeds = val,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildCustomInput(
-                initialValue: _rentalTotalFloors,
-                label: 'Total Building Floors',
-                hint: 'e.g. 4 Floors',
-                onChanged: (val) => _rentalTotalFloors = val,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCustomInput(
+                  initialValue: _rentalBaths,
+                  label: 'Bathrooms',
+                  hint: 'e.g. 2 Baths',
+                  onChanged: (val) => _rentalBaths = val,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Physical Inspection Checklist', Iconsax.shield_tick),
-        const SizedBox(height: 10),
-        _buildMultiSelectChips(
-          options: [
-            'All Taps & Showers Tested',
-            'High Water Pressure',
-            'Zero Seepage & Freshly Painted',
-            'Leak-Proof Ceiling & Walls',
-            'All Switches & Sockets Checked',
-            'Inverter Wiring Ready',
-            'Geyser in Bathrooms',
-            'Modular Kitchen Fitted',
-            'Lift Available',
-            'Balcony with View',
-          ],
-          selectedSet: _rentalSelectedFeatures,
+        _buildQuestionSection(
+          title: 'Floor & Building Level',
+          subtitle: 'Specific floor number and total building floors',
+          icon: Iconsax.layer,
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildCustomInput(
+                  initialValue: _rentalFloor,
+                  label: 'Property Floor',
+                  hint: 'e.g. 2nd Floor',
+                  onChanged: (val) => _rentalFloor = val,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCustomInput(
+                  initialValue: _rentalTotalFloors,
+                  label: 'Total Building Floors',
+                  hint: 'e.g. 4 Floors',
+                  onChanged: (val) => _rentalTotalFloors = val,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Physical Inspection Checklist',
+          subtitle: 'Highlight confirmed verified features',
+          icon: Iconsax.shield_tick,
+          child: _buildMultiSelectChips(
+            options: [
+              'All Taps & Showers Tested',
+              'High Water Pressure',
+              'Zero Seepage & Freshly Painted',
+              'Leak-Proof Ceiling & Walls',
+              'All Switches & Sockets Checked',
+              'Inverter Wiring Ready',
+              'Geyser in Bathrooms',
+              'Modular Kitchen Fitted',
+              'Lift Available',
+              'Balcony with View',
+            ],
+            selectedSet: _rentalSelectedFeatures,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ==========================================
+  // STEP 3 (BUY): PROPERTY TYPE, DIMENSIONS & FACING
+  // ==========================================
+  Widget _buildStep3BuySpace() {
+    return Column(
+      key: const ValueKey('buy_step3'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildQuestionSection(
+          title: 'Property Type / Category',
+          subtitle: 'Select the exact nature of property for sale',
+          icon: Iconsax.building_3,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Independent House / Villa',
+              'Apartment / Flat',
+              'Open Plot / Land',
+              'Commercial Building',
+              'Duplex / Penthouse',
+            ],
+            selected: _buyPropertyType,
+            onSelected: (val) => setState(() => _buyPropertyType = val),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'BHK Configuration',
+          subtitle: 'Select number of bedrooms / layout setup',
+          icon: Iconsax.home,
+          child: _buildSingleSelectGroup(
+            options: ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5+ BHK', 'Plot / Non-BHK', 'Commercial Space'],
+            selected: _buyBhk,
+            onSelected: (val) => setState(() {
+              _buyBhk = val;
+              if (val == '1 BHK') {
+                _buyBeds = '1 BHK';
+                _buyBaths = '1 Bath';
+              } else if (val == '2 BHK') {
+                _buyBeds = '2 BHK';
+                _buyBaths = '2 Baths';
+              } else if (val == '3 BHK') {
+                _buyBeds = '3 BHK';
+                _buyBaths = '3 Baths';
+              } else if (val == '4 BHK' || val == '5+ BHK') {
+                _buyBeds = val;
+                _buyBaths = '4+ Baths';
+              } else {
+                _buyBeds = val;
+              }
+            }),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Property Entrance Facing',
+          subtitle: 'Main entrance or gate facing direction',
+          icon: Iconsax.routing_2,
+          child: _buildSingleSelectGroup(
+            options: [
+              'East Facing',
+              'North Facing',
+              'West Facing',
+              'South Facing',
+              'North-East Corner',
+              'Corner Property (Dual Road Access)',
+            ],
+            selected: _buyFacing,
+            onSelected: (val) => setState(() => _buyFacing = val),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Plot & Built-up Dimensions',
+          subtitle: 'Total land area and constructed usable carpet area',
+          icon: Iconsax.maximize_4,
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildCustomInput(
+                  initialValue: _buyPlotArea,
+                  label: 'Total Land Area',
+                  hint: 'e.g. 150 Sq.Yds / 3.5 Cents',
+                  onChanged: (val) => _buyPlotArea = val,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCustomInput(
+                  initialValue: _buyBuiltUpArea,
+                  label: 'Built-up Area (sqft)',
+                  hint: 'e.g. 1850',
+                  keyboardType: TextInputType.number,
+                  onChanged: (val) => _buyBuiltUpArea = val,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Construction Age & Status',
+          subtitle: 'Current physical development status of property',
+          icon: Iconsax.timer_1,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Ready to Move (Brand New 0-1 yr)',
+              '1 to 3 Years Old',
+              '3 to 5 Years Old',
+              '5+ Years Resale',
+              'Under Construction',
+              'Open Plot (Ready for Construction)',
+            ],
+            selected: _buyConstructionStatus,
+            onSelected: (val) => setState(() => _buyConstructionStatus = val),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Furnishing & Interior Level',
+          subtitle: 'Interior work and woodworking done on property',
+          icon: Iconsax.box,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Unfurnished / Raw Shell',
+              'Semi-Furnished (Cupboards & Modular Kitchen)',
+              'Fully Furnished (Luxury Interiors & AC)',
+            ],
+            selected: _buyFurnishing,
+            onSelected: (val) => setState(() => _buyFurnishing = val),
+          ),
         ),
       ],
     );
@@ -1329,69 +2153,86 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       key: const ValueKey('pg_step4'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Food & Mess Plan', Iconsax.coffee),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            '3 Meals Included (Breakfast, Lunch, Dinner)',
-            '2 Meals Included (Breakfast & Dinner)',
-            'Food Optional / Extra Charge',
-            'Self-Cooking Kitchen Access',
-          ],
-          selected: _pgFoodPlan,
-          onSelected: (val) => setState(() => _pgFoodPlan = val),
+        _buildQuestionSection(
+          title: 'Meal Plan Included',
+          subtitle: 'Select daily meal schedule provided to residents',
+          icon: Iconsax.coffee,
+          child: _buildSingleSelectGroup(
+            options: [
+              '3 Meals Included (Breakfast, Lunch, Dinner)',
+              '2 Meals Included (Breakfast & Dinner)',
+              'Food Optional / Extra Charge',
+              'Self-Cooking Kitchen Access',
+            ],
+            selected: _pgFoodPlan,
+            onSelected: (val) => setState(() => _pgFoodPlan = val),
+          ),
         ),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['Pure Veg Food', 'Veg & Non-Veg (Weekly)', 'Home-Style Cook'],
-          selected: _pgFoodType,
-          onSelected: (val) => setState(() => _pgFoodType = val),
+        _buildQuestionSection(
+          title: 'Food Quality & Dietary Type',
+          subtitle: 'Dietary preferences and preparation style',
+          icon: Iconsax.heart,
+          child: _buildSingleSelectGroup(
+            options: ['Pure Veg Food', 'Veg & Non-Veg (Weekly)', 'Home-Style Cook'],
+            selected: _pgFoodType,
+            onSelected: (val) => setState(() => _pgFoodType = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Drinking Water & Water Supply', Iconsax.drop),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            'RO Purified + Cool Water Dispenser',
-            '24/7 RO Purified Drinking Water',
-            'Mineral Water Cans Provided',
-          ],
-          selected: _pgDrinkingWater,
-          onSelected: (val) => setState(() => _pgDrinkingWater = val),
+        _buildQuestionSection(
+          title: 'Drinking Water Facility',
+          subtitle: 'Water purification and dispensing setup',
+          icon: Iconsax.drop,
+          child: _buildSingleSelectGroup(
+            options: [
+              'RO Purified + Cool Water Dispenser',
+              '24/7 RO Purified Drinking Water',
+              'Mineral Water Cans Provided',
+            ],
+            selected: _pgDrinkingWater,
+            onSelected: (val) => setState(() => _pgDrinkingWater = val),
+          ),
         ),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['24/7 Continuous Water Supply', 'Timed Water Supply (Morning & Evening)'],
-          selected: _pgWaterSupply,
-          onSelected: (val) => setState(() => _pgWaterSupply = val),
+        _buildQuestionSection(
+          title: 'General Water Supply',
+          subtitle: 'Availability schedule for daily utility use',
+          icon: Iconsax.bucket,
+          child: _buildSingleSelectGroup(
+            options: ['24/7 Continuous Water Supply', 'Timed Water Supply (Morning & Evening)'],
+            selected: _pgWaterSupply,
+            onSelected: (val) => setState(() => _pgWaterSupply = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Power Supply & Backup', Iconsax.flash_1),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            'Full Inverter Power Backup',
-            'Diesel Generator Backup (100%)',
-            'Standard 24/7 Electricity',
-          ],
-          selected: _pgPowerBackup,
-          onSelected: (val) => setState(() => _pgPowerBackup = val),
+        _buildQuestionSection(
+          title: 'Power Supply & Backup',
+          subtitle: 'Electricity reliability and inverter/generator support',
+          icon: Iconsax.flash_1,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Full Inverter Power Backup',
+              'Diesel Generator Backup (100%)',
+              'Standard 24/7 Electricity',
+            ],
+            selected: _pgPowerBackup,
+            onSelected: (val) => setState(() => _pgPowerBackup = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Shared Appliances & Amenities', Iconsax.computing),
-        const SizedBox(height: 10),
-        _buildMultiSelectChips(
-          options: [
-            'High-Speed Wi-Fi',
-            'Washing Machine',
-            'Common Refrigerator',
-            'Hall TV with OTT',
-            'Microwave Oven',
-            'Iron & Ironing Board',
-            'Terrace Access',
-            'Dedicated Study Lounge',
-          ],
-          selectedSet: _pgSelectedAmenities,
+        _buildQuestionSection(
+          title: 'Shared Appliances & Common Amenities',
+          subtitle: 'Check all appliances available for common use',
+          icon: Iconsax.computing,
+          child: _buildMultiSelectChips(
+            options: [
+              'High-Speed Wi-Fi',
+              'Washing Machine',
+              'Common Refrigerator',
+              'Hall TV with OTT',
+              'Microwave Oven',
+              'Iron & Ironing Board',
+              'Terrace Access',
+              'Dedicated Study Lounge',
+            ],
+            selectedSet: _pgSelectedAmenities,
+          ),
         ),
       ],
     );
@@ -1405,57 +2246,141 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       key: const ValueKey('rental_step4'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Electricity Meter & Power', Iconsax.flash_1),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            'Dedicated EB Digital Meter',
-            'Separate Sub-Meter',
-            '3-Phase Connection',
-          ],
-          selected: _rentalEbMeter,
-          onSelected: (val) => setState(() => _rentalEbMeter = val),
+        _buildQuestionSection(
+          title: 'Electricity Meter & Power',
+          subtitle: 'Billing method for tenant electrical consumption',
+          icon: Iconsax.flash_1,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Dedicated EB Digital Meter',
+              'Separate Sub-Meter',
+              '3-Phase Connection',
+            ],
+            selected: _rentalEbMeter,
+            onSelected: (val) => setState(() => _rentalEbMeter = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Water Supply & Drinking Line', Iconsax.drop),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            'Included in Maintenance',
-            'Separate Water Bill',
-            '24/7 Free Water Supply',
-          ],
-          selected: _rentalWaterBill,
-          onSelected: (val) => setState(() => _rentalWaterBill = val),
+        _buildQuestionSection(
+          title: 'Water Supply & Charges',
+          subtitle: 'Water connection and billing arrangement',
+          icon: Iconsax.drop,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Included in Maintenance',
+              'Separate Water Bill',
+              '24/7 Free Water Supply',
+            ],
+            selected: _rentalWaterBill,
+            onSelected: (val) => setState(() => _rentalWaterBill = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Parking Facility', Iconsax.car),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            'Covered Car & Bike Parking',
-            'Open Car Parking + Bike Parking',
-            'Only Bike Parking',
-            'No Parking',
-          ],
-          selected: _rentalParking,
-          onSelected: (val) => setState(() => _rentalParking = val),
+        _buildQuestionSection(
+          title: 'Parking Facility',
+          subtitle: 'Vehicle parking space inside the premises',
+          icon: Iconsax.car,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Covered Car & Bike Parking',
+              'Open Car Parking + Bike Parking',
+              'Only Bike Parking',
+              'No Parking',
+            ],
+            selected: _rentalParking,
+            onSelected: (val) => setState(() => _rentalParking = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Utilities & Maintenance Checklist', Iconsax.tick_circle),
-        const SizedBox(height: 10),
-        _buildMultiSelectChips(
-          options: [
-            '24/7 Municipal & Borewell Water',
-            'Overhead Water Storage Tank',
-            'RO Drinking Water Line',
-            'Solar Water Heater Installed',
-            'Inverter Wiring Ready',
-            'Modern MCB Fitted',
-            'Gated Security Guard',
-            'CCTV in Common Areas',
-          ],
-          selectedSet: _rentalSelectedFeatures,
+        _buildQuestionSection(
+          title: 'Utilities & Maintenance Checklist',
+          subtitle: 'Select all features verified for this unit',
+          icon: Iconsax.tick_circle,
+          child: _buildMultiSelectChips(
+            options: [
+              '24/7 Municipal & Borewell Water',
+              'Overhead Water Storage Tank',
+              'RO Drinking Water Line',
+              'Solar Water Heater Installed',
+              'Inverter Wiring Ready',
+              'Modern MCB Fitted',
+              'Gated Security Guard',
+              'CCTV in Common Areas',
+            ],
+            selectedSet: _rentalSelectedFeatures,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ==========================================
+  // STEP 4 (BUY): LEGAL CLEARANCES, APPROVALS & ACCESS
+  // ==========================================
+  Widget _buildStep4BuyLegalAndAccess() {
+    return Column(
+      key: const ValueKey('buy_step4'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildQuestionSection(
+          title: 'Legal Clearances & Approvals',
+          subtitle: 'Title legitimacy, sanction plans and approved authority',
+          icon: Iconsax.document_text,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Freehold 100% Clear Title',
+              'RERA & DTCP / Municipality Approved',
+              'Bank Loan Approved (SBI, HDFC, ICICI, etc.)',
+              'Ready for Immediate Sub-Registrar Registration',
+              'Panchayat / Grama Kantham Approved',
+            ],
+            selected: _buyApprovals,
+            onSelected: (val) => setState(() => _buyApprovals = val),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Front Road Width & Access',
+          subtitle: 'Connecting approach road width in front of property',
+          icon: Iconsax.routing,
+          child: _buildSingleSelectGroup(
+            options: [
+              '30 Feet Blacktop Road',
+              '40 Feet Wide CC Road',
+              '60 Feet Master Plan Road',
+              'Main Highway Facing Road',
+              '20 to 25 Feet Internal Road',
+            ],
+            selected: _buyRoadWidth,
+            onSelected: (val) => setState(() => _buyRoadWidth = val),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Water Supply & Underground Drainage',
+          subtitle: 'Borewell yield, municipal connection and drainage status',
+          icon: Iconsax.drop,
+          child: _buildSingleSelectGroup(
+            options: [
+              '24/7 Deep Borewell + Municipal Water Connection',
+              'Dedicated Sweet Water Borewell Available',
+              'Municipal Tap Connection Only',
+              'Underground Drainage (UGD) Connected',
+            ],
+            selected: _buyWaterElectricity,
+            onSelected: (val) => setState(() => _buyWaterElectricity = val),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Floors & Structure Level',
+          subtitle: 'Total number of floors built on site',
+          icon: Iconsax.layer,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Ground Floor Only',
+              'G+1 Duplex House',
+              'G+2 Independent Building (Rental Income)',
+              'G+3 / Multi-Family Structure',
+              'Apartment Unit (In Gated Community)',
+            ],
+            selected: _buyTotalFloors,
+            onSelected: (val) => setState(() => _buyTotalFloors = val),
+          ),
         ),
       ],
     );
@@ -1469,63 +2394,74 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       key: const ValueKey('pg_step5'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Cleanliness & Housekeeping', Iconsax.brush_1),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            'Daily Room & Bathroom Cleaning',
-            'Alternate Day Cleaning',
-            'Weekly Deep Cleaning',
-          ],
-          selected: _pgCleaning,
-          onSelected: (val) => setState(() => _pgCleaning = val),
+        _buildQuestionSection(
+          title: 'Cleanliness & Housekeeping',
+          subtitle: 'Frequency of room and washroom sanitization',
+          icon: Iconsax.brush_1,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Daily Room & Bathroom Cleaning',
+              'Alternate Day Cleaning',
+              'Weekly Deep Cleaning',
+            ],
+            selected: _pgCleaning,
+            onSelected: (val) => setState(() => _pgCleaning = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Owner & Warden Presence', Iconsax.user_tag),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            'Owner on site & Resident Warden',
-            '24/7 Resident Warden Only',
-            'Dedicated Caretaker on premises',
-          ],
-          selected: _pgManagement,
-          onSelected: (val) => setState(() => _pgManagement = val),
+        _buildQuestionSection(
+          title: 'Owner & Warden Presence',
+          subtitle: 'Management and supervision available on premises',
+          icon: Iconsax.user_tag,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Owner on site & Resident Warden',
+              '24/7 Resident Warden Only',
+              'Dedicated Caretaker on premises',
+            ],
+            selected: _pgManagement,
+            onSelected: (val) => setState(() => _pgManagement = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Gate Timings & Curfew Rules', Iconsax.clock),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            '10:30 PM Gate Close',
-            '10:00 PM Gate Close',
-            '11:00 PM Gate Close',
-            'No Curfew (24/7 Smart Access)',
-          ],
-          selected: _pgCurfew,
-          onSelected: (val) => setState(() => _pgCurfew = val),
+        _buildQuestionSection(
+          title: 'Gate Timings & Curfew Rules',
+          subtitle: 'Night entry deadline or 24/7 access',
+          icon: Iconsax.clock,
+          child: _buildSingleSelectGroup(
+            options: [
+              '10:30 PM Gate Close',
+              '10:00 PM Gate Close',
+              '11:00 PM Gate Close',
+              'No Curfew (24/7 Smart Access)',
+            ],
+            selected: _pgCurfew,
+            onSelected: (val) => setState(() => _pgCurfew = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Notice Period for Vacating', Iconsax.calendar),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['15 Days', '1 Month', 'No Lock-in'],
-          selected: _pgNotice,
-          onSelected: (val) => setState(() => _pgNotice = val),
+        _buildQuestionSection(
+          title: 'Notice Period for Vacating',
+          subtitle: 'Prior notice required before leaving the accommodation',
+          icon: Iconsax.calendar,
+          child: _buildSingleSelectGroup(
+            options: ['15 Days', '1 Month', 'No Lock-in'],
+            selected: _pgNotice,
+            onSelected: (val) => setState(() => _pgNotice = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Security & Verification Rules', Iconsax.security_user),
-        const SizedBox(height: 10),
-        _buildMultiSelectChips(
-          options: [
-            '24/7 CCTV & Security',
-            'Police & ID Verification',
-            'Biometric / Smart Entry',
-            'Visitors Allowed in Common Lounge',
-            'Strict No Smoking / Alcohol',
-            'Parent Contact Verification',
-          ],
-          selectedSet: _pgSelectedAmenities,
+        _buildQuestionSection(
+          title: 'Security & Verification Norms',
+          subtitle: 'Safety rules and guest policies enforced',
+          icon: Iconsax.security_user,
+          child: _buildMultiSelectChips(
+            options: [
+              '24/7 CCTV & Security',
+              'ID Verification Required',
+              'Biometric / Smart Entry',
+              'Visitors Allowed in Common Lounge',
+              'Strict No Smoking / Alcohol',
+              'Parent Contact Verification',
+            ],
+            selectedSet: _pgSelectedAmenities,
+          ),
         ),
       ],
     );
@@ -1539,58 +2475,148 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       key: const ValueKey('rental_step5'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Rental Agreement Duration', Iconsax.document_text),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            '11 Months Standard',
-            '1 to 2 Years Agreement',
-            'Flexible / No Lock-in',
-          ],
-          selected: _rentalAgreement,
-          onSelected: (val) => setState(() => _rentalAgreement = val),
+        _buildQuestionSection(
+          title: 'Rental Agreement Duration',
+          subtitle: 'Standard tenure for the rent agreement',
+          icon: Iconsax.document_text,
+          child: _buildSingleSelectGroup(
+            options: [
+              '11 Months Standard',
+              '1 to 2 Years Agreement',
+              'Flexible / No Lock-in',
+            ],
+            selected: _rentalAgreement,
+            onSelected: (val) => setState(() => _rentalAgreement = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Notice Period for Vacating', Iconsax.calendar),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['1 Month', '2 Months', '15 Days'],
-          selected: _rentalNotice,
-          onSelected: (val) => setState(() => _rentalNotice = val),
+        _buildQuestionSection(
+          title: 'Notice Period for Vacating',
+          subtitle: 'Advance notice required before moving out',
+          icon: Iconsax.calendar,
+          child: _buildSingleSelectGroup(
+            options: ['1 Month', '2 Months', '15 Days'],
+            selected: _rentalNotice,
+            onSelected: (val) => setState(() => _rentalNotice = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Tenant Preference', Iconsax.profile_2user),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: [
-            'Family & Working Professionals',
-            'Family Only',
-            'Bachelors Allowed',
-            'Anyone Welcome',
-          ],
-          selected: _rentalTenantPref,
-          onSelected: (val) => setState(() => _rentalTenantPref = val),
+        _buildQuestionSection(
+          title: 'Tenant Preference',
+          subtitle: 'Eligible resident profiles accepted by owner',
+          icon: Iconsax.profile_2user,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Family & Working Professionals',
+              'Family Only',
+              'Bachelors Allowed',
+              'Anyone Welcome',
+            ],
+            selected: _rentalTenantPref,
+            onSelected: (val) => setState(() => _rentalTenantPref = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('Pet Policy', Iconsax.heart),
-        const SizedBox(height: 10),
-        _buildSingleSelectGroup(
-          options: ['Pets Allowed', 'No Pets Allowed'],
-          selected: _rentalPetPolicy,
-          onSelected: (val) => setState(() => _rentalPetPolicy = val),
+        _buildQuestionSection(
+          title: 'Pet Policy',
+          subtitle: 'Are household pets permitted on the property?',
+          icon: Iconsax.heart,
+          child: _buildSingleSelectGroup(
+            options: ['Pets Allowed', 'No Pets Allowed'],
+            selected: _rentalPetPolicy,
+            onSelected: (val) => setState(() => _rentalPetPolicy = val),
+          ),
         ),
-        const SizedBox(height: 20),
-        _buildSectionHeader('House Rules & Society Norms', Iconsax.info_circle),
-        const SizedBox(height: 10),
-        _buildMultiSelectChips(
-          options: [
-            'Non-Veg Allowed',
-            'Veg Only Preferred',
-            'Gated Security',
-            'No Loud Music after 10 PM',
-            'Visitor Parking Available',
-          ],
-          selectedSet: _rentalSelectedFeatures,
+        _buildQuestionSection(
+          title: 'House Rules & Society Norms',
+          subtitle: 'Guidelines for tenants regarding noise, diet & visitors',
+          icon: Iconsax.info_circle,
+          child: _buildMultiSelectChips(
+            options: [
+              'Non-Veg Allowed',
+              'Veg Only Preferred',
+              'Gated Security',
+              'No Loud Music after 10 PM',
+              'Visitor Parking Available',
+            ],
+            selectedSet: _rentalSelectedFeatures,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ==========================================
+  // STEP 5 (BUY): OWNERSHIP, AMENITIES & HIGHLIGHTS
+  // ==========================================
+  Widget _buildStep5BuyOwnershipAndAmenities() {
+    return Column(
+      key: const ValueKey('buy_step5'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildQuestionSection(
+          title: 'Ownership & Seller Profile',
+          subtitle: 'Who is selling this property?',
+          icon: Iconsax.user_tag,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Direct Owner (Zero Brokerage)',
+              'Builder / Promoter Direct Sale',
+              'Resale by First Owner',
+              'Sole Authorized Relative / Representative',
+            ],
+            selected: _buyOwnershipType,
+            onSelected: (val) => setState(() => _buyOwnershipType = val),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Price Negotiability',
+          subtitle: 'Flexibility on the quoted asking price',
+          icon: Iconsax.tag,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Price Negotiable for Serious Buyers',
+              'Slightly Negotiable across the table',
+              'Fixed Price (Strictly No Bargain)',
+            ],
+            selected: _buyPriceNegotiable,
+            onSelected: (val) => setState(() => _buyPriceNegotiable = val),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Parking Infrastructure',
+          subtitle: 'Parking space allocated inside boundaries',
+          icon: Iconsax.car,
+          child: _buildSingleSelectGroup(
+            options: [
+              'Covered Car + 2-Wheeler Parking',
+              'Multiple Car Parking (2+ Large Cars)',
+              'Open Dedicated Parking Inside Compound',
+              'Street Parking Only',
+            ],
+            selected: _buyParking,
+            onSelected: (val) => setState(() => _buyParking = val),
+          ),
+        ),
+        _buildQuestionSection(
+          title: 'Key Highlights & Property Features',
+          subtitle: 'Select confirmed features to highlight for buyers',
+          icon: Iconsax.tick_circle,
+          child: _buildMultiSelectChips(
+            options: [
+              'Good Ventilation & Natural Sunlight',
+              'Clear Title & Clean Documentation',
+              'Bank Loan Sanction Support',
+              'Ready for Immediate Registration',
+              'Compound Boundary Wall with Gate',
+              'Gated Community & 24/7 Security',
+              'Passenger Lift Installed',
+              'Power Backup Ready',
+              'Rainwater Harvesting System',
+              'Surrounded by Developed Houses',
+              'Near Schools, Hospitals & Markets',
+              'Zero Waterlogging in Rains',
+              'High Rental Income Potential',
+            ],
+            selectedSet: _buySelectedFeatures,
+          ),
         ),
       ],
     );
@@ -1675,8 +2701,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               ),
               const SizedBox(height: 8),
               Text(
-                '₹${_priceController.text.isNotEmpty ? _priceController.text : '0'}/month'
-                '${_depositController.text.isNotEmpty ? " • Deposit: ₹${_depositController.text}" : ""}',
+                _selectedType == 'Buy'
+                    ? 'Total Asking Price: ₹${_priceController.text.isNotEmpty ? _priceController.text : '0'}${_buyPriceNegotiable.isNotEmpty ? " • $_buyPriceNegotiable" : ""}'
+                    : '₹${_priceController.text.isNotEmpty ? _priceController.text : '0'}/month${_depositController.text.isNotEmpty ? " • Deposit: ₹${_depositController.text}" : ""}',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -1702,7 +2729,10 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 runSpacing: 6,
                 children: (_selectedType == 'PG'
                         ? [_pgGender, _pgSharing, _pgFoodPlan, _pgAcType, ..._pgSelectedAmenities.take(3)]
-                        : [_rentalBhk, _rentalFurnishing, _rentalEbMeter, ..._rentalSelectedFeatures.take(3)])
+                        : (_selectedType == 'Buy'
+                            ? [_buyPropertyType, _buyBhk, _buyFacing, _buyConstructionStatus, _buyOwnershipType, ..._buySelectedFeatures.take(3)]
+                            : [_rentalBhk, _rentalFurnishing, _rentalEbMeter, ..._rentalSelectedFeatures.take(3)]))
+                    .where((item) => item.isNotEmpty)
                     .map((item) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
@@ -1739,17 +2769,95 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
 
     return Row(
       children: [
-        Icon(icon, size: 18, color: isDark ? AppTheme.primaryYellow : Colors.black),
-        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : const Color(0xFFFFEB3A).withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: isDark ? AppTheme.primaryYellow : Colors.black),
+        ),
+        const SizedBox(width: 10),
         Text(
           title,
           style: TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
             color: isDark ? Colors.white : Colors.black,
+            letterSpacing: -0.2,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildQuestionSection({
+    required String title,
+    String? subtitle,
+    required IconData icon,
+    required Widget child,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard.withValues(alpha: 0.7) : const Color(0xFFFAFAFA),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+          width: 1.2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : const Color(0xFFFFEB3A).withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  size: 15,
+                  color: isDark ? AppTheme.primaryYellow : Colors.black,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF1E1E1E),
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 37),
+              child: Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
     );
   }
 
@@ -1781,7 +2889,10 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           initialValue: initialValue,
           keyboardType: keyboardType,
           maxLines: maxLines,
-          onChanged: onChanged,
+          onChanged: (val) {
+            onChanged?.call(val);
+            _saveDraft();
+          },
           style: TextStyle(
             fontSize: 14,
             color: isDark ? Colors.white : Colors.black,
@@ -1832,30 +2943,60 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       runSpacing: 8,
       children: options.map((opt) {
         final bool isSelected = opt == selected;
-        return GestureDetector(
-          onTap: () => onSelected(opt),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        return BouncingButton(
+          scaleFactor: 0.97,
+          onTap: () {
+            onSelected(opt);
+            _saveDraft();
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
             decoration: BoxDecoration(
               color: isSelected
-                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                  ? (isDark ? const Color(0xFF2B2800) : const Color(0xFFFFFDE7))
                   : (isDark ? AppTheme.darkCard : Colors.white),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
                     ? (isDark ? AppTheme.primaryYellow : Colors.black)
                     : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+                width: isSelected ? 1.8 : 1.2,
               ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: (isDark ? AppTheme.primaryYellow : Colors.black).withValues(alpha: 0.08),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
-            child: Text(
-              opt,
-              style: TextStyle(
-                color: isSelected
-                    ? (isDark ? Colors.black : Colors.white)
-                    : (isDark ? AppTheme.darkTextSecondary : Colors.black87),
-                fontSize: 12.5,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isSelected ? Iconsax.tick_circle : Icons.radio_button_unchecked,
+                  size: 15,
+                  color: isSelected
+                      ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                      : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400),
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  opt,
+                  style: TextStyle(
+                    color: isSelected
+                        ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                        : (isDark ? Colors.white70 : const Color(0xFF2D2D2D)),
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -1874,7 +3015,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       runSpacing: 8,
       children: options.map((opt) {
         final bool isSelected = selectedSet.contains(opt);
-        return GestureDetector(
+        return BouncingButton(
+          scaleFactor: 0.97,
           onTap: () {
             setState(() {
               if (isSelected) {
@@ -1883,39 +3025,53 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 selectedSet.add(opt);
               }
             });
+            _saveDraft();
           },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
               color: isSelected
-                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                  ? (isDark ? const Color(0xFF2B2800) : const Color(0xFFFFFDE7))
                   : (isDark ? AppTheme.darkCard : Colors.white),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
                     ? (isDark ? AppTheme.primaryYellow : Colors.black)
                     : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+                width: isSelected ? 1.8 : 1.2,
               ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: (isDark ? AppTheme.primaryYellow : Colors.black).withValues(alpha: 0.08),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (isSelected) ...[
-                  Icon(
-                    Iconsax.tick_circle,
-                    color: isDark ? Colors.black : Colors.white,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 5),
-                ],
+                Icon(
+                  isSelected ? Iconsax.tick_circle : Iconsax.add_circle,
+                  color: isSelected
+                      ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                      : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400),
+                  size: 15,
+                ),
+                const SizedBox(width: 6),
                 Text(
                   opt,
                   style: TextStyle(
                     color: isSelected
-                        ? (isDark ? Colors.black : Colors.white)
-                        : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade800),
+                        ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                        : (isDark ? Colors.white70 : const Color(0xFF2D2D2D)),
                     fontSize: 12.5,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    letterSpacing: -0.1,
                   ),
                 ),
               ],

@@ -8,13 +8,19 @@ class BouncingButton extends StatefulWidget {
   final VoidCallback? onTap;
   final double scaleFactor;
   final Duration duration;
+  final Duration reverseDuration;
+  final Curve forwardCurve;
+  final Curve reverseCurve;
 
   const BouncingButton({
     super.key,
     required this.child,
     this.onTap,
-    this.scaleFactor = 0.96,
-    this.duration = const Duration(milliseconds: 120),
+    this.scaleFactor = 0.95,
+    this.duration = const Duration(milliseconds: 110),
+    this.reverseDuration = const Duration(milliseconds: 240),
+    this.forwardCurve = Curves.easeOutCubic,
+    this.reverseCurve = Curves.easeOutBack,
   });
 
   @override
@@ -31,13 +37,28 @@ class _BouncingButtonState extends State<BouncingButton> with SingleTickerProvid
     _controller = AnimationController(
       vsync: this,
       duration: widget.duration,
+      reverseDuration: widget.reverseDuration,
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: widget.scaleFactor,
     ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
+      CurvedAnimation(
+        parent: _controller,
+        curve: widget.forwardCurve,
+        reverseCurve: widget.reverseCurve,
+      ),
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant BouncingButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.duration != widget.duration ||
+        oldWidget.reverseDuration != widget.reverseDuration) {
+      _controller.duration = widget.duration;
+      _controller.reverseDuration = widget.reverseDuration;
+    }
   }
 
   @override
