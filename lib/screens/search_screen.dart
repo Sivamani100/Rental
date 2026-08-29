@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:lottie/lottie.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bouncing_button.dart';
-import 'home_screen.dart' show PropertyModel;
+import 'home_screen.dart' show PropertyModel, PropertyCard;
 import 'property_details_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -28,35 +28,33 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   late TextEditingController _searchController;
-  late String _selectedCategory; // 'All', 'PG', 'Rental', 'Buy'
-  String _sortBy = 'relevance'; // 'relevance', 'distance', 'price_asc', 'price_desc'
   final FocusNode _focusNode = FocusNode();
 
-  // Bottom Sheet Filter States
-  String? _filterBhk; // '1 BHK', '2 BHK', '3 BHK', '4+ BHK'
-  double? _filterMaxPrice; // 5000, 10000, 20000, 50000
-  double? _filterMaxDistanceKm; // 2, 5, 10
-  bool _filterHasAc = false;
-  bool _filterHasFood = false;
-  bool _filterFurnished = false;
-
-  final List<String> _popularKeywords = [
-    '2 BHK Flat',
-    'Boys Hostel with Food',
-    'Girls PG AC Room',
-    'Independent House for Sale',
-    '1 BHK Under ₹8,000',
-    'Luxury Villa',
-    'Commercial Office',
-    'Gated Community',
-  ];
+  // Active Filter States
+  String _selectedCategory = 'All'; // 'All', 'Flat', 'House', 'PG', 'Office', 'Land', 'Buy'
+  String? _selectedLocation; // e.g. 'Hyderabad', 'Visakhapatnam'
+  RangeValues _budgetRange = const RangeValues(0, 10000000); // ₹0 - ₹1 Cr
+  String? _selectedBhk; // '1 BHK', '2 BHK', '3 BHK', '4+ BHK'
+  String? _selectedBathrooms; // '1+ Bath', '2+ Bath', '3+ Bath', '4+ Bath'
+  String? _selectedSharing; // 'Single Room', '2 Sharing', '3 Sharing', '4+ Sharing'
+  String? _selectedGender; // 'Boys Only', 'Girls Only', 'Co-Living'
+  final Set<String> _selectedAmenities = {}; // 'Parking', 'Power Backup', 'Lift', 'AC', 'Food', 'WiFi', 'Geyser', 'CCTV', 'Attached Bath'
+  String? _selectedFurnishing; // 'Fully Furnished', 'Semi Furnished', 'Unfurnished'
+  String? _selectedTenant; // 'Any', 'Bachelors', 'Family', 'Company'
+  String? _selectedAvailability; // 'Immediately', 'Within 1 Month', '1-3 Months'
+  String? _selectedFoodType; // '3 Meals', '2 Meals', 'Veg Only', 'Self Cooking'
+  String? _selectedCurfew; // 'No Curfew', 'Gate Closes 10:30 PM'
+  bool _petFriendly = false;
+  bool _separateMeter = false;
+  bool _zeroSeepage = false;
+  RangeValues _areaRange = const RangeValues(0, 10000); // 0 - 10,000 sqft
+  String _sortBy = 'relevance'; // 'relevance', 'distance', 'price_asc', 'price_desc'
 
   @override
   void initState() {
     super.initState();
     _selectedCategory = widget.initialCategory;
     _searchController = TextEditingController(text: widget.initialQuery);
-    _focusNode.requestFocus();
   }
 
   @override
@@ -67,21 +65,45 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   bool get _hasActiveFilters =>
-      _filterBhk != null ||
-      _filterMaxPrice != null ||
-      _filterMaxDistanceKm != null ||
-      _filterHasAc ||
-      _filterHasFood ||
-      _filterFurnished;
+      _selectedCategory != 'All' ||
+      _selectedLocation != null ||
+      _budgetRange.start > 0 ||
+      _budgetRange.end < 10000000 ||
+      _selectedBhk != null ||
+      _selectedBathrooms != null ||
+      _selectedSharing != null ||
+      _selectedGender != null ||
+      _selectedAmenities.isNotEmpty ||
+      _selectedFurnishing != null ||
+      _selectedTenant != null ||
+      _selectedAvailability != null ||
+      _selectedFoodType != null ||
+      _selectedCurfew != null ||
+      _petFriendly ||
+      _separateMeter ||
+      _zeroSeepage ||
+      _areaRange.start > 0 ||
+      _areaRange.end < 10000;
 
   int get _activeFilterCount {
     int count = 0;
-    if (_filterBhk != null) count++;
-    if (_filterMaxPrice != null) count++;
-    if (_filterMaxDistanceKm != null) count++;
-    if (_filterHasAc) count++;
-    if (_filterHasFood) count++;
-    if (_filterFurnished) count++;
+    if (_selectedCategory != 'All') count++;
+    if (_selectedLocation != null) count++;
+    if (_budgetRange.start > 0 || _budgetRange.end < 10000000) count++;
+    if (_selectedBhk != null) count++;
+    if (_selectedBathrooms != null) count++;
+    if (_selectedSharing != null) count++;
+    if (_selectedGender != null) count++;
+    if (_selectedAmenities.isNotEmpty) count += _selectedAmenities.length;
+    if (_selectedFurnishing != null) count++;
+    if (_selectedTenant != null) count++;
+    if (_selectedAvailability != null) count++;
+    if (_selectedFoodType != null) count++;
+    if (_selectedCurfew != null) count++;
+    if (_petFriendly) count++;
+    if (_separateMeter) count++;
+    if (_zeroSeepage) count++;
+    if (_areaRange.start > 0 || _areaRange.end < 10000) count++;
     return count;
   }
 
@@ -94,47 +116,93 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  double _parseArea(String areaStr) {
+    try {
+      final clean = areaStr.replaceAll(RegExp(r'[^0-9]'), '');
+      return double.tryParse(clean) ?? 0.0;
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
+  int _parseBaths(String bathsStr) {
+    try {
+      final clean = bathsStr.replaceAll(RegExp(r'[^0-9]'), '');
+      return int.tryParse(clean) ?? 1;
+    } catch (_) {
+      return 1;
+    }
+  }
+
   List<PropertyModel> get _filteredProperties {
     final query = _searchController.text.trim().toLowerCase();
 
     List<PropertyModel> list = widget.properties.where((p) {
-      // 1. Category filter
-      if (_selectedCategory == 'PG' && p.type != 'PG' && p.type != 'Hostel') {
-        return false;
-      }
-      if (_selectedCategory == 'Rental' && p.type != 'Rental' && p.type != 'House') {
-        return false;
-      }
-      if (_selectedCategory == 'Buy' && p.type != 'Buy' && p.type != 'Sale' && p.type != 'Plot' && p.type != 'Land') {
-        return false;
+      final t = p.type.toLowerCase().trim();
+      final title = p.title.toLowerCase().trim();
+      final desc = (p.description ?? '').toLowerCase().trim();
+
+      // 1. Property Type Category
+      if (_selectedCategory == 'PG') {
+        final isPg = t == 'pg' ||
+            t == 'hostel' ||
+            t.contains('pg') ||
+            t.contains('hostel') ||
+            t.contains('co-living') ||
+            title.contains('pg') ||
+            title.contains('hostel') ||
+            desc.contains('pg') ||
+            desc.contains('hostel') ||
+            (p.genderPreference != null && p.genderPreference!.isNotEmpty) ||
+            (p.sharingType != null && p.sharingType!.isNotEmpty) ||
+            (p.foodDetails != null && p.foodDetails!.isNotEmpty) ||
+            p.perDayWithFood != null;
+        if (!isPg) return false;
+      } else if (_selectedCategory == 'Flat') {
+        final isFlat = (t == 'rental' || t == 'flat' || t == 'apartment') &&
+            (title.contains('flat') || title.contains('apartment') || (p.bhkType?.toLowerCase().contains('bhk') ?? false));
+        if (!isFlat) return false;
+      } else if (_selectedCategory == 'House') {
+        final isHouse = (t == 'rental' || t == 'house' || t == 'villa') &&
+            (title.contains('house') || title.contains('villa') || title.contains('independent') || t == 'rental');
+        if (!isHouse) return false;
+      } else if (_selectedCategory == 'Buy') {
+        final isBuy = t == 'buy' || t == 'sale' || t == 'plot' || t == 'land' || title.contains('sale') || title.contains('buy');
+        if (!isBuy) return false;
+      } else if (_selectedCategory == 'Office') {
+        final isOff = title.contains('office') || title.contains('commercial') || t.contains('commercial');
+        if (!isOff) return false;
+      } else if (_selectedCategory == 'Land') {
+        final isLand = title.contains('plot') || title.contains('land') || t == 'plot';
+        if (!isLand) return false;
       }
 
-      // 2. Distance Filter
-      if (_filterMaxDistanceKm != null && widget.currentPosition != null) {
-        double distInMeters = Geolocator.distanceBetween(
-          widget.currentPosition!.latitude,
-          widget.currentPosition!.longitude,
-          p.latitude,
-          p.longitude,
-        );
-        if (distInMeters > (_filterMaxDistanceKm! * 1000)) return false;
+      // 2. Location filter
+      if (_selectedLocation != null && _selectedLocation!.isNotEmpty && _selectedLocation != 'All Locations') {
+        final loc = _selectedLocation!.toLowerCase();
+        if (!p.locationStr.toLowerCase().contains(loc) && !title.contains(loc)) {
+          return false;
+        }
       }
 
-      // 3. Price Filter
-      if (_filterMaxPrice != null) {
-        if (_parsePrice(p.price) > _filterMaxPrice!) return false;
+      // 3. Budget Range
+      final price = _parsePrice(p.price);
+      if (price > 0) {
+        if (price < _budgetRange.start || price > _budgetRange.end) {
+          return false;
+        }
       }
 
-      // 4. BHK Filter
-      if (_filterBhk != null) {
-        final b = _filterBhk!.toLowerCase();
-        if (b == '1 bhk' && !p.beds.toLowerCase().contains('1 bhk') && !(p.bhkType?.toLowerCase().contains('1') ?? false)) {
+      // 4. BHK Filter (Only for Flats / Houses / Rentals)
+      if (_selectedBhk != null && _selectedCategory != 'PG') {
+        final b = _selectedBhk!.toLowerCase();
+        if (b.contains('1') && !p.beds.toLowerCase().contains('1') && !(p.bhkType?.toLowerCase().contains('1') ?? false)) {
           return false;
-        } else if (b == '2 bhk' && !p.beds.toLowerCase().contains('2 bhk') && !(p.bhkType?.toLowerCase().contains('2') ?? false)) {
+        } else if (b.contains('2') && !p.beds.toLowerCase().contains('2') && !(p.bhkType?.toLowerCase().contains('2') ?? false)) {
           return false;
-        } else if (b == '3 bhk' && !p.beds.toLowerCase().contains('3 bhk') && !(p.bhkType?.toLowerCase().contains('3') ?? false)) {
+        } else if (b.contains('3') && !p.beds.toLowerCase().contains('3') && !(p.bhkType?.toLowerCase().contains('3') ?? false)) {
           return false;
-        } else if (b == '4+ bhk') {
+        } else if (b.contains('4')) {
           final bedsStr = p.beds.toLowerCase();
           if (!bedsStr.contains('4') && !bedsStr.contains('5') && !(p.bhkType?.toLowerCase().contains('4') ?? false)) {
             return false;
@@ -142,37 +210,124 @@ class _SearchScreenState extends State<SearchScreen> {
         }
       }
 
-      // 5. AC Filter
-      if (_filterHasAc) {
-        final acInfo = (p.acType ?? '').toLowerCase();
-        final hasAc = acInfo.contains('ac') || p.features.any((f) => f.toLowerCase().contains('ac'));
-        if (!hasAc) return false;
+      // 5. Bathrooms
+      if (_selectedBathrooms != null && _selectedCategory != 'PG') {
+        final reqBaths = int.tryParse(_selectedBathrooms!.replaceAll(RegExp(r'[^0-9]'), '')) ?? 1;
+        final propBaths = _parseBaths(p.baths);
+        if (propBaths < reqBaths) return false;
       }
 
-      // 6. Food Filter
-      if (_filterHasFood) {
-        final foodInfo = (p.foodDetails ?? '').toLowerCase();
-        final hasFood = foodInfo.contains('food') || foodInfo.contains('meal') || p.perDayWithFood != null;
-        if (!hasFood) return false;
+      // 6. Sharing Type (PG/Hostel)
+      if (_selectedSharing != null) {
+        final sh = (p.sharingType ?? p.beds).toLowerCase();
+        if (_selectedSharing == 'Single Room' && !sh.contains('single') && !sh.contains('1')) return false;
+        if (_selectedSharing == '2 Sharing' && !sh.contains('2')) return false;
+        if (_selectedSharing == '3 Sharing' && !sh.contains('3')) return false;
+        if (_selectedSharing == '4+ Sharing' && !sh.contains('4') && !sh.contains('5')) return false;
       }
 
-      // 7. Furnished Filter
-      if (_filterFurnished) {
-        final furn = (p.furnishingStatus ?? '').toLowerCase();
-        if (!furn.contains('furnish') || furn.contains('unfurnished')) return false;
+      // 7. Gender Preference (Hostel/PG)
+      if (_selectedGender != null) {
+        final g = (p.genderPreference ?? '').toLowerCase();
+        if (_selectedGender == 'Boys Only' && !g.contains('boy') && !g.contains('male')) return false;
+        if (_selectedGender == 'Girls Only' && !g.contains('girl') && !g.contains('female') && !g.contains('women')) return false;
+        if (_selectedGender == 'Co-Living' && !g.contains('co-living') && !g.contains('coliving') && !g.contains('any')) return false;
       }
 
-      // 8. Text query filter
+      // 8. Food Type (Hostel/PG)
+      if (_selectedFoodType != null) {
+        final fd = (p.foodDetails ?? '').toLowerCase();
+        if (_selectedFoodType == '3 Meals' && !fd.contains('3')) return false;
+        if (_selectedFoodType == '2 Meals' && !fd.contains('2')) return false;
+        if (_selectedFoodType == 'Veg Only' && !fd.contains('veg')) return false;
+        if (_selectedFoodType == 'Self Cooking' && !fd.contains('self') && !fd.contains('cook')) return false;
+      }
+
+      // 9. Gate Rules / Curfew
+      if (_selectedCurfew != null) {
+        final gr = (p.gateRules ?? '').toLowerCase();
+        if (_selectedCurfew == 'No Curfew' && !gr.contains('no curfew') && !gr.contains('24')) return false;
+      }
+
+      // 10. Rental Features: Pet friendly, Separate Meter, Zero Seepage
+      if (_petFriendly) {
+        final pet = (p.petPolicy ?? '').toLowerCase();
+        if (!pet.contains('pet') || pet.contains('no pet')) return false;
+      }
+      if (_separateMeter) {
+        final mtr = (p.meterStatus ?? '').toLowerCase();
+        if (!mtr.contains('meter') && !mtr.contains('eb')) return false;
+      }
+      if (_zeroSeepage) {
+        final sep = (p.seepageStatus ?? '').toLowerCase();
+        if (!sep.contains('seepage') && !sep.contains('paint')) return false;
+      }
+
+      // 11. Amenities
+      for (var amenity in _selectedAmenities) {
+        if (amenity == 'Parking') {
+          final hasP = (p.parkingInfo ?? '').isNotEmpty || p.features.any((f) => f.toLowerCase().contains('park'));
+          if (!hasP) return false;
+        } else if (amenity == 'Power Backup') {
+          final hasPb = (p.powerBackup ?? '').isNotEmpty || p.features.any((f) => f.toLowerCase().contains('power') || f.toLowerCase().contains('inverter'));
+          if (!hasPb) return false;
+        } else if (amenity == 'Lift') {
+          final hasLift = p.features.any((f) => f.toLowerCase().contains('lift') || f.toLowerCase().contains('elevator'));
+          if (!hasLift) return false;
+        } else if (amenity == 'AC') {
+          final hasAc = (p.acType ?? '').toLowerCase().contains('ac') || p.features.any((f) => f.toLowerCase().contains('ac'));
+          if (!hasAc) return false;
+        } else if (amenity == 'Food') {
+          final hasFood = (p.foodDetails ?? '').isNotEmpty || p.perDayWithFood != null;
+          if (!hasFood) return false;
+        } else if (amenity == 'WiFi') {
+          final hasWifi = p.features.any((f) => f.toLowerCase().contains('wifi') || f.toLowerCase().contains('internet'));
+          if (!hasWifi) return false;
+        } else if (amenity == 'Geyser') {
+          final hasG = p.features.any((f) => f.toLowerCase().contains('geyser') || f.toLowerCase().contains('hot water'));
+          if (!hasG) return false;
+        } else if (amenity == 'CCTV') {
+          final hasC = (p.securityInfo ?? '').toLowerCase().contains('cctv') || p.features.any((f) => f.toLowerCase().contains('cctv') || f.toLowerCase().contains('guard'));
+          if (!hasC) return false;
+        } else if (amenity == 'Attached Bath') {
+          final hasB = (p.bathroomType ?? '').toLowerCase().contains('attached') || p.features.any((f) => f.toLowerCase().contains('attached'));
+          if (!hasB) return false;
+        }
+      }
+
+      // 12. Furnishing Status
+      if (_selectedFurnishing != null) {
+        final f = (p.furnishingStatus ?? '').toLowerCase();
+        if (_selectedFurnishing == 'Fully Furnished' && !f.contains('fully')) return false;
+        if (_selectedFurnishing == 'Semi Furnished' && !f.contains('semi')) return false;
+        if (_selectedFurnishing == 'Unfurnished' && (!f.contains('unfurnished') && f.isNotEmpty)) return false;
+      }
+
+      // 13. Preferred Tenants
+      if (_selectedTenant != null && _selectedTenant != 'Any') {
+        final ten = (p.tenantPreference ?? p.genderPreference ?? '').toLowerCase();
+        if (_selectedTenant == 'Bachelors' && !ten.contains('bachelor') && !ten.contains('boys') && !ten.contains('girls') && !ten.contains('any')) return false;
+        if (_selectedTenant == 'Family' && !ten.contains('family') && !ten.contains('any')) return false;
+        if (_selectedTenant == 'Company' && !ten.contains('company') && !ten.contains('commercial')) return false;
+      }
+
+      // 14. Area Range
+      if (_areaRange.start > 0 || _areaRange.end < 10000) {
+        final areaVal = _parseArea(p.area);
+        if (areaVal > 0 && (areaVal < _areaRange.start || areaVal > _areaRange.end)) return false;
+      }
+
+      // 15. Text query filter
       if (query.isEmpty) return true;
 
-      final titleMatch = p.title.toLowerCase().contains(query);
+      final titleMatch = title.contains(query);
       final locationMatch = p.locationStr.toLowerCase().contains(query);
       final priceMatch = p.price.toLowerCase().contains(query);
       final bedsMatch = p.beds.toLowerCase().contains(query);
-      final typeMatch = p.type.toLowerCase().contains(query);
+      final typeMatch = t.contains(query);
       final bhkMatch = (p.bhkType ?? '').toLowerCase().contains(query);
       final featuresMatch = p.features.any((f) => f.toLowerCase().contains(query));
-      final tagsMatch = p.tags.any((t) => t.toLowerCase().contains(query));
+      final tagsMatch = p.tags.any((tItem) => tItem.toLowerCase().contains(query));
 
       return titleMatch || locationMatch || priceMatch || bedsMatch || typeMatch || bhkMatch || featuresMatch || tagsMatch;
     }).toList();
@@ -203,20 +358,21 @@ class _SearchScreenState extends State<SearchScreen> {
     return list;
   }
 
-  String _formatDistance(PropertyModel property) {
-    if (widget.currentPosition == null) return '';
-    double distanceInMeters = Geolocator.distanceBetween(
-      widget.currentPosition!.latitude,
-      widget.currentPosition!.longitude,
-      property.latitude,
-      property.longitude,
-    );
-    if (distanceInMeters < 1000) {
-      return '${distanceInMeters.round()}m away';
-    } else {
-      return '${(distanceInMeters / 1000).toStringAsFixed(1)}km away';
+
+
+  String _formatBudgetLabel(double value) {
+    if (value <= 0) return '₹0';
+    if (value >= 10000000) {
+      return '₹${(value / 10000000).toStringAsFixed(value % 10000000 == 0 ? 0 : 1)} Cr';
+    } else if (value >= 100000) {
+      return '₹${(value / 100000).toStringAsFixed(value % 100000 == 0 ? 0 : 1)} Lakh';
+    } else if (value >= 1000) {
+      return '₹${(value / 1000).toStringAsFixed(0)}K';
     }
+    return '₹${value.toStringAsFixed(0)}';
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -225,23 +381,25 @@ class _SearchScreenState extends State<SearchScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
-      floatingActionButton: _buildFloatingFilterButton(isDark),
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // Top App Bar & Search Input
+            // Row 1: Top Bar [Back] - [Discover] - [Filters Icon with badge]
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+              child: _buildTopBar(isDark),
+            ),
+
+            // Row 2: Search Input Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildSearchBar(isDark),
             ),
 
-            // Category Tabs ('All', 'Hostel / PG', 'Rental', 'Buy / Sale')
-            _buildCategoryTabs(isDark),
-
             const SizedBox(height: 4),
 
-            // Sort & Results Count Bar (No black divider line)
+            // Row 3: Results Count & Sort Bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               child: Row(
@@ -260,17 +418,39 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
-            // Main Content: Popular Suggestions OR Results List
+            // Main Content: Rich Property Cards OR Empty Suggestions
             Expanded(
               child: results.isEmpty
                   ? _buildEmptyState(isDark)
                   : ListView.separated(
                       physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 95),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
                       itemCount: results.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 14),
+                      separatorBuilder: (context, index) => const SizedBox(height: 16),
                       itemBuilder: (context, index) {
-                        return _buildPropertyCard(results[index], isDark);
+                        final prop = results[index];
+                        double? distance;
+                        if (widget.currentPosition != null) {
+                          distance = Geolocator.distanceBetween(
+                            widget.currentPosition!.latitude,
+                            widget.currentPosition!.longitude,
+                            prop.latitude,
+                            prop.longitude,
+                          );
+                        }
+                        return PropertyCard(
+                          property: prop,
+                          distanceInMeters: distance,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PropertyDetailsScreen(property: prop),
+                              ),
+                            );
+                          },
+                        );
                       },
                     ),
             ),
@@ -280,73 +460,12 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildFloatingFilterButton(bool isDark) {
+  /// Top Row: Back Button on Left, "Discover" in Center, Filter Button on Right
+  Widget _buildTopBar(bool isDark) {
     final hasFilters = _hasActiveFilters;
 
-    return BouncingButton(
-      scaleFactor: 0.93,
-      onTap: () {
-        HapticFeedback.selectionClick();
-        _openFiltersBottomSheet();
-      },
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.primaryYellow : Colors.black,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: isDark
-                      ? AppTheme.primaryYellow.withValues(alpha: 0.35)
-                      : Colors.black.withValues(alpha: 0.30),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              Iconsax.setting_4,
-              size: 26,
-              color: isDark ? Colors.black : Colors.white,
-            ),
-          ),
-          if (hasFilters)
-            Positioned(
-              top: -2,
-              right: -2,
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: const BoxDecoration(
-                  color: Colors.redAccent,
-                  shape: BoxShape.circle,
-                ),
-                constraints: const BoxConstraints(
-                  minWidth: 20,
-                  minHeight: 20,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '$_activeFilterCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar(bool isDark) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Back Button
         BouncingButton(
@@ -355,11 +474,11 @@ class _SearchScreenState extends State<SearchScreen> {
             Navigator.pop(context);
           },
           child: Container(
-            width: 46,
-            height: 46,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: isDark ? AppTheme.darkCard : Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(15),
               border: Border.all(
                 color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
                 width: 1,
@@ -380,168 +499,170 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 10),
 
-        // Search Input Box
-        Expanded(
-          child: Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkCard : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+        // Title: Discover
+        Text(
+          'Discover',
+          style: TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.w800,
+            color: isDark ? Colors.white : const Color(0xFF141416),
+            letterSpacing: -0.5,
+          ),
+        ),
+
+        // Filter Icon Button (Top Right)
+        BouncingButton(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            _openAdvancedFiltersSheet();
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: hasFilters
+                      ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                      : (isDark ? AppTheme.darkCard : Colors.white),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: hasFilters
+                        ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                        : (isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06)),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: hasFilters
+                          ? (isDark ? AppTheme.primaryYellow.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.15))
+                          : Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Iconsax.search_normal_1,
+                alignment: Alignment.center,
+                child: Icon(
+                  Iconsax.setting_4,
                   size: 20,
-                  color: isDark ? AppTheme.primaryYellow : Colors.black87,
+                  color: hasFilters
+                      ? (isDark ? Colors.black : Colors.white)
+                      : (isDark ? Colors.white : Colors.black87),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    focusNode: _focusNode,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : Colors.black87,
+              ),
+              if (hasFilters)
+                Positioned(
+                  top: -3,
+                  right: -3,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
                     ),
-                    decoration: InputDecoration(
-                      hintText: 'Search city, area, 2 BHK, hostel, buy...',
-                      hintStyle: TextStyle(
-                        fontSize: 13.5,
-                        color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
-                        fontWeight: FontWeight.normal,
-                      ),
-                      border: InputBorder.none,
-                      isDense: true,
+                    constraints: const BoxConstraints(
+                      minWidth: 18,
+                      minHeight: 18,
                     ),
-                    onChanged: (val) {
-                      setState(() {});
-                    },
-                  ),
-                ),
-                if (_searchController.text.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      _searchController.clear();
-                      setState(() {});
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(4.0),
-                      child: Icon(
-                        Iconsax.close_circle5,
-                        size: 19,
-                        color: isDark ? Colors.white54 : Colors.grey.shade500,
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$_activeFilterCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildCategoryTabs(bool isDark) {
-    final categories = [
-      {'label': 'All', 'key': 'All', 'icon': Iconsax.category},
-      {'label': 'Hostel / PG', 'key': 'PG', 'icon': Iconsax.building_3},
-      {'label': 'Rental', 'key': 'Rental', 'icon': Iconsax.home_2},
-      {'label': 'Buy / Sale', 'key': 'Buy', 'icon': Iconsax.shop},
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+  /// Second Row: Search Input Bar
+  Widget _buildSearchBar(bool isDark) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
-        children: categories.map((cat) {
-          final isSelected = _selectedCategory == cat['key'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: BouncingButton(
-              scaleFactor: 0.96,
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedCategory = cat['key'] as String);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                      : (isDark ? AppTheme.darkCard : Colors.white),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: isSelected
-                        ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                        : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
-                    width: isSelected ? 1.5 : 1,
-                  ),
-                  boxShadow: [
-                    if (isSelected)
-                      BoxShadow(
-                        color: isDark
-                            ? AppTheme.primaryYellow.withValues(alpha: 0.25)
-                            : Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                  ],
+        children: [
+          Icon(
+            Iconsax.search_normal_1,
+            size: 20,
+            color: isDark ? AppTheme.primaryYellow : Colors.black87,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              focusNode: _focusNode,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search city, area, 2 BHK, hostel, buy...',
+                hintStyle: TextStyle(
+                  fontSize: 13.5,
+                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
+                  fontWeight: FontWeight.normal,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      cat['icon'] as IconData,
-                      size: 15,
-                      color: isSelected
-                          ? (isDark ? Colors.black : Colors.white)
-                          : (isDark ? AppTheme.darkTextSecondary : Colors.black87),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      cat['label'] as String,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected
-                            ? (isDark ? Colors.black : Colors.white)
-                            : (isDark ? Colors.white : Colors.black87),
-                      ),
-                    ),
-                  ],
+                border: InputBorder.none,
+                isDense: true,
+              ),
+              onChanged: (val) {
+                setState(() {});
+              },
+            ),
+          ),
+          if (_searchController.text.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                _searchController.clear();
+                setState(() {});
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Icon(
+                  Iconsax.close_circle5,
+                  size: 19,
+                  color: isDark ? Colors.white54 : Colors.grey.shade500,
                 ),
               ),
             ),
-          );
-        }).toList(),
+        ],
       ),
     );
   }
 
+  /// Sort Selector
   Widget _buildSortButton(bool isDark) {
-    String label = 'Closest';
+    String label = 'Relevance';
     if (_sortBy == 'price_asc') label = 'Price: Low';
     if (_sortBy == 'price_desc') label = 'Price: High';
-    if (_sortBy == 'relevance') label = 'Relevance';
+    if (_sortBy == 'distance') label = 'Closest';
 
     return GestureDetector(
       onTap: _showSortBottomSheet,
@@ -645,228 +766,610 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  void _openFiltersBottomSheet() {
+  // ══════════════════════════════════════════════════════════════════════════
+  // ADVANCED FILTERS MODAL (MATCHING UPLOADED USER SCREENSHOTS)
+  // ══════════════════════════════════════════════════════════════════════════
+  void _openAdvancedFiltersSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    String? tempBhk = _filterBhk;
-    double? tempPrice = _filterMaxPrice;
-    double? tempDist = _filterMaxDistanceKm;
-    bool tempAc = _filterHasAc;
-    bool tempFood = _filterHasFood;
-    bool tempFurnished = _filterFurnished;
+    String tempCategory = _selectedCategory;
+    String? tempLocation = _selectedLocation;
+    RangeValues tempBudget = _budgetRange;
+    String? tempBhk = _selectedBhk;
+    String? tempBath = _selectedBathrooms;
+    String? tempSharing = _selectedSharing;
+    String? tempGender = _selectedGender;
+    final Set<String> tempAmenities = Set.from(_selectedAmenities);
+    String? tempFurnishing = _selectedFurnishing;
+    String? tempTenant = _selectedTenant;
+    String? tempAvailability = _selectedAvailability;
+    String? tempFoodType = _selectedFoodType;
+    String? tempCurfew = _selectedCurfew;
+    bool tempPet = _petFriendly;
+    bool tempMeter = _separateMeter;
+    bool tempSeepage = _zeroSeepage;
+    RangeValues tempArea = _areaRange;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
+      backgroundColor: isDark ? const Color(0xFF141416) : Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Container(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.82,
+              height: MediaQuery.of(context).size.height * 0.90,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF141416) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Drag Handle
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4.5,
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white24 : Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Filter Properties',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          setSheetState(() {
-                            tempBhk = null;
-                            tempPrice = null;
-                            tempDist = null;
-                            tempAc = false;
-                            tempFood = false;
-                            tempFurnished = false;
-                          });
-                        },
-                        child: Text(
-                          'Reset All',
-                          style: TextStyle(
-                            color: isDark ? AppTheme.primaryYellow : Colors.black87,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Divider(height: 1),
-
-                  // Filter Content
-                  Expanded(
-                    child: ListView(
-                      physics: const BouncingScrollPhysics(),
+                  // Top Navigation Header: [ <- ]   Filters   Reset (No divider line)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const SizedBox(height: 14),
-
-                        // BHK Filter
-                        _buildFilterSectionTitle('BHK / Layout Configuration'),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: ['1 BHK', '2 BHK', '3 BHK', '4+ BHK'].map((bhk) {
-                            final isSel = tempBhk == bhk;
-                            return _buildSelectableChip(
-                              label: bhk,
-                              isSelected: isSel,
-                              isDark: isDark,
-                              onTap: () {
-                                setSheetState(() => tempBhk = isSel ? null : bhk);
-                              },
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 18),
-
-                        // Budget Filter
-                        _buildFilterSectionTitle('Maximum Budget'),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            {'label': 'Under ₹5,000', 'val': 5000.0},
-                            {'label': 'Under ₹10,000', 'val': 10000.0},
-                            {'label': 'Under ₹20,000', 'val': 20000.0},
-                            {'label': 'Under ₹50,000', 'val': 50000.0},
-                          ].map((item) {
-                            final isSel = tempPrice == item['val'];
-                            return _buildSelectableChip(
-                              label: item['label'] as String,
-                              isSelected: isSel,
-                              isDark: isDark,
-                              onTap: () {
-                                setSheetState(() => tempPrice = isSel ? null : item['val'] as double);
-                              },
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 18),
-
-                        // Distance Filter
-                        if (widget.currentPosition != null) ...[
-                          _buildFilterSectionTitle('Distance / Radius'),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              {'label': 'Within 2 km', 'val': 2.0},
-                              {'label': 'Within 5 km', 'val': 5.0},
-                              {'label': 'Within 10 km', 'val': 10.0},
-                            ].map((item) {
-                              final isSel = tempDist == item['val'];
-                              return _buildSelectableChip(
-                                label: item['label'] as String,
-                                isSelected: isSel,
-                                isDark: isDark,
-                                onTap: () {
-                                  setSheetState(() => tempDist = isSel ? null : item['val'] as double);
-                                },
-                              );
-                            }).toList(),
+                        // Back / Close Icon
+                        BouncingButton(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.pop(context);
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Icon(
+                              Iconsax.arrow_left_2,
+                              size: 22,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
                           ),
-                          const SizedBox(height: 18),
-                        ],
-
-                        // Amenities & Preferences
-                        _buildFilterSectionTitle('Features & Preferences'),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _buildSelectableChip(
-                              label: 'AC Rooms',
-                              isSelected: tempAc,
-                              isDark: isDark,
-                              onTap: () {
-                                setSheetState(() => tempAc = !tempAc);
-                              },
-                            ),
-                            _buildSelectableChip(
-                              label: 'Food Included',
-                              isSelected: tempFood,
-                              isDark: isDark,
-                              onTap: () {
-                                setSheetState(() => tempFood = !tempFood);
-                              },
-                            ),
-                            _buildSelectableChip(
-                              label: 'Furnished',
-                              isSelected: tempFurnished,
-                              isDark: isDark,
-                              onTap: () {
-                                setSheetState(() => tempFurnished = !tempFurnished);
-                              },
-                            ),
-                          ],
                         ),
-                        const SizedBox(height: 20),
+
+                        // Title
+                        const Text(
+                          'Filters',
+                          style: TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+
+                        // Reset Action
+                        GestureDetector(
+                          onTap: () {
+                            setSheetState(() {
+                              tempCategory = 'All';
+                              tempLocation = null;
+                              tempBudget = const RangeValues(0, 10000000);
+                              tempBhk = null;
+                              tempBath = null;
+                              tempSharing = null;
+                              tempGender = null;
+                              tempAmenities.clear();
+                              tempFurnishing = null;
+                              tempTenant = null;
+                              tempAvailability = null;
+                              tempFoodType = null;
+                              tempCurfew = null;
+                              tempPet = false;
+                              tempMeter = false;
+                              tempSeepage = false;
+                              tempArea = const RangeValues(0, 10000);
+                            });
+                          },
+                          child: const Text(
+                            'Reset',
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFEF4444),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
 
-                  // Apply Button
-                  const SizedBox(height: 12),
-                  BouncingButton(
-                    onTap: () {
-                      setState(() {
-                        _filterBhk = tempBhk;
-                        _filterMaxPrice = tempPrice;
-                        _filterMaxDistanceKm = tempDist;
-                        _filterHasAc = tempAc;
-                        _filterHasFood = tempFood;
-                        _filterFurnished = tempFurnished;
-                      });
-                      Navigator.pop(context);
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppTheme.primaryYellow : Colors.black,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Apply Filters',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.black : Colors.white,
+                  // Scrollable Filter Sections
+                  Expanded(
+                    child: ListView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      children: [
+                        // 1. LOCATION DROPDOWN
+                        _buildSectionHeader('Location'),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => _openLocationPickerSheet(context, (loc) {
+                            setSheetState(() => tempLocation = loc);
+                          }),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppTheme.darkCard : const Color(0xFFF5F5F8),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  tempLocation ?? 'Select location',
+                                  style: TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: tempLocation != null ? FontWeight.w700 : FontWeight.normal,
+                                    color: tempLocation != null
+                                        ? (isDark ? Colors.white : Colors.black87)
+                                        : (isDark ? Colors.white54 : Colors.grey.shade500),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: isDark ? Colors.white54 : Colors.grey.shade600,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+
+                        // 2. BUDGET RANGE SLIDER
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildSectionHeader('Budget Range'),
+                            Text(
+                              '${_formatBudgetLabel(tempBudget.start)} – ${_formatBudgetLabel(tempBudget.end)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? AppTheme.primaryYellow : Colors.green.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        RangeSlider(
+                          values: tempBudget,
+                          min: 0,
+                          max: 10000000,
+                          divisions: 100,
+                          activeColor: isDark ? AppTheme.primaryYellow : const Color(0xFF10B981),
+                          inactiveColor: isDark ? Colors.white12 : Colors.grey.shade300,
+                          onChanged: (vals) {
+                            setSheetState(() => tempBudget = vals);
+                          },
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('₹0', style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.grey)),
+                              Text('₹1 Cr', style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.grey)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+
+                        // 3. PROPERTY TYPE CHIPS
+                        _buildSectionHeader('Property Type'),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            {'label': 'All Properties', 'key': 'All'},
+                            {'label': 'Hostel / PG', 'key': 'PG'},
+                            {'label': 'Flat / Apartment', 'key': 'Flat'},
+                            {'label': 'House / Villa', 'key': 'House'},
+                            {'label': 'Buy / Sale', 'key': 'Buy'},
+                            {'label': 'Office Space', 'key': 'Office'},
+                            {'label': 'Land / Plot', 'key': 'Land'},
+                          ].map((item) {
+                            final isSel = tempCategory == item['key'];
+                            return _buildPillChip(
+                              label: item['label'] as String,
+                              isSelected: isSel,
+                              isDark: isDark,
+                              onTap: () {
+                                setSheetState(() => tempCategory = item['key'] as String);
+                              },
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 22),
+
+                        // 4. OCCUPANCY TYPE (BHK) - Show for general / rentals
+                        if (tempCategory != 'PG') ...[
+                          _buildSectionHeader('Occupancy Type (BHK)'),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['1 BHK', '2 BHK', '3 BHK', '4+ BHK'].map((bhk) {
+                              final isSel = tempBhk == bhk;
+                              return _buildPillChip(
+                                label: bhk,
+                                isSelected: isSel,
+                                isDark: isDark,
+                                onTap: () {
+                                  setSheetState(() => tempBhk = isSel ? null : bhk);
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 22),
+
+                          // 5. BATHROOMS
+                          _buildSectionHeader('Bathrooms'),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['1+ Bath', '2+ Bath', '3+ Bath', '4+ Bath'].map((bath) {
+                              final isSel = tempBath == bath;
+                              return _buildPillChip(
+                                label: bath,
+                                isSelected: isSel,
+                                isDark: isDark,
+                                onTap: () {
+                                  setSheetState(() => tempBath = isSel ? null : bath);
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 22),
+                        ],
+
+                        // 6. GROUPED CARD (Amenities, Furnishing, Tenants, Availability & Specifics)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppTheme.darkCard : const Color(0xFFF9F9FC),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.05),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Amenities
+                              _buildSubHeader('Amenities & Features'),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  {'label': 'Parking', 'key': 'Parking'},
+                                  {'label': 'Power Backup', 'key': 'Power Backup'},
+                                  {'label': 'Lift / Elevator', 'key': 'Lift'},
+                                  {'label': 'AC Rooms', 'key': 'AC'},
+                                  {'label': 'Food / Meals Included', 'key': 'Food'},
+                                  {'label': 'High Speed WiFi', 'key': 'WiFi'},
+                                  {'label': 'Attached Bath', 'key': 'Attached Bath'},
+                                  {'label': 'Hot Water / Geyser', 'key': 'Geyser'},
+                                  {'label': '24/7 CCTV & Security', 'key': 'CCTV'},
+                                ].map((am) {
+                                  final isSel = tempAmenities.contains(am['key']);
+                                  return _buildPillChip(
+                                    label: am['label'] as String,
+                                    isSelected: isSel,
+                                    isDark: isDark,
+                                    onTap: () {
+                                      setSheetState(() {
+                                        if (isSel) {
+                                          tempAmenities.remove(am['key']);
+                                        } else {
+                                          tempAmenities.add(am['key'] as String);
+                                        }
+                                      });
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(height: 1),
+                              const SizedBox(height: 16),
+
+                              // Hostel / PG Specifics: Sharing & Gender & Food
+                              _buildSubHeader('Hostel & PG Preferences'),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  // Gender
+                                  ...['Boys Only', 'Girls Only', 'Co-Living'].map((g) {
+                                    final isSel = tempGender == g;
+                                    return _buildPillChip(
+                                      label: g,
+                                      isSelected: isSel,
+                                      isDark: isDark,
+                                      onTap: () => setSheetState(() => tempGender = isSel ? null : g),
+                                    );
+                                  }),
+                                  // Sharing
+                                  ...['Single Room', '2 Sharing', '3 Sharing', '4+ Sharing'].map((sh) {
+                                    final isSel = tempSharing == sh;
+                                    return _buildPillChip(
+                                      label: sh,
+                                      isSelected: isSel,
+                                      isDark: isDark,
+                                      onTap: () => setSheetState(() => tempSharing = isSel ? null : sh),
+                                    );
+                                  }),
+                                  // Food
+                                  ...['3 Meals', '2 Meals', 'Veg Only', 'Self Cooking'].map((fd) {
+                                    final isSel = tempFoodType == fd;
+                                    return _buildPillChip(
+                                      label: fd,
+                                      isSelected: isSel,
+                                      isDark: isDark,
+                                      onTap: () => setSheetState(() => tempFoodType = isSel ? null : fd),
+                                    );
+                                  }),
+                                  // Curfew
+                                  _buildPillChip(
+                                    label: 'No Curfew (24x7 Entry)',
+                                    isSelected: tempCurfew == 'No Curfew',
+                                    isDark: isDark,
+                                    onTap: () => setSheetState(() => tempCurfew = tempCurfew == 'No Curfew' ? null : 'No Curfew'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(height: 1),
+                              const SizedBox(height: 16),
+
+                              // Furnishing Status
+                              _buildSubHeader('Furnishing Status'),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: ['Fully Furnished', 'Semi Furnished', 'Unfurnished'].map((furn) {
+                                  final isSel = tempFurnishing == furn;
+                                  return _buildPillChip(
+                                    label: furn,
+                                    isSelected: isSel,
+                                    isDark: isDark,
+                                    onTap: () {
+                                      setSheetState(() => tempFurnishing = isSel ? null : furn);
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(height: 1),
+                              const SizedBox(height: 16),
+
+                              // Preferred Tenants
+                              _buildSubHeader('Preferred Tenants'),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: ['Any', 'Bachelors', 'Family', 'Company'].map((ten) {
+                                  final isSel = tempTenant == ten;
+                                  return _buildPillChip(
+                                    label: ten,
+                                    isSelected: isSel,
+                                    isDark: isDark,
+                                    onTap: () {
+                                      setSheetState(() => tempTenant = isSel ? null : ten);
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(height: 1),
+                              const SizedBox(height: 16),
+
+                              // Available From
+                              _buildSubHeader('Available From'),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: ['Immediately', 'Within 1 Month', '1-3 Months', '3-6 Months', '6 Months+'].map((av) {
+                                  final isSel = tempAvailability == av;
+                                  return _buildPillChip(
+                                    label: av,
+                                    isSelected: isSel,
+                                    isDark: isDark,
+                                    onTap: () {
+                                      setSheetState(() => tempAvailability = isSel ? null : av);
+                                    },
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(height: 1),
+                              const SizedBox(height: 16),
+
+                              // House / Rental Specifics (Pets, Sub-meter, Paint)
+                              _buildSubHeader('House & Rental Specifics'),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _buildPillChip(
+                                    label: 'Pets Allowed 🐾',
+                                    isSelected: tempPet,
+                                    isDark: isDark,
+                                    onTap: () => setSheetState(() => tempPet = !tempPet),
+                                  ),
+                                  _buildPillChip(
+                                    label: 'Separate EB Sub-Meter ⚡',
+                                    isSelected: tempMeter,
+                                    isDark: isDark,
+                                    onTap: () => setSheetState(() => tempMeter = !tempMeter),
+                                  ),
+                                  _buildPillChip(
+                                    label: 'Zero Seepage / Fresh Paint 🎨',
+                                    isSelected: tempSeepage,
+                                    isDark: isDark,
+                                    onTap: () => setSheetState(() => tempSeepage = !tempSeepage),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+
+                        // 7. COVERED AREA (SQFT)
+                        if (tempCategory != 'PG') ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildSectionHeader('Covered Area (Sqft)'),
+                              Text(
+                                '${tempArea.start.round()} sqft – ${tempArea.end.round()} sqft',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? AppTheme.primaryYellow : Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          RangeSlider(
+                            values: tempArea,
+                            min: 0,
+                            max: 10000,
+                            divisions: 50,
+                            activeColor: isDark ? AppTheme.primaryYellow : const Color(0xFF10B981),
+                            inactiveColor: isDark ? Colors.white12 : Colors.grey.shade300,
+                            onChanged: (vals) {
+                              setSheetState(() => tempArea = vals);
+                            },
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('0 sqft', style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.grey)),
+                                Text('10,000 sqft', style: TextStyle(fontSize: 12, color: isDark ? Colors.white38 : Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Bottom Pinned Actions: [ Cancel ]   [ Apply ]
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF141416) : Colors.white,
+                      border: Border(
+                        top: BorderSide(
+                          color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
                         ),
                       ),
                     ),
+                    child: Row(
+                      children: [
+                        // Cancel Button
+                        Expanded(
+                          child: BouncingButton(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
+                                  color: isDark ? Colors.white24 : Colors.grey.shade300,
+                                  width: 1.5,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white70 : Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+
+                        // Apply Button
+                        Expanded(
+                          child: BouncingButton(
+                            onTap: () {
+                              setState(() {
+                                _selectedCategory = tempCategory;
+                                _selectedLocation = tempLocation;
+                                _budgetRange = tempBudget;
+                                _selectedBhk = tempBhk;
+                                _selectedBathrooms = tempBath;
+                                _selectedSharing = tempSharing;
+                                _selectedGender = tempGender;
+                                _selectedAmenities.clear();
+                                _selectedAmenities.addAll(tempAmenities);
+                                _selectedFurnishing = tempFurnishing;
+                                _selectedTenant = tempTenant;
+                                _selectedAvailability = tempAvailability;
+                                _selectedFoodType = tempFoodType;
+                                _selectedCurfew = tempCurfew;
+                                _petFriendly = tempPet;
+                                _separateMeter = tempMeter;
+                                _zeroSeepage = tempSeepage;
+                                _areaRange = tempArea;
+                              });
+                              Navigator.pop(context);
+                            },
+                            child: Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: isDark ? AppTheme.primaryYellow : const Color(0xFF141416),
+                                borderRadius: BorderRadius.circular(30),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: isDark
+                                        ? AppTheme.primaryYellow.withValues(alpha: 0.3)
+                                        : Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Apply',
+                                style: TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.black : Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 10),
                 ],
               ),
             );
@@ -876,36 +1379,174 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildFilterSectionTitle(String title) {
+  /// Location Sub-Sheet modal
+  void _openLocationPickerSheet(BuildContext context, Function(String?) onSelected) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final locController = TextEditingController();
+
+    final popularCities = [
+      'Visakhapatnam',
+      'Hyderabad',
+      'Madhapur',
+      'Gachibowli',
+      'Banjara Hills',
+      'Vijayawada',
+      'Bengaluru',
+      'Chennai',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF1E1E24) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Search Input
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : const Color(0xFFF4F4F6),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
+                  ),
+                ),
+                child: TextField(
+                  controller: locController,
+                  autofocus: true,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Type location (e.g. Visakhapatnam)',
+                    border: InputBorder.none,
+                  ),
+                  onSubmitted: (val) {
+                    if (val.trim().isNotEmpty) {
+                      onSelected(val.trim());
+                      Navigator.pop(ctx);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Action Options: Use Current Location
+              if (widget.currentPosition != null)
+                ListTile(
+                  leading: const Icon(Iconsax.gps, color: Color(0xFF10B981)),
+                  title: const Text('Use current location', style: TextStyle(fontWeight: FontWeight.bold)),
+                  onTap: () {
+                    onSelected('Near My Location');
+                    Navigator.pop(ctx);
+                  },
+                ),
+
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Popular Locations',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: popularCities.map((city) {
+                  return GestureDetector(
+                    onTap: () {
+                      onSelected(city);
+                      Navigator.pop(ctx);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkCard : const Color(0xFFF0F0F4),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        city,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 14.5,
+        fontSize: 15.5,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.2,
       ),
     );
   }
 
-  Widget _buildSelectableChip({
+  Widget _buildSubHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  Widget _buildPillChip({
     required String label,
     required bool isSelected,
     required bool isDark,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? AppTheme.primaryYellow : Colors.black)
+              ? (isDark ? AppTheme.primaryYellow : const Color(0xFF141416))
               : (isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F4)),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isSelected
-                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                ? (isDark ? AppTheme.primaryYellow : const Color(0xFF141416))
                 : Colors.transparent,
             width: 1.2,
           ),
@@ -914,7 +1555,7 @@ class _SearchScreenState extends State<SearchScreen> {
           label,
           style: TextStyle(
             fontSize: 13,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
             color: isSelected
                 ? (isDark ? Colors.black : Colors.white)
                 : (isDark ? Colors.white70 : Colors.black87),
@@ -924,366 +1565,94 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildPropertyCard(PropertyModel prop, bool isDark) {
-    final distance = _formatDistance(prop);
-    final isBuy = prop.type == 'Buy' || prop.type == 'Sale';
-    final isPg = prop.type == 'PG' || prop.type == 'Hostel';
-
-    return BouncingButton(
-      scaleFactor: 0.98,
-      onTap: () {
-        HapticFeedback.selectionClick();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PropertyDetailsScreen(property: prop),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+  /// Empty State with Centered Lottie Animation
+  Widget _buildEmptyState(bool isDark) {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Top Image Showcase with Badges
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: SizedBox(
-                    height: 175,
-                    width: double.infinity,
-                    child: prop.imageUrls.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: prop.imageUrls.first,
-                            fit: BoxFit.cover,
-                            errorWidget: (context, url, error) => Container(
-                              color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade200,
-                              child: Icon(Iconsax.home_2, size: 40, color: Colors.grey.shade400),
-                            ),
-                          )
-                        : Container(
-                            color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade200,
-                            child: Icon(Iconsax.home_2, size: 40, color: Colors.grey.shade400),
-                          ),
-                  ),
-                ),
-
-                // Category Badge (Top Left)
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.black.withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isBuy ? Iconsax.shop : (isPg ? Iconsax.building_3 : Iconsax.home_2),
-                          size: 13,
-                          color: isBuy ? const Color(0xFFFFEB3A) : (isPg ? Colors.blue : Colors.green),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          isBuy ? 'For Sale' : (isPg ? 'PG / Hostel' : 'Rental'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Distance Badge (Top Right)
-                if (distance.isNotEmpty)
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Iconsax.location, size: 12, color: Color(0xFFFFEB3A)),
-                          const SizedBox(width: 4),
-                          Text(
-                            distance,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                // Price Pill (Bottom Right of Image)
-                Positioned(
-                  bottom: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFEB3A),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      prop.price,
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.black,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            Lottie.asset(
+              'assets/Nothing founded.json',
+              width: 250,
+              height: 250,
+              fit: BoxFit.contain,
             ),
-
-            // Card Body Info
-            Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title + Verified Icon
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          prop.title,
-                          style: TextStyle(
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w800,
-                            color: isDark ? Colors.white : const Color(0xFF1E1E1E),
-                            letterSpacing: -0.3,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons.verified,
-                        size: 17,
-                        color: Colors.black,
-                      ),
-                    ],
+            const SizedBox(height: 12),
+            Text(
+              'No properties found',
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black87,
+                fontSize: 19,
+                fontWeight: FontWeight.bold,
+                height: 1.25,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Try adjusting your search or filters to see more results.',
+              style: TextStyle(
+                fontSize: 13.5,
+                color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            BouncingButton(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _searchController.clear();
+                  _selectedCategory = 'All';
+                  _selectedLocation = null;
+                  _budgetRange = const RangeValues(0, 10000000);
+                  _selectedBhk = null;
+                  _selectedBathrooms = null;
+                  _selectedSharing = null;
+                  _selectedGender = null;
+                  _selectedAmenities.clear();
+                  _selectedFurnishing = null;
+                  _selectedTenant = null;
+                  _selectedAvailability = null;
+                  _selectedFoodType = null;
+                  _selectedCurfew = null;
+                  _petFriendly = false;
+                  _separateMeter = false;
+                  _zeroSeepage = false;
+                  _areaRange = const RangeValues(0, 10000);
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.primaryYellow : const Color(0xFF141416),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark
+                          ? AppTheme.primaryYellow.withValues(alpha: 0.25)
+                          : Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  'Reset All Filters',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.black : Colors.white,
                   ),
-                  const SizedBox(height: 4),
-
-                  // Location
-                  Row(
-                    children: [
-                      Icon(
-                        Iconsax.location,
-                        size: 14,
-                        color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          prop.locationStr,
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Specifications & Chips
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      if (prop.beds.isNotEmpty)
-                        _buildInfoChip(Iconsax.home, prop.beds, isDark),
-                      if (prop.area.isNotEmpty)
-                        _buildInfoChip(Iconsax.ruler, prop.area, isDark),
-                      if (prop.furnishingStatus != null && prop.furnishingStatus!.isNotEmpty)
-                        _buildInfoChip(Iconsax.lamp, prop.furnishingStatus!, isDark),
-                      if (prop.genderPreference != null && prop.genderPreference!.isNotEmpty)
-                        _buildInfoChip(Iconsax.user, prop.genderPreference!, isDark),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildInfoChip(IconData icon, String text, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF3F3F6),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 12,
-            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(bool isDark) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 20),
-          Center(
-            child: Column(
-              children: [
-                Icon(
-                  Iconsax.search_status,
-                  size: 64,
-                  color: isDark ? Colors.white24 : Colors.grey.shade300,
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'No matching properties found',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Try searching for another area, category, or budget',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 36),
-
-          // Popular Suggestions
-          Text(
-            'Popular Searches',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : Colors.black,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _popularKeywords.map((kw) {
-              return GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  _searchController.text = kw;
-                  setState(() {});
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkCard : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Iconsax.search_normal,
-                        size: 13,
-                        color: isDark ? AppTheme.primaryYellow : Colors.black54,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        kw,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
       ),
     );
   }

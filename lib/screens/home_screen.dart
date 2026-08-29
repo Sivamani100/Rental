@@ -876,9 +876,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 builder: (_) => SearchScreen(
                   properties: _allProperties,
                   currentPosition: _currentPosition,
-                  initialCategory: _selectedTypeIndex == 0
-                      ? 'PG'
-                      : (_selectedTypeIndex == 1 ? 'Rental' : 'Buy'),
+                  initialCategory: 'All',
                 ),
               ),
             );
@@ -1220,133 +1218,199 @@ class PropertyCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Top Left: Real Ratings Only (shown only when reviewCount > 0)
                 if (property.reviewCount > 0)
                   Positioned(
                     top: 12,
                     left: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? AppTheme.darkCard.withValues(alpha: 0.94)
+                            ? AppTheme.darkCard.withValues(alpha: 0.92)
                             : Colors.white.withValues(alpha: 0.92),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isDark ? AppTheme.darkBorder : Colors.transparent,
+                          color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
+                            color: Colors.black.withValues(alpha: 0.12),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
-                          )
+                          ),
                         ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Iconsax.star1, color: Colors.amber, size: 16),
+                          const Icon(Iconsax.star1, color: Colors.amber, size: 15),
                           const SizedBox(width: 4),
                           Text(
                             property.averageRating.toStringAsFixed(1),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: isDark ? Colors.white : Colors.black,
+                              fontSize: 12.5,
+                              color: isDark ? Colors.white : Colors.black87,
                             ),
                           ),
                           Text(
                             ' (${property.reviewCount})',
                             style: TextStyle(
-                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
-                              fontSize: 12,
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                              fontSize: 11.5,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                // Distance badge overlay on bottom-left of image
-                if (distanceInMeters != null)
-                  Positioned(
-                    bottom: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Iconsax.location, color: Color(0xFFFFEB3A), size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDistance(distanceInMeters!),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+
+                // Top Right: Availability Status
                 Positioned(
                   top: 12,
                   right: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5.5),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(30),
+                      color: property.isAvailable
+                          ? const Color(0xFF10B981).withValues(alpha: 0.92)
+                          : Colors.redAccent.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      property.type,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          property.isAvailable ? 'Available' : 'Not Available',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                if (!property.isAvailable)
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: const Text(
-                        'Not Available',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+
+                // Bottom Strip: 3 Equal-Width Columns Full-width Solid Yellow Unified Bar
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFEB3A),
+                    ),
+                    child: Row(
+                      children: [
+                        // Column 1: Location / Distance
+                        Expanded(
+                          child: Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Iconsax.location, color: Colors.black, size: 15.5),
+                                const SizedBox(width: 4),
+                                Text(
+                                  distanceInMeters != null
+                                      ? _formatDistance(distanceInMeters!)
+                                      : 'Nearby',
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    color: Colors.black,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+
+                        // Divider 1
+                        Container(
+                          width: 1.4,
+                          height: 18,
+                          color: Colors.black.withValues(alpha: 0.35),
+                        ),
+
+                        // Column 2: Category / Property Type
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              property.type == 'PG'
+                                  ? 'PG / Hostel'
+                                  : (property.type == 'Buy' ? 'Buy / Sale' : property.type),
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                color: Colors.black,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.2,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+
+                        // Divider 2
+                        Container(
+                          width: 1.4,
+                          height: 18,
+                          color: Colors.black.withValues(alpha: 0.35),
+                        ),
+
+                        // Column 3: Rental App Brand
+                        const Expanded(
+                          child: Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.send_rounded, color: Colors.black, size: 15),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Rental App',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    color: Colors.black,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
               ],
             ),
             Padding(
