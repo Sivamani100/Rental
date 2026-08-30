@@ -50,6 +50,7 @@ flutter:
     - assets/location.json
     - assets/photos.json
     - assets/buyorsell.json
+    - assets/ai.json
 
 flutter_launcher_icons:
   android: "launcher_icon"

@@ -817,7 +817,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Row(
       children: [
-        BouncingButton(
+        _TopLocationLogoSwitcher(
           onTap: () {
             HapticFeedback.selectionClick();
             setState(() {
@@ -826,26 +826,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             });
             _refreshLocationFast(updateFeed: true);
           },
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkCard : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
-                width: 1,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              Iconsax.location5,
-              color: isDark ? Colors.white : Colors.black,
-              size: 24,
-            ),
-          ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -991,112 +973,153 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildBottomToggle() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final tabs = ['Hostel', 'Rental', 'Buy'];
+    final tabItems = [
+      (label: 'Hostel', icon: Iconsax.building_4),
+      (label: 'Rental', icon: Iconsax.home_2),
+      (label: 'Buy', icon: Iconsax.key),
+    ];
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        // Hostel / Rental / Buy Toggle
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkCard : Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(
-                color: isDark ? AppTheme.darkBorder : Colors.transparent,
-                width: 1,
+        // 1. Google Photos Style Segmented Capsule Bar (Autolayout / Hug Content)
+        Container(
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkCard : Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Row(
-              children: List.generate(tabs.length, (index) {
-                final isSelected = _selectedTypeIndex == index;
-                return Expanded(
-                  child: BouncingButton(
-                    onTap: () {
-                      setState(() {
-                        _selectedTypeIndex = index;
-                      });
-                      _pageController.animateToPage(
-                        index,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOutCubic,
-                      );
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFFFFEB3A)
-                            : (isDark ? AppTheme.darkCard : Colors.white),
-                        borderRadius: BorderRadius.circular(26),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        tabs[index],
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.black
-                              : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(tabItems.length, (index) {
+              final isSelected = _selectedTypeIndex == index;
+              final item = tabItems[index];
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: BouncingButton(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _selectedTypeIndex = index;
+                    });
+                    _pageController.animateToPage(
+                      index,
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeInOutCubic,
+                    );
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOutCubic,
+                    padding: isSelected
+                        ? const EdgeInsets.symmetric(horizontal: 19, vertical: 9.5)
+                        : const EdgeInsets.symmetric(horizontal: 14, vertical: 9.5),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFFFFEB3A)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(24),
                     ),
+                    alignment: Alignment.center,
+                    child: isSelected
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                item.icon,
+                                size: 18,
+                                color: Colors.black,
+                              ),
+                              const SizedBox(width: 9.5),
+                              Text(
+                                item.label,
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14.5,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            item.label,
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14.5,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
                   ),
-                );
-              }),
-            ),
+                ),
+              );
+            }),
           ),
         ),
 
-        // AI Assistant Floating Button (Hidden for now)
-        if (false) ...[
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: BouncingButton(
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AiChatScreen(initialProperties: _allProperties),
-                  ),
-                );
-              },
-              child: Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFEB3A),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.15),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+        const SizedBox(width: 10),
+
+        // 2. Google Photos Style Floating Circular AI Button
+        BouncingButton(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AiChatScreen(initialProperties: _allProperties),
+              ),
+            );
+          },
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCard : Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Iconsax.magicpen,
-                  color: Colors.black,
-                  size: 24,
+              ],
+            ),
+            alignment: Alignment.center,
+            child: ClipOval(
+              child: Transform.scale(
+                scale: 1.35,
+                child: Lottie.asset(
+                  'assets/ai.json',
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                  repeat: true,
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ],
     );
   }
@@ -1831,7 +1854,7 @@ class _CardBottomStripState extends State<_CardBottomStrip>
                     fontFamily: 'Inter',
                     color: Colors.black,
                     fontSize: 12.5,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
                   ),
                   maxLines: 1,
@@ -1860,7 +1883,7 @@ class _CardBottomStripState extends State<_CardBottomStrip>
                 fontFamily: 'Inter',
                 color: Colors.black,
                 fontSize: 12.5,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
               ),
               maxLines: 1,
@@ -1891,7 +1914,7 @@ class _CardBottomStripState extends State<_CardBottomStrip>
                     fontFamily: 'Inter',
                     color: Colors.black,
                     fontSize: 12.5,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
                   ),
                 ),
@@ -1926,7 +1949,7 @@ class _CardBottomStripState extends State<_CardBottomStrip>
               fontFamily: 'Inter',
               color: Colors.black,
               fontSize: 12.5,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
               wordSpacing: 1.5,
             ),
@@ -2030,3 +2053,105 @@ class SkeletonBox extends StatelessWidget {
     );
   }
 }
+
+class _TopLocationLogoSwitcher extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _TopLocationLogoSwitcher({required this.onTap});
+
+  @override
+  State<_TopLocationLogoSwitcher> createState() => _TopLocationLogoSwitcherState();
+}
+
+class _TopLocationLogoSwitcherState extends State<_TopLocationLogoSwitcher> {
+  bool _showLogo = false;
+  Timer? _switchTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Alternates between Location Icon and App Logo smoothly every 3.5 seconds
+    _switchTimer = Timer.periodic(const Duration(milliseconds: 3500), (_) {
+      if (mounted) {
+        setState(() {
+          _showLogo = !_showLogo;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _switchTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return BouncingButton(
+      onTap: widget.onTap,
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkCard : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 400),
+          switchInCurve: Curves.easeOutBack,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.85, end: 1.0).animate(animation),
+                child: child,
+              ),
+            );
+          },
+          child: _showLogo
+              ? ClipRRect(
+                  key: const ValueKey('app_logo'),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/logo.png',
+                    width: 34,
+                    height: 34,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Iconsax.location5,
+                      color: isDark ? Colors.white : Colors.black,
+                      size: 24,
+                    ),
+                  ),
+                )
+              : Icon(
+                  Iconsax.location5,
+                  key: const ValueKey('location_icon'),
+                  color: isDark ? Colors.white : Colors.black,
+                  size: 24,
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
