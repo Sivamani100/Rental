@@ -130,6 +130,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         imageUrl: imagePath,
         width: double.infinity,
         fit: BoxFit.cover,
+        memCacheWidth: 1080,
+        fadeInDuration: Duration.zero,
+        fadeOutDuration: Duration.zero,
         placeholder: (context, url) => Container(
           color: Colors.grey.shade300,
           child: const Center(
@@ -1041,14 +1044,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   )
                                 else
                                   _buildGlassIconButton(
-                                    icon: Iconsax.refresh,
-                                    onTap: () {
-                                      setState(() {
-                                        widget.property.isAvailable = true;
-                                      });
-                                      AppSnackbar.success(context, 'Revoked to Available');
-                                    },
-                                    iconColor: Colors.green.shade400,
+                                    icon: Icons.undo_rounded,
+                                    onTap: _showRevokeConfirmationDialog,
+                                    iconColor: const Color(0xFF1A9E5B),
                                   ),
                               ],
                             ),
@@ -2199,12 +2197,23 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         setState(() {
                           widget.property.isAvailable = false;
                         });
                         Navigator.pop(context);
                         AppSnackbar.success(context, 'Marked as Not Available');
+
+                        if (widget.property.id != null && widget.property.id!.isNotEmpty) {
+                          try {
+                            await Supabase.instance.client
+                                .from('properties')
+                                .update({'is_available': false})
+                                .eq('id', widget.property.id!);
+                          } catch (e) {
+                            debugPrint('Error updating availability: $e');
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.redAccent,
@@ -2213,6 +2222,103 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         elevation: 0,
                       ),
                       child: const Text('No, Occupied', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRevokeConfirmationDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Make Property Available?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Are you sure you want to mark this property as Available? It will immediately show as active and vacant for all users.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                  height: 1.35,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: isDark ? AppTheme.darkBorder : Colors.black),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        setState(() {
+                          widget.property.isAvailable = true;
+                        });
+                        Navigator.pop(context);
+                        AppSnackbar.success(context, 'Restored to Available');
+
+                        if (widget.property.id != null && widget.property.id!.isNotEmpty) {
+                          try {
+                            await Supabase.instance.client
+                                .from('properties')
+                                .update({'is_available': true})
+                                .eq('id', widget.property.id!);
+                          } catch (e) {
+                            debugPrint('Error updating availability: $e');
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1A9E5B),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Yes, Available',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],

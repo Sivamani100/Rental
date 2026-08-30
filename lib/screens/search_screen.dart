@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/bouncing_button.dart';
 import 'home_screen.dart' show PropertyModel, PropertyCard;
 import 'property_details_screen.dart';
+import 'ai_chat_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<PropertyModel> properties;
@@ -455,6 +456,52 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
             ),
           ],
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: BouncingButton(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AiChatScreen(initialProperties: widget.properties),
+            ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.primaryYellow : const Color(0xFF141416),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: (isDark ? AppTheme.primaryYellow : Colors.black).withValues(alpha: 0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Iconsax.magic_star,
+                size: 18,
+                color: isDark ? Colors.black : Colors.white,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Ask Rental AI',
+                style: TextStyle(
+                  color: isDark ? Colors.black : Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -931,7 +978,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: isDark ? AppTheme.primaryYellow : Colors.green.shade800,
+                                color: isDark ? AppTheme.primaryYellow : const Color(0xFF1E1E1E),
                               ),
                             ),
                           ],
@@ -942,7 +989,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           min: 0,
                           max: 10000000,
                           divisions: 100,
-                          activeColor: isDark ? AppTheme.primaryYellow : const Color(0xFF10B981),
+                          activeColor: isDark ? AppTheme.primaryYellow : const Color(0xFFFFD600),
                           inactiveColor: isDark ? Colors.white12 : Colors.grey.shade300,
                           onChanged: (vals) {
                             setSheetState(() => tempBudget = vals);
@@ -976,7 +1023,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             {'label': 'Land / Plot', 'key': 'Land'},
                           ].map((item) {
                             final isSel = tempCategory == item['key'];
-                            return _buildPillChip(
+                            return _buildFilterChip(
                               label: item['label'] as String,
                               isSelected: isSel,
                               isDark: isDark,
@@ -997,7 +1044,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             runSpacing: 8,
                             children: ['1 BHK', '2 BHK', '3 BHK', '4+ BHK'].map((bhk) {
                               final isSel = tempBhk == bhk;
-                              return _buildPillChip(
+                              return _buildFilterChip(
                                 label: bhk,
                                 isSelected: isSel,
                                 isDark: isDark,
@@ -1017,7 +1064,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             runSpacing: 8,
                             children: ['1+ Bath', '2+ Bath', '3+ Bath', '4+ Bath'].map((bath) {
                               final isSel = tempBath == bath;
-                              return _buildPillChip(
+                              return _buildFilterChip(
                                 label: bath,
                                 isSelected: isSel,
                                 isDark: isDark,
@@ -1045,7 +1092,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             children: [
                               // Amenities
                               _buildSubHeader('Amenities & Features'),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
@@ -1061,10 +1108,11 @@ class _SearchScreenState extends State<SearchScreen> {
                                   {'label': '24/7 CCTV & Security', 'key': 'CCTV'},
                                 ].map((am) {
                                   final isSel = tempAmenities.contains(am['key']);
-                                  return _buildPillChip(
+                                  return _buildFilterChip(
                                     label: am['label'] as String,
                                     isSelected: isSel,
                                     isDark: isDark,
+                                    isMulti: true,
                                     onTap: () {
                                       setSheetState(() {
                                         if (isSel) {
@@ -1083,7 +1131,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
                               // Hostel / PG Specifics: Sharing & Gender & Food
                               _buildSubHeader('Hostel & PG Preferences'),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
@@ -1091,7 +1139,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                   // Gender
                                   ...['Boys Only', 'Girls Only', 'Co-Living'].map((g) {
                                     final isSel = tempGender == g;
-                                    return _buildPillChip(
+                                    return _buildFilterChip(
                                       label: g,
                                       isSelected: isSel,
                                       isDark: isDark,
@@ -1101,7 +1149,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                   // Sharing
                                   ...['Single Room', '2 Sharing', '3 Sharing', '4+ Sharing'].map((sh) {
                                     final isSel = tempSharing == sh;
-                                    return _buildPillChip(
+                                    return _buildFilterChip(
                                       label: sh,
                                       isSelected: isSel,
                                       isDark: isDark,
@@ -1111,7 +1159,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                   // Food
                                   ...['3 Meals', '2 Meals', 'Veg Only', 'Self Cooking'].map((fd) {
                                     final isSel = tempFoodType == fd;
-                                    return _buildPillChip(
+                                    return _buildFilterChip(
                                       label: fd,
                                       isSelected: isSel,
                                       isDark: isDark,
@@ -1119,7 +1167,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                     );
                                   }),
                                   // Curfew
-                                  _buildPillChip(
+                                  _buildFilterChip(
                                     label: 'No Curfew (24x7 Entry)',
                                     isSelected: tempCurfew == 'No Curfew',
                                     isDark: isDark,
@@ -1133,13 +1181,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
                               // Furnishing Status
                               _buildSubHeader('Furnishing Status'),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: ['Fully Furnished', 'Semi Furnished', 'Unfurnished'].map((furn) {
                                   final isSel = tempFurnishing == furn;
-                                  return _buildPillChip(
+                                  return _buildFilterChip(
                                     label: furn,
                                     isSelected: isSel,
                                     isDark: isDark,
@@ -1155,13 +1203,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
                               // Preferred Tenants
                               _buildSubHeader('Preferred Tenants'),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: ['Any', 'Bachelors', 'Family', 'Company'].map((ten) {
                                   final isSel = tempTenant == ten;
-                                  return _buildPillChip(
+                                  return _buildFilterChip(
                                     label: ten,
                                     isSelected: isSel,
                                     isDark: isDark,
@@ -1177,13 +1225,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
                               // Available From
                               _buildSubHeader('Available From'),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: ['Immediately', 'Within 1 Month', '1-3 Months', '3-6 Months', '6 Months+'].map((av) {
                                   final isSel = tempAvailability == av;
-                                  return _buildPillChip(
+                                  return _buildFilterChip(
                                     label: av,
                                     isSelected: isSel,
                                     isDark: isDark,
@@ -1199,27 +1247,30 @@ class _SearchScreenState extends State<SearchScreen> {
 
                               // House / Rental Specifics (Pets, Sub-meter, Paint)
                               _buildSubHeader('House & Rental Specifics'),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 10),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
-                                  _buildPillChip(
+                                  _buildFilterChip(
                                     label: 'Pets Allowed 🐾',
                                     isSelected: tempPet,
                                     isDark: isDark,
+                                    isMulti: true,
                                     onTap: () => setSheetState(() => tempPet = !tempPet),
                                   ),
-                                  _buildPillChip(
+                                  _buildFilterChip(
                                     label: 'Separate EB Sub-Meter ⚡',
                                     isSelected: tempMeter,
                                     isDark: isDark,
+                                    isMulti: true,
                                     onTap: () => setSheetState(() => tempMeter = !tempMeter),
                                   ),
-                                  _buildPillChip(
+                                  _buildFilterChip(
                                     label: 'Zero Seepage / Fresh Paint 🎨',
                                     isSelected: tempSeepage,
                                     isDark: isDark,
+                                    isMulti: true,
                                     onTap: () => setSheetState(() => tempSeepage = !tempSeepage),
                                   ),
                                 ],
@@ -1251,7 +1302,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             min: 0,
                             max: 10000,
                             divisions: 50,
-                            activeColor: isDark ? AppTheme.primaryYellow : const Color(0xFF10B981),
+                            activeColor: isDark ? AppTheme.primaryYellow : const Color(0xFFFFD600),
                             inactiveColor: isDark ? Colors.white12 : Colors.grey.shade300,
                             onChanged: (vals) {
                               setSheetState(() => tempArea = vals);
@@ -1343,25 +1394,23 @@ class _SearchScreenState extends State<SearchScreen> {
                             child: Container(
                               height: 50,
                               decoration: BoxDecoration(
-                                color: isDark ? AppTheme.primaryYellow : const Color(0xFF141416),
+                                color: isDark ? AppTheme.primaryYellow : const Color(0xFFFFEB3A),
                                 borderRadius: BorderRadius.circular(30),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: isDark
-                                        ? AppTheme.primaryYellow.withValues(alpha: 0.3)
-                                        : Colors.black.withValues(alpha: 0.2),
+                                    color: (isDark ? AppTheme.primaryYellow : const Color(0xFFFFEB3A)).withValues(alpha: 0.35),
                                     blurRadius: 10,
                                     offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
                               alignment: Alignment.center,
-                              child: Text(
+                              child: const Text(
                                 'Apply',
                                 style: TextStyle(
                                   fontSize: 15.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: isDark ? Colors.black : Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.black,
                                 ),
                               ),
                             ),
@@ -1453,7 +1502,7 @@ class _SearchScreenState extends State<SearchScreen> {
               // Action Options: Use Current Location
               if (widget.currentPosition != null)
                 ListTile(
-                  leading: const Icon(Iconsax.gps, color: Color(0xFF10B981)),
+                  leading: const Icon(Iconsax.gps, color: Color(0xFFFFD600)),
                   title: const Text('Use current location', style: TextStyle(fontWeight: FontWeight.bold)),
                   onTap: () {
                     onSelected('Near My Location');
@@ -1525,41 +1574,69 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildPillChip({
+  Widget _buildFilterChip({
     required String label,
     required bool isSelected,
     required bool isDark,
     required VoidCallback onTap,
+    bool isMulti = false,
   }) {
-    return GestureDetector(
+    return BouncingButton(
+      scaleFactor: 0.97,
       onTap: () {
         HapticFeedback.selectionClick();
         onTap();
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9.5),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? AppTheme.primaryYellow : const Color(0xFF141416))
-              : (isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F4)),
-          borderRadius: BorderRadius.circular(18),
+              ? (isDark ? const Color(0xFF2B2800) : const Color(0xFFFFFDE7))
+              : (isDark ? AppTheme.darkCardElevated : Colors.white),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? (isDark ? AppTheme.primaryYellow : const Color(0xFF141416))
-                : Colors.transparent,
-            width: 1.2,
+                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+            width: isSelected ? 1.8 : 1.2,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: (isDark ? AppTheme.primaryYellow : Colors.black).withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-            color: isSelected
-                ? (isDark ? Colors.black : Colors.white)
-                : (isDark ? Colors.white70 : Colors.black87),
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected
+                  ? Iconsax.tick_circle
+                  : (isMulti ? Iconsax.add_circle : Icons.radio_button_unchecked),
+              size: 15,
+              color: isSelected
+                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                  : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                    : (isDark ? Colors.white70 : const Color(0xFF2D2D2D)),
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                letterSpacing: -0.1,
+              ),
+            ),
+          ],
         ),
       ),
     );

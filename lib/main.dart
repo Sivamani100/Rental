@@ -2,11 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/home_screen.dart';
 import 'screens/admin_login_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/ai_chat_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/ai_assistant_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
@@ -14,6 +16,10 @@ import 'theme/theme_provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
+
+  // Turbocharge Flutter ImageCache for instant photo rendering
+  PaintingBinding.instance.imageCache.maximumSize = 1000;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 250 << 20; // 250 MB
 
   await ThemeController.instance.init();
 
@@ -25,11 +31,16 @@ Future<void> main() async {
   // Pre-load AI Assistant local chat history and settings instantly
   AiAssistantService.instance.init();
 
-  runApp(const RentalApp());
+  final prefs = await SharedPreferences.getInstance();
+  final bool hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ?? false;
+
+  runApp(RentalApp(hasCompletedOnboarding: hasCompletedOnboarding));
 }
 
 class RentalApp extends StatelessWidget {
-  const RentalApp({super.key});
+  final bool hasCompletedOnboarding;
+
+  const RentalApp({super.key, this.hasCompletedOnboarding = false});
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +67,13 @@ class RentalApp extends StatelessWidget {
               final rawName = settings.name ?? '/';
               final uri = Uri.parse(rawName);
               final path = uri.path.toLowerCase();
+
+              if (path == '/onboarding') {
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => const OnboardingScreen(),
+                );
+              }
 
               if (path == '/ai' || path == '/ai-chat' || path == '/assistant') {
                 return MaterialPageRoute(
@@ -98,6 +116,22 @@ class RentalApp extends StatelessWidget {
               String? propertyId = uri.queryParameters['propertyId'] ?? uri.queryParameters['id'];
               if (path.startsWith('/property/')) {
                 propertyId = path.replaceFirst('/property/', '').trim();
+              }
+
+              // Direct property deep links open the property directly
+              if (propertyId != null && propertyId.isNotEmpty) {
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => HomeScreen(initialPropertyId: propertyId),
+                );
+              }
+
+              // First-time users see OnboardingScreen
+              if (!hasCompletedOnboarding) {
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => const OnboardingScreen(),
+                );
               }
 
               return MaterialPageRoute(

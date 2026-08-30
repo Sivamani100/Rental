@@ -15,6 +15,7 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart' show PropertyModel;
+import 'photo_position_screen.dart';
 
 class PostBottomSheet extends StatefulWidget {
   final Position? currentLocation;
@@ -42,7 +43,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
 
   // Image & Basic Info
   final ImagePicker _picker = ImagePicker();
-  final List<XFile> _selectedImages = [];
+  List<XFile> _selectedImages = [];
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _depositController = TextEditingController();
@@ -493,6 +494,26 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     super.dispose();
   }
 
+  Future<void> _openPhotoPositionScreen() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PhotoPositionScreen(
+          localImages: List<XFile>.from(_selectedImages),
+          existingUrls: List<String>.from(_existingImages),
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedImages = List<XFile>.from(result['localImages'] ?? []);
+        _existingImages = List<String>.from(result['existingUrls'] ?? []);
+      });
+      _saveDraft();
+    }
+  }
+
   Future<void> _pickImages() async {
     try {
       final List<XFile> images = await _picker.pickMultiImage();
@@ -501,6 +522,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           _selectedImages.addAll(images);
         });
         _saveDraft();
+        if (mounted) {
+          _openPhotoPositionScreen();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -556,7 +580,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       return;
     }
     if (_priceController.text.trim().isEmpty) {
-      _showSheetError('Please enter monthly rent');
+      _showSheetError(_selectedType == 'Buy'
+          ? 'Please enter the total selling price'
+          : (_selectedType == 'PG' ? 'Please enter monthly fee' : 'Please enter monthly rent'));
       setState(() => _currentStep = 2);
       return;
     }
@@ -840,7 +866,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _isEditing ? 'Edit ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}' : 'Post ${_selectedType == "PG" ? "PG / Hostel" : "Rental Property"}',
+                        _isEditing
+                            ? 'Edit ${_selectedType == "Buy" ? "Property for Sale" : (_selectedType == "PG" ? "PG / Hostel" : "Rental Property")}'
+                            : 'Post ${_selectedType == "Buy" ? "Property for Sale" : (_selectedType == "PG" ? "PG / Hostel" : "Rental Property")}',
                         style: TextStyle(
                           fontSize: 19,
                           fontWeight: FontWeight.bold,
@@ -1138,7 +1166,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildFullWidthBuyCard(
           title: 'Sell Property (Buy / Sale)',
           badge: 'House',
-          subtitle: 'List independent houses, luxury villas, flats, commercial buildings, or open plots for buyers.',
+          subtitle: 'List independent houses, villas, flats, commercial spaces or plots.',
           typeKey: 'Buy',
           lottiePath: 'assets/buyorsell.json',
           icon: Iconsax.shop,
@@ -1341,7 +1369,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isDark
               ? (isSelected ? const Color(0xFF242424) : AppTheme.darkCard.withValues(alpha: 0.85))
@@ -1365,134 +1393,130 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left content - aligned from top
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? (isDark ? AppTheme.primaryYellow.withValues(alpha: 0.2) : const Color(0xFFFFEB3A))
-                              : (isDark ? AppTheme.darkCardElevated : Colors.grey.shade100),
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              icon,
-                              size: 13,
-                              color: isSelected
-                                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                                  : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              badge,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
+        child: Stack(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Left content - aligned with ample width
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? (isDark ? AppTheme.primaryYellow.withValues(alpha: 0.2) : const Color(0xFFFFEB3A))
+                                : (isDark ? AppTheme.darkCardElevated : Colors.grey.shade100),
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                icon,
+                                size: 13,
                                 color: isSelected
                                     ? (isDark ? AppTheme.primaryYellow : Colors.black)
                                     : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w800,
-                          color: isSelected
-                              ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                              : (isDark ? Colors.white : const Color(0xFF1E1E1E)),
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'List independent houses, luxury\nvillas, flats, commercial spaces,\nor open plots for buyers.',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Right column: Selection tick & larger animation contained inside
-              SizedBox(
-                width: 155,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isSelected
-                            ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: isSelected
-                              ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                              : (isDark ? AppTheme.darkBorder : Colors.grey.shade400),
-                          width: 2,
-                        ),
-                      ),
-                      child: isSelected
-                          ? Icon(
-                              Icons.check,
-                              size: 15,
-                              color: isDark ? Colors.black : Colors.white,
-                            )
-                          : null,
-                    ),
-                    const SizedBox(height: 2),
-                    SizedBox(
-                      height: 135,
-                      width: 155,
-                      child: Transform.scale(
-                        scale: 1.15,
-                        child: Lottie.asset(
-                          lottiePath,
-                          fit: BoxFit.contain,
-                          repeat: true,
-                          animate: true,
-                          errorBuilder: (context, error, stackTrace) => Center(
-                            child: Icon(
-                              icon,
-                              size: 52,
-                              color: isDark ? AppTheme.primaryYellow : Colors.black54,
-                            ),
+                              const SizedBox(width: 5),
+                              Text(
+                                badge,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelected
+                                      ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                                      : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected
+                                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                                : (isDark ? Colors.white : const Color(0xFF1E1E1E)),
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Right column: Animation sized to 140x120
+                SizedBox(
+                  width: 140,
+                  height: 120,
+                  child: Lottie.asset(
+                    lottiePath,
+                    width: 140,
+                    height: 120,
+                    fit: BoxFit.contain,
+                    repeat: true,
+                    animate: true,
+                    errorBuilder: (context, error, stackTrace) => Center(
+                      child: Icon(
+                        icon,
+                        size: 48,
+                        color: isDark ? AppTheme.primaryYellow : Colors.black54,
                       ),
                     ),
-                  ],
+                  ),
                 ),
+              ],
+            ),
+
+            // Top right check circle
+            Positioned(
+              top: 0,
+              right: 0,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected
+                      ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: isSelected
+                        ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                        : (isDark ? AppTheme.darkBorder : Colors.grey.shade400),
+                    width: 2,
+                  ),
+                ),
+                child: isSelected
+                    ? Icon(
+                        Icons.check,
+                        size: 15,
+                        color: isDark ? Colors.black : Colors.white,
+                      )
+                    : null,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1558,79 +1582,150 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '${_existingImages.length + _selectedImages.length} Photos Selected',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white : Colors.black,
+                      Flexible(
+                        child: Text(
+                          '${_existingImages.length + _selectedImages.length} Photos Selected',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      TextButton.icon(
-                        onPressed: _pickImages,
-                        icon: Icon(
-                          Iconsax.gallery_add,
-                          size: 18,
-                          color: isDark ? AppTheme.primaryYellow : Colors.black,
-                        ),
-                        label: Text(
-                          'Add More',
-                          style: TextStyle(
-                            color: isDark ? AppTheme.primaryYellow : Colors.black,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
+                      const SizedBox(width: 6),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton.icon(
+                            onPressed: _openPhotoPositionScreen,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: Icon(
+                              Iconsax.arrange_circle,
+                              size: 15,
+                              color: isDark ? AppTheme.primaryYellow : Colors.black,
+                            ),
+                            label: Text(
+                              'Reorder',
+                              style: TextStyle(
+                                color: isDark ? AppTheme.primaryYellow : Colors.black,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                      )
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            onPressed: _pickImages,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            icon: Icon(
+                              Iconsax.gallery_add,
+                              size: 15,
+                              color: isDark ? AppTheme.primaryYellow : Colors.black,
+                            ),
+                            label: Text(
+                              'Add',
+                              style: TextStyle(
+                                color: isDark ? AppTheme.primaryYellow : Colors.black,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
-                    height: 90,
+                    height: 96,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: _existingImages.length + _selectedImages.length,
                       itemBuilder: (context, index) {
                         final isExisting = index < _existingImages.length;
-                        return Stack(
-                          children: [
-                            Container(
-                              width: 90,
-                              height: 90,
-                              margin: const EdgeInsets.only(right: 10),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                image: DecorationImage(
-                                  image: isExisting 
-                                      ? NetworkImage(_existingImages[index]) as ImageProvider
-                                      : (kIsWeb 
-                                          ? NetworkImage(_selectedImages[index - _existingImages.length].path) as ImageProvider 
-                                          : FileImage(File(_selectedImages[index - _existingImages.length].path)) as ImageProvider),
-                                  fit: BoxFit.cover,
+                        final isCover = index == 0;
+
+                        return GestureDetector(
+                          onTap: _openPhotoPositionScreen,
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 90,
+                                height: 96,
+                                margin: const EdgeInsets.only(right: 10),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: isCover
+                                      ? Border.all(color: AppTheme.primaryYellow, width: 2.2)
+                                      : null,
+                                  image: DecorationImage(
+                                    image: isExisting 
+                                        ? NetworkImage(_existingImages[index]) as ImageProvider
+                                        : (kIsWeb 
+                                            ? NetworkImage(_selectedImages[index - _existingImages.length].path) as ImageProvider 
+                                            : FileImage(File(_selectedImages[index - _existingImages.length].path)) as ImageProvider),
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Positioned(
-                              top: 4,
-                              right: 14,
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    if (isExisting) {
-                                      _existingImages.removeAt(index);
-                                    } else {
-                                      _selectedImages.removeAt(index - _existingImages.length);
-                                    }
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(3),
-                                  decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
-                                  child: const Icon(Iconsax.close_circle, color: Colors.white, size: 14),
+                              if (isCover)
+                                Positioned(
+                                  top: 4,
+                                  left: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryYellow,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'Cover',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                top: 4,
+                                right: 14,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      if (isExisting) {
+                                        _existingImages.removeAt(index);
+                                      } else {
+                                        _selectedImages.removeAt(index - _existingImages.length);
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3.5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.75),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close_rounded,
+                                      color: Colors.white,
+                                      size: 13,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -1638,35 +1733,45 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 ],
               ),
         const SizedBox(height: 20),
-        _buildSectionHeader('Basic Pricing & Location', Iconsax.wallet_3),
+        _buildSectionHeader(_selectedType == 'Buy' ? 'Selling Price & Location' : 'Basic Pricing & Location', Iconsax.wallet_3),
         const SizedBox(height: 12),
         _buildCustomInput(
           controller: _titleController,
           label: 'Property Title',
-          hint: _selectedType == 'PG' ? 'e.g. Deluxe Boys PG - MVP Colony' : 'e.g. 2BHK House - Srinivasa Nagar',
+          hint: _selectedType == 'Buy'
+              ? 'e.g. 3 BHK Luxury Villa / Commercial Land for Sale'
+              : (_selectedType == 'PG' ? 'e.g. Deluxe Boys PG - MVP Colony' : 'e.g. 2BHK House - Srinivasa Nagar'),
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildCustomInput(
-                controller: _priceController,
-                label: _selectedType == 'PG' ? 'Monthly Fee / Rent (₹)' : 'Monthly Rent (₹)',
-                hint: 'e.g. 5500',
-                keyboardType: TextInputType.number,
+        if (_selectedType == 'Buy')
+          _buildCustomInput(
+            controller: _priceController,
+            label: 'Total Selling Price (₹)',
+            hint: 'e.g. 4500000 (45 Lakhs)',
+            keyboardType: TextInputType.number,
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: _buildCustomInput(
+                  controller: _priceController,
+                  label: _selectedType == 'PG' ? 'Monthly Fee / Rent (₹)' : 'Monthly Rent (₹)',
+                  hint: 'e.g. 5500',
+                  keyboardType: TextInputType.number,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildCustomInput(
-                controller: _depositController,
-                label: 'Security Deposit (₹)',
-                hint: 'e.g. 5000',
-                keyboardType: TextInputType.number,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildCustomInput(
+                  controller: _depositController,
+                  label: _selectedType == 'PG' ? 'Security Deposit / Advance (₹)' : 'Security Deposit (₹)',
+                  hint: 'e.g. 5000',
+                  keyboardType: TextInputType.number,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         if (_selectedType == 'PG') ...[
           const SizedBox(height: 12),
           Row(
@@ -1694,8 +1799,12 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         const SizedBox(height: 12),
         _buildCustomInput(
           controller: _maintenanceController,
-          label: 'Maintenance / Extra Charges (Optional)',
-          hint: 'e.g. 500 (or leave blank if included)',
+          label: _selectedType == 'Buy'
+              ? 'Monthly Society / Maintenance Charges (Optional)'
+              : 'Maintenance / Extra Charges (Optional)',
+          hint: _selectedType == 'Buy'
+              ? 'e.g. 1500 (or leave blank if none)'
+              : 'e.g. 500 (or leave blank if included)',
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 20),

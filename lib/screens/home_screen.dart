@@ -8,6 +8,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
+import '../widgets/rental_app_icon.dart';
 import 'posting_screen.dart';
 import 'property_details_screen.dart';
 import 'search_screen.dart';
@@ -18,6 +19,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lottie/lottie.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class PropertyModel {
   final String? id;
@@ -375,13 +377,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // Load cached properties first
+      // Load cached properties first and precache photos immediately
       final String? cachedData = prefs.getString('cached_properties');
       if (cachedData != null && mounted) {
         final List<dynamic> decoded = jsonDecode(cachedData);
+        final cachedList = decoded.map((e) => PropertyModel.fromJson(e)).toList();
         setState(() {
-          _allProperties = decoded.map((e) => PropertyModel.fromJson(e)).toList();
+          _allProperties = cachedList;
         });
+        _precachePropertyImages(cachedList);
         _checkAndOpenInitialProperty();
       }
 
@@ -395,11 +399,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await prefs.setString('cached_properties', jsonEncode(data));
 
       if (mounted) {
+        final freshList = (data as List)
+            .map((e) => PropertyModel.fromJson(e))
+            .toList();
         setState(() {
-          _allProperties = (data as List)
-              .map((e) => PropertyModel.fromJson(e))
-              .toList();
+          _allProperties = freshList;
         });
+        _precachePropertyImages(freshList);
         _checkAndOpenInitialProperty();
       }
     } catch (e) {
@@ -408,6 +414,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
            AppSnackbar.error(context, 'Offline mode: Showing cached properties.');
         } else {
            AppSnackbar.error(context, 'Failed to fetch properties: $e');
+        }
+      }
+    }
+  }
+
+  void _precachePropertyImages(List<PropertyModel> properties) {
+    if (!mounted) return;
+    for (final prop in properties.take(20)) {
+      if (prop.imageUrls.isNotEmpty) {
+        final firstUrl = prop.imageUrls.first;
+        if (firstUrl.startsWith('http')) {
+          try {
+            precacheImage(
+              CachedNetworkImageProvider(
+                firstUrl,
+                maxWidth: 800,
+              ),
+              context,
+            );
+          } catch (_) {}
         }
       }
     }
@@ -488,7 +514,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   List<PropertyModel> _getSortedPropertiesForType(String selectedTypeStr) {
-    if (_currentPosition == null) return [];
+    bool matchesType(PropertyModel property) {
+      if (selectedTypeStr == 'Rental') {
+        return property.type == 'Rental' || property.type == 'House';
+      } else if (selectedTypeStr == 'Buy') {
+        return property.type == 'Buy' || property.type == 'Sale' || property.type == 'Plot' || property.type == 'Land';
+      } else {
+        return property.type == 'PG' || property.type == 'Hostel';
+      }
+    }
+
+    if (_currentPosition == null) {
+      return _allProperties.where(matchesType).toList();
+    }
 
     int searchRadiusKm = 5;
     List<PropertyModel> tempFiltered = [];
@@ -496,16 +534,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Increment radius by 5km until we find properties or hit 50km limit
     while (searchRadiusKm <= 50) {
       tempFiltered = _allProperties.where((property) {
-        // 1. Filter by Type (Hostel vs Rental vs Buy)
-        if (selectedTypeStr == 'Rental') {
-          if (property.type != 'Rental' && property.type != 'House') return false;
-        } else if (selectedTypeStr == 'Buy') {
-          if (property.type != 'Buy' && property.type != 'Sale' && property.type != 'Plot' && property.type != 'Land') return false;
-        } else {
-          if (property.type != 'PG' && property.type != 'Hostel') return false;
-        }
+        if (!matchesType(property)) return false;
 
-        // 2. Filter by distance
         double distanceInMeters = Geolocator.distanceBetween(
           _currentPosition!.latitude,
           _currentPosition!.longitude,
@@ -520,6 +550,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         break;
       }
       searchRadiusKm += 5;
+    }
+
+    if (tempFiltered.isEmpty) {
+      tempFiltered = _allProperties.where(matchesType).toList();
     }
 
     // Sort strictly in ascending order by distance (closest first: 20m, 30m, 1.2km, etc.)
@@ -559,16 +593,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Transform.scale(
-                    scale: 2.8,
-                    child: Lottie.asset(
-                      'assets/loadingg.json',
-                      width: 170,
-                      height: 170,
-                      fit: BoxFit.contain,
+                  SizedBox(
+                    height: 190,
+                    width: 260,
+                    child: OverflowBox(
+                      maxHeight: 500,
+                      maxWidth: 500,
+                      child: Lottie.asset(
+                        'assets/loadingg.json',
+                        width: 500,
+                        height: 500,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   Text(
                     'Finding location...',
                     style: TextStyle(
@@ -800,7 +839,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             alignment: Alignment.center,
             child: Icon(
-              Iconsax.location,
+              Iconsax.location5,
               color: isDark ? Colors.white : Colors.black,
               size: 24,
             ),
@@ -881,22 +920,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             );
           },
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkCard : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
-                width: 1,
-              ),
-            ),
-            alignment: Alignment.center,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Icon(
               Iconsax.search_normal_1,
-              color: isDark ? Colors.white : Colors.black,
-              size: 20,
+              color: isDark ? Colors.white : Colors.black87,
+              size: 22,
             ),
           ),
         ),
@@ -1200,13 +1229,14 @@ class PropertyCard extends StatelessWidget {
                     height: 230,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    fadeInDuration: const Duration(milliseconds: 300),
-                    fadeOutDuration: const Duration(milliseconds: 150),
+                    memCacheWidth: 800,
+                    fadeInDuration: Duration.zero,
+                    fadeOutDuration: Duration.zero,
                     placeholder: (context, url) => Container(
                       height: 230,
                       color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade100,
                       child: Center(
-                        child: Icon(Iconsax.image, color: Colors.grey.shade500, size: 30),
+                        child: Icon(Iconsax.image, color: Colors.grey.shade400, size: 28),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
@@ -1267,141 +1297,38 @@ class PropertyCard extends StatelessWidget {
                     ),
                   ),
 
-                // Top Right: Availability Status
+                // Top Right: Availability Status (PhonePe payment success green at 100% solid opacity, clean text without dot)
                 Positioned(
                   top: 12,
                   right: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5.5),
                     decoration: BoxDecoration(
                       color: property.isAvailable
-                          ? const Color(0xFF10B981)
+                          ? const Color(0xFF1A9E5B) // PhonePe Payment Success Green (100% solid)
                           : Colors.redAccent,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          property.isAvailable ? 'Available' : 'Not Available',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      property.isAvailable ? 'Available' : 'Not Available',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
 
-                // Bottom Strip: 3 Equal-Width Columns Full-width Solid Yellow Unified Bar
+                // Bottom Strip: Alternates every 4s between info & scrolling Admin Approved banner
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  child: Container(
-                    height: 32,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFFEB3A),
-                    ),
-                    child: Row(
-                      children: [
-                        // Column 1: Location / Distance
-                        Expanded(
-                          child: Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Iconsax.location, color: Colors.black, size: 15.5),
-                                const SizedBox(width: 4),
-                                Text(
-                                  distanceInMeters != null
-                                      ? _formatDistance(distanceInMeters!)
-                                      : 'Nearby',
-                                  style: const TextStyle(
-                                    fontFamily: 'Inter',
-                                    color: Colors.black,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.2,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // Divider 1
-                        Container(
-                          width: 1.4,
-                          height: 18,
-                          color: Colors.black.withValues(alpha: 0.35),
-                        ),
-
-                        // Column 2: Category / Property Type
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              property.type == 'PG'
-                                  ? 'PG / Hostel'
-                                  : (property.type == 'Buy' ? 'Buy / Sale' : property.type),
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                color: Colors.black,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.2,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-
-                        // Divider 2
-                        Container(
-                          width: 1.4,
-                          height: 18,
-                          color: Colors.black.withValues(alpha: 0.35),
-                        ),
-
-                        // Column 3: Rental App Brand
-                        const Expanded(
-                          child: Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.send_rounded, color: Colors.black, size: 15),
-                                SizedBox(width: 5),
-                                Text(
-                                  'Rental App',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    color: Colors.black,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: _CardBottomStrip(
+                    property: property,
+                    distanceInMeters: distanceInMeters,
+                    formatDistance: _formatDistance,
                   ),
                 ),
               ],
@@ -1455,7 +1382,7 @@ class PropertyCard extends StatelessWidget {
                   Row(
                     children: [
                       const Icon(
-                        Iconsax.location,
+                        Iconsax.location5,
                         color: Color(0xFFF59E0B),
                         size: 16,
                       ),
@@ -1791,6 +1718,221 @@ class SkeletonPropertyCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CardBottomStrip extends StatefulWidget {
+  final PropertyModel property;
+  final double? distanceInMeters;
+  final String Function(double) formatDistance;
+
+  const _CardBottomStrip({
+    required this.property,
+    required this.distanceInMeters,
+    required this.formatDistance,
+  });
+
+  @override
+  State<_CardBottomStrip> createState() => _CardBottomStripState();
+}
+
+class _CardBottomStripState extends State<_CardBottomStrip>
+    with SingleTickerProviderStateMixin {
+  Timer? _stateTimer;
+  bool _showAdminVerified = false;
+  late AnimationController _scrollAnimController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 11),
+    );
+    _scheduleNextState();
+  }
+
+  void _scheduleNextState() {
+    _stateTimer?.cancel();
+    // 6 seconds for info frame, 11 seconds for scrolling text frame
+    final nextDuration = _showAdminVerified
+        ? const Duration(seconds: 11)
+        : const Duration(seconds: 6);
+
+    _stateTimer = Timer(nextDuration, () {
+      if (!mounted) return;
+      setState(() {
+        _showAdminVerified = !_showAdminVerified;
+      });
+      if (_showAdminVerified) {
+        _scrollAnimController.forward(from: 0.0);
+      } else {
+        _scrollAnimController.stop();
+      }
+      _scheduleNextState();
+    });
+  }
+
+  @override
+  void dispose() {
+    _stateTimer?.cancel();
+    _scrollAnimController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 32,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFEB3A),
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 350),
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.0, 0.25),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: _showAdminVerified
+            ? _buildAdminApprovedView()
+            : _buildStandardInfoView(),
+      ),
+    );
+  }
+
+  Widget _buildStandardInfoView() {
+    return Row(
+      key: const ValueKey('standard_info'),
+      children: [
+        // Column 1: Location / Distance
+        Expanded(
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Iconsax.location5, color: Colors.black, size: 14.5),
+                const SizedBox(width: 4),
+                Text(
+                  widget.distanceInMeters != null
+                      ? widget.formatDistance(widget.distanceInMeters!)
+                      : 'Nearby',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    color: Colors.black,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Divider 1
+        Container(
+          width: 1.2,
+          height: 16,
+          color: Colors.black.withValues(alpha: 0.25),
+        ),
+
+        // Column 2: Category / Property Type
+        Expanded(
+          child: Center(
+            child: Text(
+              widget.property.type == 'PG'
+                  ? 'PG / Hostel'
+                  : (widget.property.type == 'Buy' ? 'Buy / Sale' : widget.property.type),
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                color: Colors.black,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.2,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+
+        // Divider 2
+        Container(
+          width: 1.2,
+          height: 16,
+          color: Colors.black.withValues(alpha: 0.25),
+        ),
+
+        // Column 3: Rental App Brand
+        Expanded(
+          child: Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const RentalAppIcon(size: 14.5, color: Colors.black),
+                const SizedBox(width: 4.5),
+                const Text(
+                  'Rental App',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: Colors.black,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminApprovedView() {
+    return ClipRect(
+      key: const ValueKey('admin_approved'),
+      child: AnimatedBuilder(
+        animation: _scrollAnimController,
+        builder: (context, child) {
+          // Starts at center (dx = 0.40) and glides steadily at 1x speed towards the left
+          final double dx = (1.0 - _scrollAnimController.value) * 0.40 +
+              (_scrollAnimController.value * -1.25);
+          return FractionalTranslation(
+            translation: Offset(dx, 0.0),
+            child: child,
+          );
+        },
+        child: OverflowBox(
+          alignment: Alignment.centerLeft,
+          maxWidth: double.infinity,
+          child: const Text(
+            '100% Genuine Owner Listing   •   This property has been approved & verified by Admin   •   100% Trusted & Verified   •   Direct Owner Contact   •   You can trust and contact directly   •   ',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              color: Colors.black,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.3,
+              wordSpacing: 1.5,
+            ),
+            maxLines: 1,
+            softWrap: false,
+          ),
         ),
       ),
     );
