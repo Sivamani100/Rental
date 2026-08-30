@@ -14,6 +14,7 @@ import 'package:lottie/lottie.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_compressor.dart';
 import 'home_screen.dart' show PropertyModel;
 import 'photo_position_screen.dart';
 
@@ -753,46 +754,22 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       }
 
       for (var file in _selectedImages) {
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
         final originalBytes = await file.readAsBytes();
         
-        Uint8List bytesToUpload = originalBytes;
-        
-        // Fast resize and apply watermark if possible
-        try {
-          final originalImg = img.decodeImage(originalBytes);
-          if (originalImg != null) {
-            img.Image processedImg = originalImg;
-            // Downscale huge camera photos (e.g. >1280px) for blazing fast upload & smooth performance
-            if (processedImg.width > 1280 || processedImg.height > 1280) {
-              processedImg = processedImg.width > processedImg.height
-                  ? img.copyResize(processedImg, width: 1280)
-                  : img.copyResize(processedImg, height: 1280);
-            }
+        // Smart 30KB Compression: Converts to <= 30 KB (bypasses if already <= 30 KB)
+        final result = await ImageCompressor.smartCompress(
+          originalBytes,
+          watermark: watermarkImage,
+        );
 
-            if (watermarkImage != null) {
-              int targetWatermarkWidth = (processedImg.width * 0.22).toInt().clamp(50, 400);
-              img.Image scaledWatermark = img.copyResize(watermarkImage, width: targetWatermarkWidth);
-              
-              int padding = 16;
-              int dstX = processedImg.width - scaledWatermark.width - padding;
-              int dstY = processedImg.height - scaledWatermark.height - padding;
-              
-              img.compositeImage(processedImg, scaledWatermark, dstX: dstX, dstY: dstY);
-            }
-            
-            bytesToUpload = Uint8List.fromList(img.encodeJpg(processedImg, quality: 82));
-          }
-        } catch (imgErr) {
-          debugPrint('Image watermarking fallback: $imgErr');
-          bytesToUpload = originalBytes;
-        }
+        final rawBaseName = file.name.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_$rawBaseName.${result.fileExtension}';
         
-        // Upload the bytes to Supabase storage
+        // Upload the ultra-compressed binary to Supabase storage bucket
         await supabase.storage.from('property_images').uploadBinary(
           fileName, 
-          bytesToUpload,
-          fileOptions: const FileOptions(contentType: 'image/jpeg')
+          result.bytes,
+          fileOptions: FileOptions(contentType: result.mimeType),
         );
         
         final url = supabase.storage.from('property_images').getPublicUrl(fileName);

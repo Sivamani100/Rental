@@ -20,6 +20,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/transport_service.dart';
+import '../utils/image_compressor.dart';
 import 'transport_street_view_screen.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
@@ -2614,9 +2615,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
                                 if (selectedPhotos.isNotEmpty) {
                                   for (var file in selectedPhotos) {
-                                    final fileName =
-                                        '${DateTime.now().millisecondsSinceEpoch}_${file.path.split(Platform.pathSeparator).last}';
-                                    await supabase.storage.from('property_images').upload(fileName, file);
+                                    final cleanName = file.path.split(RegExp(r'[\\/]')).last.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+                                    final originalBytes = await file.readAsBytes();
+                                    final result = await ImageCompressor.smartCompress(originalBytes);
+                                    final fileName = '${DateTime.now().millisecondsSinceEpoch}_$cleanName.${result.fileExtension}';
+                                    await supabase.storage.from('property_images').uploadBinary(
+                                      fileName,
+                                      result.bytes,
+                                      fileOptions: FileOptions(contentType: result.mimeType),
+                                    );
                                     final url = supabase.storage.from('property_images').getPublicUrl(fileName);
                                     photoUrls.add(url);
                                   }
@@ -2846,9 +2853,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                 List<Map<String, dynamic>> newSuggestions = [];
 
                                 for (var file in suggestedPhotos) {
-                                  final fileName =
-                                      '${DateTime.now().millisecondsSinceEpoch}_${file.path.split(Platform.pathSeparator).last}';
-                                  await supabase.storage.from('property_images').upload(fileName, file);
+                                  final cleanName = file.path.split(RegExp(r'[\\/]')).last.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+                                  final originalBytes = await file.readAsBytes();
+                                  final result = await ImageCompressor.smartCompress(originalBytes);
+                                  final fileName = '${DateTime.now().millisecondsSinceEpoch}_$cleanName.${result.fileExtension}';
+                                  await supabase.storage.from('property_images').uploadBinary(
+                                    fileName,
+                                    result.bytes,
+                                    fileOptions: FileOptions(contentType: result.mimeType),
+                                  );
                                   final url = supabase.storage.from('property_images').getPublicUrl(fileName);
                                   newSuggestions.add({
                                     'url': url,

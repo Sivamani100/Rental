@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:lottie/lottie.dart';
@@ -379,39 +380,47 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final results = _filteredProperties;
+    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
+      backgroundColor: isDark ? const Color(0xFF0F1117) : const Color(0xFFF8FAFC),
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // Row 1: Top Bar [Back] - [Discover] - [Filters Icon with badge]
+            // Row 1: Clean Top Bar [Back] - [Search Properties • City] - [Filter Button]
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
               child: _buildTopBar(isDark),
             ),
 
-            // Row 2: Search Input Bar
+            // Row 2: Clean Search Input Field
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildSearchBar(isDark),
             ),
 
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
 
-            // Row 3: Results Count & Sort Bar
+            // Row 3: Quick Category Pills
+            _buildCategoryPills(isDark),
+
+            // Row 4: Active Filter Badges (if any)
+            if (_hasActiveFilters)
+              _buildActiveFilterChips(isDark),
+
+            // Row 5: Results Count & Clean Sort Pill
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     '${results.length} ${results.length == 1 ? 'property' : 'properties'} found',
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
+                      color: mutedColor,
                     ),
                   ),
                   _buildSortButton(isDark),
@@ -419,15 +428,15 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
-            // Main Content: Rich Property Cards OR Empty Suggestions
+            // Main Content: Property Cards List OR Clean Empty State
             Expanded(
               child: results.isEmpty
                   ? _buildEmptyState(isDark)
                   : ListView.separated(
                       physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
                       itemCount: results.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 16),
+                      separatorBuilder: (context, index) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
                         final prop = results[index];
                         double? distance;
@@ -470,14 +479,14 @@ class _SearchScreenState extends State<SearchScreen> {
           );
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: isDark ? AppTheme.primaryYellow : const Color(0xFF141416),
-            borderRadius: BorderRadius.circular(30),
+            color: isDark ? const Color(0xFFF59E0B) : const Color(0xFF0F172A),
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: (isDark ? AppTheme.primaryYellow : Colors.black).withValues(alpha: 0.35),
-                blurRadius: 16,
+                color: (isDark ? const Color(0xFFF59E0B) : Colors.black).withValues(alpha: 0.25),
+                blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -487,17 +496,16 @@ class _SearchScreenState extends State<SearchScreen> {
             children: [
               Icon(
                 Iconsax.magic_star,
-                size: 18,
+                size: 16,
                 color: isDark ? Colors.black : Colors.white,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 7),
               Text(
                 'Ask Rental AI',
-                style: TextStyle(
+                style: GoogleFonts.inter(
                   color: isDark ? Colors.black : Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.2,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -507,59 +515,70 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  /// Top Row: Back Button on Left, "Discover" in Center, Filter Button on Right
+  /// Top Row: Back Button on Left, Title in Center, Filter Button on Right
   Widget _buildTopBar(bool isDark) {
     final hasFilters = _hasActiveFilters;
+    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Back Button
-        BouncingButton(
+        InkWell(
+          borderRadius: BorderRadius.circular(10),
           onTap: () {
             HapticFeedback.selectionClick();
             Navigator.pop(context);
           },
           child: Container(
-            width: 44,
-            height: 44,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkCard : Colors.white,
-              borderRadius: BorderRadius.circular(15),
+              color: isDark ? const Color(0xFF1E2330) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
+                color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
                 width: 1,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
             alignment: Alignment.center,
             child: Icon(
               Iconsax.arrow_left_2,
-              color: isDark ? Colors.white : Colors.black87,
-              size: 20,
+              color: primaryTextColor,
+              size: 18,
             ),
           ),
         ),
 
-        // Title: Discover
-        Text(
-          'Discover',
-          style: TextStyle(
-            fontSize: 21,
-            fontWeight: FontWeight.w800,
-            color: isDark ? Colors.white : const Color(0xFF141416),
-            letterSpacing: -0.5,
-          ),
+        // Title: Search Properties
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Search Properties',
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: primaryTextColor,
+                letterSpacing: -0.2,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              'Rajamahendravaram',
+              style: GoogleFonts.inter(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w500,
+                color: mutedColor,
+              ),
+            ),
+          ],
         ),
 
         // Filter Icon Button (Top Right)
-        BouncingButton(
+        InkWell(
+          borderRadius: BorderRadius.circular(10),
           onTap: () {
             HapticFeedback.selectionClick();
             _openAdvancedFiltersSheet();
@@ -568,59 +587,48 @@ class _SearchScreenState extends State<SearchScreen> {
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: hasFilters
-                      ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                      : (isDark ? AppTheme.darkCard : Colors.white),
-                  borderRadius: BorderRadius.circular(15),
+                      ? const Color(0xFFF59E0B)
+                      : (isDark ? const Color(0xFF1E2330) : const Color(0xFFF1F5F9)),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: hasFilters
-                        ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                        : (isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06)),
+                        ? const Color(0xFFF59E0B)
+                        : (isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                     width: 1,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: hasFilters
-                          ? (isDark ? AppTheme.primaryYellow.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.15))
-                          : Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 alignment: Alignment.center,
                 child: Icon(
                   Iconsax.setting_4,
-                  size: 20,
-                  color: hasFilters
-                      ? (isDark ? Colors.black : Colors.white)
-                      : (isDark ? Colors.white : Colors.black87),
+                  size: 18,
+                  color: hasFilters ? Colors.black : primaryTextColor,
                 ),
               ),
               if (hasFilters)
                 Positioned(
-                  top: -3,
-                  right: -3,
+                  top: -2,
+                  right: -2,
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(3),
                     decoration: const BoxDecoration(
-                      color: Colors.redAccent,
+                      color: Color(0xFFEF4444),
                       shape: BoxShape.circle,
                     ),
                     constraints: const BoxConstraints(
-                      minWidth: 18,
-                      minHeight: 18,
+                      minWidth: 16,
+                      minHeight: 16,
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       '$_activeFilterCount',
-                      style: const TextStyle(
+                      style: GoogleFonts.inter(
                         color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
@@ -632,52 +640,49 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  /// Second Row: Search Input Bar
+  /// Second Row: Clean Search Input Bar
   Widget _buildSearchBar(bool isDark) {
+    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
     return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        color: isDark ? const Color(0xFF1E2330) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
-          width: 1.2,
+          color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+          width: 1.0,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         children: [
           Icon(
             Iconsax.search_normal_1,
-            size: 20,
-            color: isDark ? AppTheme.primaryYellow : Colors.black87,
+            size: 17,
+            color: mutedColor,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _searchController,
               focusNode: _focusNode,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.black87,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: primaryTextColor,
               ),
               decoration: InputDecoration(
                 hintText: 'Search city, area, 2 BHK, hostel, buy...',
-                hintStyle: TextStyle(
-                  fontSize: 13.5,
-                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
+                hintStyle: GoogleFonts.inter(
+                  fontSize: 12.5,
+                  color: mutedColor.withValues(alpha: 0.7),
                   fontWeight: FontWeight.normal,
                 ),
                 border: InputBorder.none,
                 isDense: true,
+                contentPadding: EdgeInsets.zero,
               ),
               onChanged: (val) {
                 setState(() {});
@@ -694,8 +699,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 padding: const EdgeInsets.all(4.0),
                 child: Icon(
                   Iconsax.close_circle5,
-                  size: 19,
-                  color: isDark ? Colors.white54 : Colors.grey.shade500,
+                  size: 17,
+                  color: mutedColor,
                 ),
               ),
             ),
@@ -704,22 +709,248 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  /// Sort Selector
+  /// Quick Category Pills (Horizontal Scroll)
+  Widget _buildCategoryPills(bool isDark) {
+    final categories = const [
+      {'name': 'All', 'icon': Iconsax.category},
+      {'name': 'Flat', 'icon': Iconsax.buildings},
+      {'name': 'House', 'icon': Iconsax.home_2},
+      {'name': 'PG', 'icon': Iconsax.user_tag},
+      {'name': 'Office', 'icon': Iconsax.shop},
+      {'name': 'Land', 'icon': Iconsax.map_1},
+      {'name': 'Buy', 'icon': Iconsax.key},
+    ];
+
+    return SizedBox(
+      height: 34,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          final name = cat['name'] as String;
+          final icon = cat['icon'] as IconData;
+          final isSelected = _selectedCategory == name;
+
+          return InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _selectedCategory = name);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(horizontal: 11),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? (isDark ? const Color(0xFFF59E0B) : const Color(0xFF0F172A))
+                    : (isDark ? const Color(0xFF1E2330) : Colors.white),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected
+                      ? Colors.transparent
+                      : (isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    size: 13,
+                    color: isSelected
+                        ? (isDark ? Colors.black : Colors.white)
+                        : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    name == 'PG' ? 'PG / Hostel' : (name == 'Office' ? 'Commercial' : name),
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected
+                          ? (isDark ? Colors.black : Colors.white)
+                          : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Active Filters Removable Chips
+  Widget _buildActiveFilterChips(bool isDark) {
+    final chips = <Map<String, dynamic>>[];
+
+    if (_selectedCategory != 'All') {
+      chips.add({
+        'label': _selectedCategory,
+        'onRemove': () => setState(() => _selectedCategory = 'All'),
+      });
+    }
+    if (_selectedLocation != null) {
+      chips.add({
+        'label': _selectedLocation!,
+        'onRemove': () => setState(() => _selectedLocation = null),
+      });
+    }
+    if (_selectedBhk != null) {
+      chips.add({
+        'label': _selectedBhk!,
+        'onRemove': () => setState(() => _selectedBhk = null),
+      });
+    }
+    if (_selectedFurnishing != null) {
+      chips.add({
+        'label': _selectedFurnishing!,
+        'onRemove': () => setState(() => _selectedFurnishing = null),
+      });
+    }
+    if (_selectedTenant != null) {
+      chips.add({
+        'label': _selectedTenant!,
+        'onRemove': () => setState(() => _selectedTenant = null),
+      });
+    }
+    if (_selectedSharing != null) {
+      chips.add({
+        'label': _selectedSharing!,
+        'onRemove': () => setState(() => _selectedSharing = null),
+      });
+    }
+    if (_selectedGender != null) {
+      chips.add({
+        'label': _selectedGender!,
+        'onRemove': () => setState(() => _selectedGender = null),
+      });
+    }
+    for (final a in _selectedAmenities) {
+      chips.add({
+        'label': a,
+        'onRemove': () => setState(() => _selectedAmenities.remove(a)),
+      });
+    }
+    if (_budgetRange.start > 0 || _budgetRange.end < 10000000) {
+      chips.add({
+        'label': '${_formatBudgetLabel(_budgetRange.start)} - ${_formatBudgetLabel(_budgetRange.end)}',
+        'onRemove': () => setState(() => _budgetRange = const RangeValues(0, 10000000)),
+      });
+    }
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: SizedBox(
+        height: 26,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: [
+            ...chips.map((c) {
+              return Container(
+                margin: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF252B3B) : const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFFBFDBFE),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      c['label'] as String,
+                      style: GoogleFonts.inter(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: c['onRemove'] as VoidCallback,
+                      child: Icon(
+                        Icons.close,
+                        size: 12,
+                        color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedCategory = 'All';
+                  _selectedLocation = null;
+                  _budgetRange = const RangeValues(0, 10000000);
+                  _selectedBhk = null;
+                  _selectedBathrooms = null;
+                  _selectedSharing = null;
+                  _selectedGender = null;
+                  _selectedAmenities.clear();
+                  _selectedFurnishing = null;
+                  _selectedTenant = null;
+                  _selectedAvailability = null;
+                  _selectedFoodType = null;
+                  _selectedCurfew = null;
+                  _petFriendly = false;
+                  _separateMeter = false;
+                  _zeroSeepage = false;
+                  _areaRange = const RangeValues(0, 10000);
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                alignment: Alignment.center,
+                child: Text(
+                  'Clear all',
+                  style: GoogleFonts.inter(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFFEF4444),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Sort Selector Pill
   Widget _buildSortButton(bool isDark) {
     String label = 'Relevance';
     if (_sortBy == 'price_asc') label = 'Price: Low';
     if (_sortBy == 'price_desc') label = 'Price: High';
     if (_sortBy == 'distance') label = 'Closest';
 
-    return GestureDetector(
+    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
       onTap: _showSortBottomSheet,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4.5),
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: isDark ? const Color(0xFF1E2330) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+            color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
             width: 1,
           ),
         ),
@@ -728,23 +959,23 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             Icon(
               Iconsax.sort,
-              size: 14,
-              color: isDark ? AppTheme.primaryYellow : Colors.black87,
+              size: 13,
+              color: mutedColor,
             ),
             const SizedBox(width: 5),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
+              style: GoogleFonts.inter(
+                fontSize: 11.5,
                 fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.black87,
+                color: primaryTextColor,
               ),
             ),
             const SizedBox(width: 2),
             Icon(
-              Icons.arrow_drop_down,
-              size: 16,
-              color: isDark ? Colors.white54 : Colors.black54,
+              Icons.keyboard_arrow_down_rounded,
+              size: 15,
+              color: mutedColor,
             ),
           ],
         ),
@@ -756,23 +987,27 @@ class _SearchScreenState extends State<SearchScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
+      backgroundColor: isDark ? const Color(0xFF161922) : Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Text(
                     'Sort Results By',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -792,19 +1027,30 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSortOption(String title, String key, IconData icon, bool isDark) {
     final isSelected = _sortBy == key;
     return ListTile(
+      dense: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      tileColor: isSelected
+          ? (isDark ? const Color(0xFF1E2638) : const Color(0xFFF1F5F9))
+          : Colors.transparent,
       leading: Icon(
         icon,
-        color: isSelected ? (isDark ? AppTheme.primaryYellow : Colors.black) : Colors.grey,
+        size: 18,
+        color: isSelected
+            ? const Color(0xFFF59E0B)
+            : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
       ),
       title: Text(
         title,
-        style: TextStyle(
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isSelected ? (isDark ? AppTheme.primaryYellow : Colors.black) : (isDark ? Colors.white : Colors.black87),
+        style: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          color: isSelected
+              ? (isDark ? Colors.white : const Color(0xFF0F172A))
+              : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
         ),
       ),
       trailing: isSelected
-          ? Icon(Icons.check_circle, color: isDark ? AppTheme.primaryYellow : Colors.black)
+          ? const Icon(Icons.check_rounded, color: Color(0xFFF59E0B), size: 18)
           : null,
       onTap: () {
         setState(() => _sortBy = key);
@@ -1644,6 +1890,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   /// Empty State with Centered Lottie Animation
   Widget _buildEmptyState(bool isDark) {
+    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
     return Center(
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -1654,32 +1903,39 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             Lottie.asset(
               'assets/Nothing founded.json',
-              width: 250,
-              height: 250,
+              width: 220,
+              height: 220,
               fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Icon(
+                Iconsax.search_status,
+                size: 80,
+                color: mutedColor.withValues(alpha: 0.4),
+              ),
             ),
             const SizedBox(height: 12),
             Text(
               'No properties found',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-                height: 1.25,
+              style: GoogleFonts.inter(
+                color: primaryTextColor,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
             Text(
-              'Try adjusting your search or filters to see more results.',
-              style: TextStyle(
-                fontSize: 13.5,
-                color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+              'Try adjusting your search query or removing filters to discover more properties.',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: mutedColor,
+                height: 1.4,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            BouncingButton(
+            InkWell(
+              borderRadius: BorderRadius.circular(12),
               onTap: () {
                 HapticFeedback.selectionClick();
                 setState(() {
@@ -1704,25 +1960,23 @@ class _SearchScreenState extends State<SearchScreen> {
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isDark ? AppTheme.primaryYellow : const Color(0xFF141416),
-                  borderRadius: BorderRadius.circular(20),
+                  color: isDark ? const Color(0xFFF59E0B) : const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: isDark
-                          ? AppTheme.primaryYellow.withValues(alpha: 0.25)
-                          : Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      color: (isDark ? const Color(0xFFF59E0B) : Colors.black).withValues(alpha: 0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
                 child: Text(
                   'Reset All Filters',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
                     color: isDark ? Colors.black : Colors.white,
                   ),
                 ),

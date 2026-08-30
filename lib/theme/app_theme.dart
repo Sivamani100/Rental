@@ -44,6 +44,26 @@ class AppTheme {
           statusBarBrightness: Brightness.light,
         ),
       ),
+      scrollbarTheme: ScrollbarThemeData(
+        thumbVisibility: WidgetStateProperty.all(false),
+        trackVisibility: WidgetStateProperty.all(false),
+        thickness: WidgetStateProperty.all(5.0),
+        radius: const Radius.circular(8.0),
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.dragged) || states.contains(WidgetState.hovered)) {
+            return const Color(0xFF94A3B8);
+          }
+          return const Color(0xFFCBD5E1).withValues(alpha: 0.7);
+        }),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: Colors.white,
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryYellow,
@@ -84,6 +104,26 @@ class AppTheme {
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
           statusBarBrightness: Brightness.dark,
+        ),
+      ),
+      scrollbarTheme: ScrollbarThemeData(
+        thumbVisibility: WidgetStateProperty.all(false),
+        trackVisibility: WidgetStateProperty.all(false),
+        thickness: WidgetStateProperty.all(5.0),
+        radius: const Radius.circular(8.0),
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.dragged) || states.contains(WidgetState.hovered)) {
+            return Colors.white38;
+          }
+          return Colors.white24;
+        }),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: const Color(0xFF1E2330),
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: Colors.white12),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
