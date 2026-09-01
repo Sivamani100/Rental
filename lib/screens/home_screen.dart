@@ -830,11 +830,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         child: PageView(
                           controller: _pageController,
                           onPageChanged: (index) {
-                            setState(() {
-                              _selectedTypeIndex = index;
-                            });
-                            AnalyticsService.instance.logCategoryClick(index == 0 ? 'PG' : (index == 2 ? 'Buy' : 'Rental'));
-                            HapticFeedback.selectionClick();
+                            if (_selectedTypeIndex != index) {
+                              setState(() {
+                                _selectedTypeIndex = index;
+                              });
+                              AnalyticsService.instance.logCategoryClick(index == 0 ? 'Hostel' : (index == 2 ? 'Buy' : 'Rental'));
+                              HapticFeedback.selectionClick();
+                            }
                           },
                           children: [
                             _buildTabContent('PG'),
@@ -847,12 +849,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                   // Pinned floating bottom toggle with 20px bottom margin
                   Positioned(
-                    left: 16,
-                    right: 16,
+                    left: 0,
+                    right: 0,
                     bottom: 20,
                     child: SafeArea(
                       top: false,
-                      child: Center(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
                         child: _buildBottomToggle(),
                       ),
                     ),
@@ -1149,16 +1152,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: BouncingButton(
               onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() {
-                  _selectedTypeIndex = index;
-                });
-                AnalyticsService.instance.logCategoryClick(item.label);
-                _pageController.animateToPage(
-                  index,
-                  duration: const Duration(milliseconds: 280),
-                  curve: Curves.easeInOutCubic,
-                );
+                if (_selectedTypeIndex != index) {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    _selectedTypeIndex = index;
+                  });
+                  AnalyticsService.instance.logCategoryClick(item.label);
+                  if (_pageController.hasClients) {
+                    _pageController.animateToPage(
+                      index,
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeInOutCubic,
+                    );
+                  }
+                }
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
@@ -1959,9 +1966,8 @@ class _CardBottomStripState extends State<_CardBottomStrip>
             ),
           );
         },
-        child: _showAdminVerified
-            ? _buildAdminApprovedView()
-            : _buildStandardInfoView(),
+        // Admin approved banner text hidden for now as requested (can be re-enabled later)
+        child: _buildStandardInfoView(),
       ),
     );
   }
@@ -2268,7 +2274,7 @@ class _TopLocationLogoSwitcherState extends State<_TopLocationLogoSwitcher> {
                       width: 34,
                       height: 34,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
+                      errorBuilder: (_, _, _) => Icon(
                         Iconsax.location5,
                         color: isDark ? Colors.white : Colors.black,
                         size: 24,

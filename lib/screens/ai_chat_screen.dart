@@ -1,11 +1,10 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bouncing_button.dart';
 import '../widgets/app_snackbar.dart';
@@ -200,7 +199,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
         ),
       );
     });
-    AppSnackbar.success(context, 'Chat restarted');
+    if (mounted) {
+      AppSnackbar.success(context, 'Chat restarted');
+    }
   }
 
   void _openPropertyDetails(PropertyModel property) {
@@ -211,25 +212,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
         builder: (_) => PropertyDetailsScreen(property: property),
       ),
     );
-  }
-
-  Future<void> _makeCall(String? phone) async {
-    if (phone == null || phone.isEmpty) return;
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
-  }
-
-  Future<void> _openWhatsApp(String? whatsapp, String? phone, String propTitle) async {
-    final num = (whatsapp != null && whatsapp.isNotEmpty) ? whatsapp : phone;
-    if (num == null || num.isEmpty) return;
-    final clean = num.replaceAll(RegExp(r'[^0-9]'), '');
-    final url = 'https://wa.me/$clean?text=${Uri.encodeComponent("Hello, I am interested in your property: $propTitle via Rental Assistant")}';
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
   }
 
   @override
@@ -280,72 +262,63 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   Widget _buildCleanHeader(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Back button (Transparent ghost button like ChatGPT)
+          // Back button (Clean glass capsule)
           BouncingButton(
             onTap: () => Navigator.pop(context),
             child: Container(
-              padding: const EdgeInsets.all(9),
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                  width: 1,
+                ),
               ),
               alignment: Alignment.center,
               child: Icon(
                 Iconsax.arrow_left_2,
-                color: isDark ? Colors.white : Colors.black,
+                color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
                 size: 19,
               ),
             ),
           ),
 
-          // Center Title Badge (Transparent like ChatGPT)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: _isDbReady ? const Color(0xFF00E676) : const Color(0xFFFFEB3A),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Rental Assistant',
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                ),
-              ),
-              const SizedBox(width: 5),
-              Icon(
-                Iconsax.magicpen,
-                size: 14,
-                color: isDark ? const Color(0xFFFFEB3A) : Colors.black87,
-              ),
-            ],
+          // Center Title
+          Text(
+            'Rental Assistant',
+            style: GoogleFonts.inter(
+              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
           ),
 
-          // New Chat Button (Transparent ghost button like ChatGPT)
+          // New Chat Button
           BouncingButton(
             onTap: _resetChat,
             child: Container(
-              padding: const EdgeInsets.all(9),
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                  width: 1,
+                ),
               ),
+              alignment: Alignment.center,
               child: Icon(
                 Iconsax.add,
-                color: isDark ? Colors.white : Colors.black87,
-                size: 19,
+                color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                size: 20,
               ),
             ),
           ),
@@ -355,56 +328,61 @@ class _AiChatScreenState extends State<AiChatScreen> {
   }
 
   Widget _buildEmptyLanding(bool isDark) {
+    final mutedColor = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          // Glowing Ambient AI Sparkles Avatar
           Container(
-            width: 60,
-            height: 60,
+            width: 66,
+            height: 66,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFEB3A),
+              color: AppTheme.primaryYellow,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFFFEB3A).withValues(alpha: 0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
+                  color: AppTheme.primaryYellow.withValues(alpha: isDark ? 0.45 : 0.35),
+                  blurRadius: 24,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
             alignment: Alignment.center,
             child: const Icon(
-              Iconsax.magicpen,
+              Icons.auto_awesome_rounded,
               color: Colors.black,
-              size: 28,
+              size: 30,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           Text(
             "What property are you looking for?",
-            style: TextStyle(
-              fontSize: 21,
+            style: GoogleFonts.inter(
+              fontSize: 22,
               fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : Colors.black87,
+              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
               letterSpacing: -0.4,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             "Tell me your budget, locality, or requirements in plain words",
-            style: TextStyle(
+            style: GoogleFonts.inter(
               fontSize: 13.5,
-              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+              color: mutedColor,
               fontWeight: FontWeight.w500,
+              height: 1.35,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 32),
 
           // 2x2 Suggestion Cards
           LayoutBuilder(
@@ -424,54 +402,55 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       width: cardWidth,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? AppTheme.darkCard : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+                        borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
+                          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                            blurRadius: 10,
+                            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                            blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFEB3A).withValues(alpha: isDark ? 0.15 : 0.25),
-                              borderRadius: BorderRadius.circular(10),
+                              color: AppTheme.primaryYellow.withValues(alpha: isDark ? 0.18 : 0.22),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               idea.icon,
-                              color: isDark ? const Color(0xFFFFEB3A) : Colors.black87,
+                              color: isDark ? AppTheme.primaryYellow : Colors.black,
                               size: 20,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   idea.title,
-                                  style: TextStyle(
-                                    color: isDark ? Colors.white : Colors.black,
+                                  style: GoogleFonts.inter(
+                                    color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
                                     fontSize: 14.5,
                                     fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.2,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 3),
                                 Text(
                                   idea.subtitle,
-                                  style: TextStyle(
-                                    color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                                    fontSize: 12.5,
+                                  style: GoogleFonts.inter(
+                                    color: mutedColor,
+                                    fontSize: 12,
                                     height: 1.3,
                                   ),
                                   maxLines: 2,
@@ -480,10 +459,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
                               ],
                             ),
                           ),
+                          const SizedBox(width: 6),
                           Icon(
                             Iconsax.arrow_right_3,
                             size: 16,
-                            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
+                            color: mutedColor,
                           ),
                         ],
                       ),
@@ -493,7 +473,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
               );
             },
           ),
-          const SizedBox(height: 24),
         ],
       ),
     );
@@ -593,7 +572,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       itemCount: msg.recommendedProperties!.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      separatorBuilder: (_, _) => const SizedBox(width: 12),
                       itemBuilder: (context, i) {
                         final prop = msg.recommendedProperties![i];
                         return _buildPropertyCard(prop, isDark, isFullWidth: false);
@@ -643,7 +622,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     ? CachedNetworkImage(
                         imageUrl: prop.imageUrls.first,
                         fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const Center(
+                        errorWidget: (_, _, _) => const Center(
                           child: Icon(Iconsax.gallery_slash, size: 24, color: Colors.grey),
                         ),
                       )
@@ -1001,15 +980,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
           // Input pill
           Container(
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1B1B1E) : Colors.white,
+              color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: isDark ? const Color(0xFF2E2E35) : Colors.black.withValues(alpha: 0.1),
+                color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -1018,14 +997,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
             padding: const EdgeInsets.fromLTRB(8, 4, 6, 4),
             child: Row(
               children: [
-                // Clean '+' button for images/files without background box
+                // Clean '+' button for images/files
                 BouncingButton(
                   onTap: _pickImage,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     child: Icon(
                       Iconsax.add,
-                      color: isDark ? Colors.white70 : Colors.black87,
+                      color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
                       size: 22,
                     ),
                   ),
@@ -1041,15 +1020,16 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     maxLines: 4,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _handleSend(),
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black,
-                      fontSize: 15.5,
+                    style: GoogleFonts.inter(
+                      color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w500,
                     ),
                     decoration: InputDecoration(
                       hintText: 'Message Rental Assistant...',
-                      hintStyle: TextStyle(
+                      hintStyle: GoogleFonts.inter(
                         color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
-                        fontSize: 15,
+                        fontSize: 14,
                       ),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -1067,16 +1047,25 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     height: 38,
                     decoration: BoxDecoration(
                       color: _hasInputText
-                          ? const Color(0xFFFFEB3A)
-                          : (isDark ? const Color(0xFF2C2C32) : const Color(0xFFE5E5EA)),
+                          ? AppTheme.primaryYellow
+                          : (isDark ? AppTheme.darkCardElevated : const Color(0xFFE5E5EA)),
                       shape: BoxShape.circle,
+                      boxShadow: _hasInputText
+                          ? [
+                              BoxShadow(
+                                color: AppTheme.primaryYellow.withValues(alpha: 0.4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
                     alignment: Alignment.center,
                     child: Icon(
                       Iconsax.arrow_up_3,
                       color: _hasInputText
                           ? Colors.black
-                          : (isDark ? Colors.grey.shade600 : Colors.grey.shade500),
+                          : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
                       size: 18,
                     ),
                   ),
@@ -1084,12 +1073,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
-            'Rental Assistant provides verified real estate insights.',
-            style: TextStyle(
+            'Rental AI can make mistakes. Please reverify important details.',
+            style: GoogleFonts.inter(
               fontSize: 11,
-              color: isDark ? Colors.grey.shade600 : Colors.grey.shade500,
+              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
               fontWeight: FontWeight.w400,
             ),
           ),

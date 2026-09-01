@@ -382,14 +382,15 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final results = _filteredProperties;
-    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final mutedColor = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F1117) : const Color(0xFFF8FAFC),
+      backgroundColor: isDark ? AppTheme.darkScaffold : AppTheme.lightScaffold,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
+            const SizedBox(height: 10),
             // Row 1: Clean Top Bar [Back] - [Search Properties • City] - [Filter Button]
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
@@ -436,7 +437,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ? _buildEmptyState(isDark)
                   : ListView.separated(
                       physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
                       itemCount: results.length,
                       separatorBuilder: (context, index) => const SizedBox(height: 14),
                       itemBuilder: (context, index) {
@@ -469,48 +470,40 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: BouncingButton(
-        onTap: () {
-          HapticFeedback.mediumImpact();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AiChatScreen(initialProperties: widget.properties),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFFF59E0B) : const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: (isDark ? const Color(0xFFF59E0B) : Colors.black).withValues(alpha: 0.25),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 12, right: 6),
+        child: BouncingButton(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AiChatScreen(initialProperties: widget.properties),
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Iconsax.magic_star,
-                size: 16,
-                color: isDark ? Colors.black : Colors.white,
-              ),
-              const SizedBox(width: 7),
-              Text(
-                'Ask Rental AI',
-                style: GoogleFonts.inter(
-                  color: isDark ? Colors.black : Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+            );
+          },
+          child: Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryYellow,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: (isDark ? AppTheme.primaryYellow : Colors.black).withValues(alpha: isDark ? 0.5 : 0.25),
+                  blurRadius: 16,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 4),
                 ),
-              ),
-            ],
+              ],
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.auto_awesome_rounded,
+              size: 24,
+              color: Colors.black,
+            ),
           ),
         ),
       ),
@@ -518,29 +511,30 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   /// Top Row: Back Button on Left, Title in Center, Filter Button on Right
+  /// Top Row: Back Button on Left, Title in Center, Filter Button on Right
   Widget _buildTopBar(bool isDark) {
     final hasFilters = _hasActiveFilters;
-    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedColor = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final primaryTextColor = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Back Button
         InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           onTap: () {
             HapticFeedback.selectionClick();
             Navigator.pop(context);
           },
           child: Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E2330) : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(10),
+              color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+                color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
                 width: 1,
               ),
             ),
@@ -554,33 +548,19 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
 
         // Title: Search Properties
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Search Properties',
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: primaryTextColor,
-                letterSpacing: -0.2,
-              ),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              'Rajamahendravaram',
-              style: GoogleFonts.inter(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w500,
-                color: mutedColor,
-              ),
-            ),
-          ],
+        Text(
+          'Search Properties',
+          style: GoogleFonts.inter(
+            fontSize: 16.5,
+            fontWeight: FontWeight.w800,
+            color: primaryTextColor,
+            letterSpacing: -0.3,
+          ),
         ),
 
         // Filter Icon Button (Top Right)
         InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           onTap: () {
             HapticFeedback.selectionClick();
             _openAdvancedFiltersSheet();
@@ -589,17 +569,17 @@ class _SearchScreenState extends State<SearchScreen> {
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: hasFilters
-                      ? const Color(0xFFF59E0B)
-                      : (isDark ? const Color(0xFF1E2330) : const Color(0xFFF1F5F9)),
-                  borderRadius: BorderRadius.circular(10),
+                      ? AppTheme.primaryYellow
+                      : (isDark ? AppTheme.darkCard : AppTheme.lightCard),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: hasFilters
-                        ? const Color(0xFFF59E0B)
-                        : (isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                        ? AppTheme.primaryYellow
+                        : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
                     width: 1,
                   ),
                 ),
@@ -644,42 +624,42 @@ class _SearchScreenState extends State<SearchScreen> {
 
   /// Second Row: Clean Search Input Bar
   Widget _buildSearchBar(bool isDark) {
-    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedColor = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final primaryTextColor = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
 
     return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E2330) : const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(12),
+        color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+          color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
           width: 1.0,
         ),
       ),
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Iconsax.search_normal_1,
-            size: 17,
-            color: mutedColor,
+            size: 18,
+            color: AppTheme.primaryYellow,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchController,
               focusNode: _focusNode,
               style: GoogleFonts.inter(
-                fontSize: 13,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w500,
                 color: primaryTextColor,
               ),
               decoration: InputDecoration(
                 hintText: 'Search city, area, 2 BHK, hostel, buy...',
                 hintStyle: GoogleFonts.inter(
-                  fontSize: 12.5,
-                  color: mutedColor.withValues(alpha: 0.7),
+                  fontSize: 13,
+                  color: mutedColor.withValues(alpha: 0.75),
                   fontWeight: FontWeight.normal,
                 ),
                 border: InputBorder.none,
@@ -706,7 +686,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 padding: const EdgeInsets.all(4.0),
                 child: Icon(
                   Iconsax.close_circle5,
-                  size: 17,
+                  size: 18,
                   color: mutedColor,
                 ),
               ),
@@ -729,12 +709,12 @@ class _SearchScreenState extends State<SearchScreen> {
     ];
 
     return SizedBox(
-      height: 34,
+      height: 36,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        separatorBuilder: (_, _) => const SizedBox(width: 7),
         itemBuilder: (context, index) {
           final cat = categories[index];
           final name = cat['name'] as String;
@@ -742,7 +722,7 @@ class _SearchScreenState extends State<SearchScreen> {
           final isSelected = _selectedCategory == name;
 
           return InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             onTap: () {
               HapticFeedback.selectionClick();
               setState(() => _selectedCategory = name);
@@ -750,16 +730,16 @@ class _SearchScreenState extends State<SearchScreen> {
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 13),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? (isDark ? const Color(0xFFF59E0B) : const Color(0xFF0F172A))
-                    : (isDark ? const Color(0xFF1E2330) : Colors.white),
-                borderRadius: BorderRadius.circular(20),
+                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                    : (isDark ? AppTheme.darkCard : AppTheme.lightCard),
+                borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: isSelected
                       ? Colors.transparent
-                      : (isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                      : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
                   width: 1,
                 ),
               ),
@@ -768,20 +748,20 @@ class _SearchScreenState extends State<SearchScreen> {
                 children: [
                   Icon(
                     icon,
-                    size: 13,
+                    size: 14,
                     color: isSelected
-                        ? (isDark ? Colors.black : Colors.white)
-                        : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                        ? (isDark ? Colors.black : AppTheme.primaryYellow)
+                        : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
                   ),
-                  const SizedBox(width: 5),
+                  const SizedBox(width: 6),
                   Text(
                     name == 'PG' ? 'PG / Hostel' : (name == 'Office' ? 'Commercial' : name),
                     style: GoogleFonts.inter(
-                      fontSize: 11.5,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                       color: isSelected
                           ? (isDark ? Colors.black : Colors.white)
-                          : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                          : (isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary),
                     ),
                   ),
                 ],
@@ -857,7 +837,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 8.0),
       child: SizedBox(
-        height: 26,
+        height: 28,
         child: ListView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -865,12 +845,14 @@ class _SearchScreenState extends State<SearchScreen> {
             ...chips.map((c) {
               return Container(
                 margin: const EdgeInsets.only(right: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF252B3B) : const Color(0xFFEFF6FF),
-                  borderRadius: BorderRadius.circular(6),
+                  color: isDark ? AppTheme.darkCardElevated : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFFBFDBFE),
+                    color: isDark
+                        ? AppTheme.primaryYellow.withValues(alpha: 0.4)
+                        : Colors.black.withValues(alpha: 0.15),
                     width: 1,
                   ),
                 ),
@@ -880,18 +862,18 @@ class _SearchScreenState extends State<SearchScreen> {
                     Text(
                       c['label'] as String,
                       style: GoogleFonts.inter(
-                        fontSize: 10.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                        color: isDark ? AppTheme.primaryYellow : Colors.black87,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 5),
                     GestureDetector(
                       onTap: c['onRemove'] as VoidCallback,
                       child: Icon(
                         Icons.close,
-                        size: 12,
-                        color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                        size: 13,
+                        color: isDark ? AppTheme.primaryYellow : Colors.black87,
                       ),
                     ),
                   ],
@@ -926,7 +908,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: Text(
                   'Clear all',
                   style: GoogleFonts.inter(
-                    fontSize: 10.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFFEF4444),
                   ),
@@ -946,19 +928,19 @@ class _SearchScreenState extends State<SearchScreen> {
     if (_sortBy == 'price_desc') label = 'Price: High';
     if (_sortBy == 'distance') label = 'Closest';
 
-    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedColor = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final primaryTextColor = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       onTap: _showSortBottomSheet,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4.5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E2330) : Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
+            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
             width: 1,
           ),
         ),
@@ -967,8 +949,8 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             Icon(
               Iconsax.sort,
-              size: 13,
-              color: mutedColor,
+              size: 14,
+              color: AppTheme.primaryYellow,
             ),
             const SizedBox(width: 5),
             Text(
@@ -982,7 +964,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const SizedBox(width: 2),
             Icon(
               Icons.keyboard_arrow_down_rounded,
-              size: 15,
+              size: 16,
               color: mutedColor,
             ),
           ],
@@ -995,14 +977,14 @@ class _SearchScreenState extends State<SearchScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor: isDark ? const Color(0xFF161922) : Colors.white,
+      backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1012,9 +994,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   child: Text(
                     'Sort Results By',
                     style: GoogleFonts.inter(
-                      fontSize: 16,
+                      fontSize: 16.5,
                       fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
                     ),
                   ),
                 ),
@@ -1036,29 +1018,29 @@ class _SearchScreenState extends State<SearchScreen> {
     final isSelected = _sortBy == key;
     return ListTile(
       dense: true,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       tileColor: isSelected
-          ? (isDark ? const Color(0xFF1E2638) : const Color(0xFFF1F5F9))
+          ? (isDark ? AppTheme.darkCardElevated : const Color(0xFFF1F5F9))
           : Colors.transparent,
       leading: Icon(
         icon,
         size: 18,
         color: isSelected
-            ? const Color(0xFFF59E0B)
-            : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+            ? AppTheme.primaryYellow
+            : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
       ),
       title: Text(
         title,
         style: GoogleFonts.inter(
-          fontSize: 13,
+          fontSize: 13.5,
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           color: isSelected
               ? (isDark ? Colors.white : const Color(0xFF0F172A))
-              : (isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
+              : (isDark ? AppTheme.darkTextSecondary : const Color(0xFF475569)),
         ),
       ),
       trailing: isSelected
-          ? const Icon(Icons.check_rounded, color: Color(0xFFF59E0B), size: 18)
+          ? const Icon(Icons.check_rounded, color: AppTheme.primaryYellow, size: 18)
           : null,
       onTap: () {
         setState(() => _sortBy = key);
@@ -1094,7 +1076,7 @@ class _SearchScreenState extends State<SearchScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: isDark ? const Color(0xFF141416) : Colors.white,
+      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -1104,7 +1086,7 @@ class _SearchScreenState extends State<SearchScreen> {
             return Container(
               height: MediaQuery.of(context).size.height * 0.90,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF141416) : Colors.white,
+                color: isDark ? AppTheme.darkScaffold : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Column(
@@ -1132,11 +1114,12 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
 
                         // Title
-                        const Text(
+                        Text(
                           'Filters',
-                          style: TextStyle(
+                          style: GoogleFonts.inter(
                             fontSize: 19,
                             fontWeight: FontWeight.w800,
+                            color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
                             letterSpacing: -0.3,
                           ),
                         ),
@@ -1164,12 +1147,12 @@ class _SearchScreenState extends State<SearchScreen> {
                               tempArea = const RangeValues(0, 10000);
                             });
                           },
-                          child: const Text(
+                          child: Text(
                             'Reset',
-                            style: TextStyle(
+                            style: GoogleFonts.inter(
                               fontSize: 14.5,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFFEF4444),
+                              color: const Color(0xFFEF4444),
                             ),
                           ),
                         ),
@@ -1243,7 +1226,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           min: 0,
                           max: 10000000,
                           divisions: 100,
-                          activeColor: isDark ? AppTheme.primaryYellow : const Color(0xFFFFD600),
+                          activeColor: AppTheme.primaryYellow,
                           inactiveColor: isDark ? Colors.white12 : Colors.grey.shade300,
                           onChanged: (vals) {
                             setSheetState(() => tempBudget = vals);
@@ -1556,7 +1539,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             min: 0,
                             max: 10000,
                             divisions: 50,
-                            activeColor: isDark ? AppTheme.primaryYellow : const Color(0xFFFFD600),
+                            activeColor: AppTheme.primaryYellow,
                             inactiveColor: isDark ? Colors.white12 : Colors.grey.shade300,
                             onChanged: (vals) {
                               setSheetState(() => tempArea = vals);
@@ -1582,7 +1565,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   Container(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF141416) : Colors.white,
+                      color: isDark ? AppTheme.darkScaffold : Colors.white,
                       border: Border(
                         top: BorderSide(
                           color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
@@ -1598,18 +1581,18 @@ class _SearchScreenState extends State<SearchScreen> {
                             child: Container(
                               height: 50,
                               decoration: BoxDecoration(
-                                color: Colors.transparent,
+                                color: isDark ? AppTheme.darkCard : Colors.transparent,
                                 borderRadius: BorderRadius.circular(30),
                                 border: Border.all(
-                                  color: isDark ? Colors.white24 : Colors.grey.shade300,
+                                  color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
                                   width: 1.5,
                                 ),
                               ),
                               alignment: Alignment.center,
                               child: Text(
                                 'Cancel',
-                                style: TextStyle(
-                                  fontSize: 15.5,
+                                style: GoogleFonts.inter(
+                                  fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                   color: isDark ? Colors.white70 : Colors.black87,
                                 ),
@@ -1648,20 +1631,20 @@ class _SearchScreenState extends State<SearchScreen> {
                             child: Container(
                               height: 50,
                               decoration: BoxDecoration(
-                                color: isDark ? AppTheme.primaryYellow : const Color(0xFFFFEB3A),
+                                color: AppTheme.primaryYellow,
                                 borderRadius: BorderRadius.circular(30),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: (isDark ? AppTheme.primaryYellow : const Color(0xFFFFEB3A)).withValues(alpha: 0.35),
+                                    color: AppTheme.primaryYellow.withValues(alpha: 0.35),
                                     blurRadius: 10,
                                     offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
                               alignment: Alignment.center,
-                              child: const Text(
+                              child: Text(
                                 'Apply',
-                                style: TextStyle(
+                                style: GoogleFonts.inter(
                                   fontSize: 15.5,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.black,
@@ -1701,7 +1684,7 @@ class _SearchScreenState extends State<SearchScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: isDark ? const Color(0xFF1E1E24) : Colors.white,
+      backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1725,7 +1708,7 @@ class _SearchScreenState extends State<SearchScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: isDark ? AppTheme.darkCard : const Color(0xFFF4F4F6),
+                  color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF4F4F6),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
@@ -1734,13 +1717,14 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: TextField(
                   controller: locController,
                   autofocus: true,
-                  style: TextStyle(
-                    fontSize: 15,
+                  style: GoogleFonts.inter(
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white : Colors.black87,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Type location (e.g. Visakhapatnam)',
+                    hintStyle: GoogleFonts.inter(color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
                     border: InputBorder.none,
                   ),
                   onSubmitted: (val) {
@@ -1756,8 +1740,8 @@ class _SearchScreenState extends State<SearchScreen> {
               // Action Options: Use Current Location
               if (widget.currentPosition != null)
                 ListTile(
-                  leading: const Icon(Iconsax.gps, color: Color(0xFFFFD600)),
-                  title: const Text('Use current location', style: TextStyle(fontWeight: FontWeight.bold)),
+                  leading: const Icon(Iconsax.gps, color: AppTheme.primaryYellow),
+                  title: Text('Use current location', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                   onTap: () {
                     onSelected('Near My Location');
                     Navigator.pop(ctx);
@@ -1769,7 +1753,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Popular Locations',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                  style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600),
                 ),
               ),
               const SizedBox(height: 8),
@@ -1783,14 +1767,17 @@ class _SearchScreenState extends State<SearchScreen> {
                       Navigator.pop(ctx);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7.5),
                       decoration: BoxDecoration(
-                        color: isDark ? AppTheme.darkCard : const Color(0xFFF0F0F4),
+                        color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F4),
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? AppTheme.darkBorder : Colors.transparent,
+                        ),
                       ),
                       child: Text(
                         city,
-                        style: TextStyle(
+                        style: GoogleFonts.inter(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                           color: isDark ? Colors.white : Colors.black87,
@@ -1810,7 +1797,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: GoogleFonts.inter(
         fontSize: 15.5,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.2,
@@ -1821,7 +1808,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSubHeader(String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w700,
       ),
@@ -1847,20 +1834,20 @@ class _SearchScreenState extends State<SearchScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9.5),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? const Color(0xFF2B2800) : const Color(0xFFFFFDE7))
+              ? (isDark ? AppTheme.primaryYellow : Colors.black)
               : (isDark ? AppTheme.darkCardElevated : Colors.white),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                ? Colors.transparent
                 : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
             width: isSelected ? 1.8 : 1.2,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: (isDark ? AppTheme.primaryYellow : Colors.black).withValues(alpha: 0.08),
-                    blurRadius: 6,
+                    color: (isDark ? AppTheme.primaryYellow : Colors.black).withValues(alpha: 0.2),
+                    blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ]
@@ -1875,18 +1862,18 @@ class _SearchScreenState extends State<SearchScreen> {
                   : (isMulti ? Iconsax.add_circle : Icons.radio_button_unchecked),
               size: 15,
               color: isSelected
-                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                  ? (isDark ? Colors.black : AppTheme.primaryYellow)
                   : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400),
             ),
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.inter(
                 color: isSelected
-                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                    ? (isDark ? Colors.black : Colors.white)
                     : (isDark ? Colors.white70 : const Color(0xFF2D2D2D)),
                 fontSize: 12.5,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                 letterSpacing: -0.1,
               ),
             ),
@@ -1898,8 +1885,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
   /// Empty State with Centered Lottie Animation
   Widget _buildEmptyState(bool isDark) {
-    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedColor = isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary;
+    final primaryTextColor = isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary;
 
     return Center(
       child: SingleChildScrollView(
@@ -1914,7 +1901,7 @@ class _SearchScreenState extends State<SearchScreen> {
               width: 220,
               height: 220,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Icon(
+              errorBuilder: (_, _, _) => Icon(
                 Iconsax.search_status,
                 size: 80,
                 color: mutedColor.withValues(alpha: 0.4),
@@ -1942,8 +1929,7 @@ class _SearchScreenState extends State<SearchScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
+            BouncingButton(
               onTap: () {
                 HapticFeedback.selectionClick();
                 setState(() {
@@ -1968,13 +1954,13 @@ class _SearchScreenState extends State<SearchScreen> {
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFFF59E0B) : const Color(0xFF0F172A),
+                  color: AppTheme.primaryYellow,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: (isDark ? const Color(0xFFF59E0B) : Colors.black).withValues(alpha: 0.2),
+                      color: AppTheme.primaryYellow.withValues(alpha: 0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 3),
                     ),
@@ -1983,9 +1969,9 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: Text(
                   'Reset All Filters',
                   style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.black : Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
                   ),
                 ),
               ),
