@@ -10,9 +10,19 @@ import 'screens/admin_dashboard_screen.dart';
 import 'screens/ai_chat_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/ai_assistant_service.dart';
+import 'services/analytics_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
+import 'config/env.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'services/push_notification_service.dart';
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // If you're going to use other Firebase services in the background, such as Firestore,
+  // make sure you call `initializeApp` before using other Firebase services.
+  print("Handling a background message: ${message.messageId}");
+}
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
@@ -24,17 +34,31 @@ Future<void> main() async {
   await ThemeController.instance.init();
 
   await Supabase.initialize(
-    url: 'https://dhbwnteiahefjfpojapz.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoYndudGVpYWhlZmpmcG9qYXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2NDIwNTQsImV4cCI6MjEwMzIxODA1NH0.CnP-ogYh7FwPY9cqBRTX2oS6NqTT-mXgPsSyDDCADC8',
+    url: Env.supabaseUrl,
+    anonKey: Env.supabaseAnonKey,
   );
-
-  // Pre-load AI Assistant local chat history and settings instantly
-  AiAssistantService.instance.init();
 
   final prefs = await SharedPreferences.getInstance();
   final bool hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ?? false;
 
+  // Pre-load AI Assistant local chat history and settings instantly
+  AiAssistantService.instance.init();
+
+  // Set up Firebase Messaging background handler (mobile only)
+  if (!kIsWeb) {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  }
+
+  // Launch UI INSTANTLY — 0ms blank screen delay
   runApp(RentalApp(hasCompletedOnboarding: hasCompletedOnboarding));
+
+  // Initialize Analytics and Push Notification Service asynchronously in background
+  _initAsyncServices();
+}
+
+void _initAsyncServices() async {
+  await AnalyticsService.instance.init();
+  await PushNotificationService.instance.init();
 }
 
 class RentalApp extends StatelessWidget {
@@ -58,6 +82,7 @@ class RentalApp extends StatelessWidget {
             systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           ),
           child: MaterialApp(
+            navigatorKey: PushNotificationService.instance.navigatorKey,
             title: 'Rental App',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
@@ -107,9 +132,17 @@ class RentalApp extends StatelessWidget {
               }
 
               if (path == '/admin/dashboard') {
+                // SECURITY: Require valid session — same guard as /admin root
+                final dashSession = Supabase.instance.client.auth.currentSession;
+                if (dashSession != null) {
+                  return MaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => const AdminDashboardScreen(),
+                  );
+                }
                 return MaterialPageRoute(
                   settings: settings,
-                  builder: (_) => const AdminDashboardScreen(),
+                  builder: (_) => const AdminLoginScreen(),
                 );
               }
 

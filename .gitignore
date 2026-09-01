@@ -47,3 +47,9 @@ app.*.map.json
 .env
 /flutter/
 test_icons.dart
+
+env.json
+env*.json
+*.secret
+google-services.json
+GoogleService-Info.plist

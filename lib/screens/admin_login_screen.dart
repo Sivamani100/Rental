@@ -13,7 +13,7 @@ class AdminLoginScreen extends StatefulWidget {
 }
 
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
-  final TextEditingController _emailController = TextEditingController(text: 'mallipurapusiva@gmail.com');
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isObscure = true;
   bool _isLoading = false;
@@ -38,7 +38,9 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       if (response.user != null) {
         final user = response.user!;
         final userRole = user.appMetadata['role'] ?? user.userMetadata?['role'];
-        bool isAdmin = (userRole == 'admin') || (user.email == 'mallipurapusiva@gmail.com');
+        // SECURITY: Role check relies on Supabase metadata and admins table ONLY.
+        // No hardcoded email bypasses.
+        bool isAdmin = (userRole == 'admin');
 
         if (!isAdmin) {
           try {
@@ -64,6 +66,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           );
         } else {
           await Supabase.instance.client.auth.signOut();
+          if (!mounted) return;
           setState(() => _isLoading = false);
           AppSnackbar.error(context, 'Access Denied: This account is not authorized as an admin.');
         }
@@ -72,14 +75,14 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         setState(() => _isLoading = false);
         AppSnackbar.error(context, 'Invalid credentials.');
       }
-    } on AuthException catch (e) {
+    } on AuthException {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      AppSnackbar.error(context, e.message);
-    } catch (e) {
+      AppSnackbar.error(context, 'Invalid credentials. Please try again.');
+    } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      AppSnackbar.error(context, 'Authentication failed: $e');
+      AppSnackbar.error(context, 'Authentication failed. Please try again.');
     }
   }
 

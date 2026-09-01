@@ -11,6 +11,7 @@ import '../widgets/bouncing_button.dart';
 import '../widgets/rental_app_icon.dart';
 import 'posting_screen.dart';
 import 'property_details_screen.dart';
+import '../widgets/location_picker_sheet.dart';
 import 'search_screen.dart';
 import 'ai_chat_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,240 +21,11 @@ import 'package:lottie/lottie.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/analytics_service.dart';
+import '../services/transport_service.dart';
+import 'package:latlong2/latlong.dart';
+import '../models/property_model.dart';
 
-class PropertyModel {
-  final String? id;
-  final String title;
-  final String price;
-  final String locationStr;
-  final double latitude;
-  final double longitude;
-  final List<String> imageUrls;
-  final List<String> tags;
-  final String beds;
-  final String baths;
-  final String area;
-  final String type; // 'Rental' or 'PG' or 'House'
-  final String ownerPhone;
-  final String? ownerWhatsapp;
-  final List<String> features;
-  bool isAvailable;
-  String status;
-
-  // Specific financial & tenure details
-  final String? securityDeposit;
-  final String? maintenanceCharges;
-  final String? noticePeriod;
-  final String? agreementDuration;
-  final String? description;
-  final String? perDayWithFood;
-  final String? perDayWithoutFood;
-  List<dynamic> reviews;
-  List<dynamic> suggestedPhotos;
-
-  // PG Specific details
-  final String? genderPreference; // Boys, Girls, Co-Living
-  final String? sharingType; // Single, 2 Sharing, 3 Sharing, etc.
-  final String? foodDetails; // 3 Meals, 2 Meals, Veg/Non-Veg, Self Cooking
-  final String? foodQuality; // Homely & Hygienic, Veg only, etc.
-  final String? drinkingWater; // RO Purified, Cool Water Dispenser
-  final String? waterSupply; // 24/7 Water Supply, Timed
-  final String? powerBackup; // 24/7 Power + Inverter/Generator
-  final String? acType; // AC Room, Non-AC, Cooler
-  final String? bathroomType; // Attached, Common, Western/Indian
-  final String? cleanlinessInfo; // Daily Room & Bath Housekeeping
-  final String? securityInfo; // 24/7 CCTV, Guard, Biometric Entry
-  final String? verificationPolicy; // ID Verification Mandatory
-  final String? managementInfo; // Owner on site, Resident Warden
-  final String? gateRules; // No Curfew, 10:30 PM Gate Close, Guests Allowed
-
-  // Rental Specific details
-  final String? bhkType; // 1 BHK, 2 BHK, 3 BHK, Villa
-  final String?
-  furnishingStatus; // Unfurnished, Semi-Furnished, Fully-Furnished
-  final String? plumbingStatus; // Taps & Shower Tested - No leaks
-  final String? seepageStatus; // Zero Seepage, Freshly Painted
-  final String? electricalStatus; // All Switches/Sockets Tested, Inverter Ready
-  final String? meterStatus; // Separate EB Sub-Meter / Dedicated Meter
-  final String? billsInfo; // EB per meter unit, Water included/separate
-  final String? tenantPreference; // Family, Working Bachelors, Anyone
-  final String? petPolicy; // Pets Allowed / No Pets
-  final String? parkingInfo; // Covered Car & Bike Parking
-
-  PropertyModel({
-    this.id,
-    required this.title,
-    required this.price,
-    required this.locationStr,
-    required this.latitude,
-    required this.longitude,
-    required this.imageUrls,
-    required this.tags,
-    required this.beds,
-    required this.baths,
-    required this.area,
-    required this.type,
-    required this.ownerPhone,
-    this.ownerWhatsapp,
-    required this.features,
-    this.isAvailable = true,
-    this.status = 'pending',
-    this.securityDeposit,
-    this.maintenanceCharges,
-    this.noticePeriod,
-    this.agreementDuration,
-    this.description,
-    this.perDayWithFood,
-    this.perDayWithoutFood,
-    this.genderPreference,
-    this.sharingType,
-    this.foodDetails,
-    this.foodQuality,
-    this.drinkingWater,
-    this.waterSupply,
-    this.powerBackup,
-    this.acType,
-    this.bathroomType,
-    this.cleanlinessInfo,
-    this.securityInfo,
-    this.verificationPolicy,
-    this.managementInfo,
-    this.gateRules,
-    this.bhkType,
-    this.furnishingStatus,
-    this.plumbingStatus,
-    this.seepageStatus,
-    this.electricalStatus,
-    this.meterStatus,
-    this.billsInfo,
-    this.tenantPreference,
-    this.petPolicy,
-    this.parkingInfo,
-    List<dynamic>? reviews,
-    List<dynamic>? suggestedPhotos,
-  }) : reviews = reviews ?? [],
-       suggestedPhotos = suggestedPhotos ?? [];
-  
-  double get averageRating {
-    if (reviews.isEmpty) return 0.0;
-    double sum = 0;
-    for (var r in reviews) {
-      sum += (r['rating'] as num?)?.toDouble() ?? 0.0;
-    }
-    return sum / reviews.length;
-  }
-  
-  int get reviewCount => reviews.length;
-
-  factory PropertyModel.fromJson(Map<String, dynamic> json) {
-    return PropertyModel(
-      id: json['id'],
-      title: json['title'],
-      price: json['price'],
-      locationStr: json['location_str'],
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      imageUrls: List<String>.from(json['image_urls'] ?? []),
-      tags: List<String>.from(json['tags'] ?? []),
-      beds: json['beds'],
-      baths: json['baths'],
-      area: json['area'],
-      type: json['type'],
-      ownerPhone: json['owner_phone'],
-      ownerWhatsapp: json['owner_whatsapp'],
-      features: List<String>.from(json['features'] ?? []),
-      isAvailable: json['is_available'] ?? true,
-      status: json['status'] ?? 'pending',
-      securityDeposit: json['security_deposit'],
-      maintenanceCharges: json['maintenance_charges'],
-      reviews: json['reviews'] != null ? List<dynamic>.from(json['reviews']) : [],
-      suggestedPhotos: json['suggested_photos'] != null ? List<dynamic>.from(json['suggested_photos']) : [],
-      noticePeriod: json['notice_period'],
-      agreementDuration: json['agreement_duration'],
-      description: json['description'],
-      perDayWithFood: json['per_day_with_food'],
-      perDayWithoutFood: json['per_day_without_food'],
-      genderPreference: json['gender_preference'],
-      sharingType: json['sharing_type'],
-      foodDetails: json['food_details'],
-      foodQuality: json['food_quality'],
-      drinkingWater: json['drinking_water'],
-      waterSupply: json['water_supply'],
-      powerBackup: json['power_backup'],
-      acType: json['ac_type'],
-      bathroomType: json['bathroom_type'],
-      cleanlinessInfo: json['cleanliness_info'],
-      securityInfo: json['security_info'],
-      verificationPolicy: json['verification_policy'],
-      managementInfo: json['management_info'],
-      gateRules: json['gate_rules'],
-      bhkType: json['bhk_type'],
-      furnishingStatus: json['furnishing_status'],
-      plumbingStatus: json['plumbing_status'],
-      seepageStatus: json['seepage_status'],
-      electricalStatus: json['electrical_status'],
-      meterStatus: json['meter_status'],
-      billsInfo: json['bills_info'],
-      tenantPreference: json['tenant_preference'],
-      petPolicy: json['pet_policy'],
-      parkingInfo: json['parking_info'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'title': title,
-      'price': price,
-      'location_str': locationStr,
-      'latitude': latitude,
-      'longitude': longitude,
-      'image_urls': imageUrls,
-      'tags': tags,
-      'beds': beds,
-      'baths': baths,
-      'area': area,
-      'type': type,
-      'owner_phone': ownerPhone,
-      'owner_whatsapp': ownerWhatsapp,
-      'features': features,
-      'is_available': isAvailable,
-      'status': status,
-      'security_deposit': securityDeposit,
-      'maintenance_charges': maintenanceCharges,
-      'notice_period': noticePeriod,
-      'agreement_duration': agreementDuration,
-      'description': description,
-      'per_day_with_food': perDayWithFood,
-      'per_day_without_food': perDayWithoutFood,
-      'gender_preference': genderPreference,
-      'sharing_type': sharingType,
-      'food_details': foodDetails,
-      'food_quality': foodQuality,
-      'drinking_water': drinkingWater,
-      'water_supply': waterSupply,
-      'power_backup': powerBackup,
-      'ac_type': acType,
-      'bathroom_type': bathroomType,
-      'cleanliness_info': cleanlinessInfo,
-      'security_info': securityInfo,
-      'verification_policy': verificationPolicy,
-      'management_info': managementInfo,
-      'gate_rules': gateRules,
-      'bhk_type': bhkType,
-      'furnishing_status': furnishingStatus,
-      'plumbing_status': plumbingStatus,
-      'seepage_status': seepageStatus,
-      'electrical_status': electricalStatus,
-      'meter_status': meterStatus,
-      'bills_info': billsInfo,
-      'tenant_preference': tenantPreference,
-      'pet_policy': petPolicy,
-      'parking_info': parkingInfo,
-      'reviews': reviews,
-      'suggested_photos': suggestedPhotos,
-    };
-  }
-}
 
 class HomeScreen extends StatefulWidget {
   final String? initialPropertyId;
@@ -264,9 +36,20 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// Top-level isolate helper for JSON parsing
+List<PropertyModel> _parsePropertiesIsolate(String jsonStr) {
+  final decoded = jsonDecode(jsonStr) as List;
+  return decoded.map((e) => PropertyModel.fromJson(e as Map<String, dynamic>)).toList();
+}
+
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedTypeIndex = 0; // 0 for PG / Hostel, 1 for Rental
   late final PageController _pageController;
+
+  // Scroll position memory: one controller per tab
+  final ScrollController _pgScrollController = ScrollController();
+  final ScrollController _rentalScrollController = ScrollController();
+  final ScrollController _buyScrollController = ScrollController();
 
   Position? _currentPosition;
   String _currentCity = 'Finding location...';
@@ -274,38 +57,89 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _hasLocationPermission = true;
   bool _isInitialLoading = true;
 
+  // Custom location overrides
+  Position? _manualLocationOverride;
+  String? _manualLocationName;
+  Timer? _locationPromptTimer;
+
+  Position? get _effectivePosition => _manualLocationOverride ?? _currentPosition;
+
   List<PropertyModel> _allProperties = [];
   int _currentSearchRadiusKm = 5;
 
   final _supabase = Supabase.instance.client;
-  Timer? _autoLocationTimer;
+  // Replaced 1-second Timer with distance-filtered position stream
+  StreamSubscription<Position>? _locationStream;
+  RealtimeChannel? _propertiesChannel;
   bool _isRefreshingLocation = false;
   bool _hasOpenedInitialProperty = false;
+
+  // Geocoding throttle — only re-geocode when user moves >500m
+  Position? _lastGeocodedPosition;
+
+  // Cache version guard — bump this whenever PropertyModel.fromJson schema changes
+  static const int _cacheVersion = 3;
+
+  // Double-back-to-exit support
+  DateTime? _lastBackPress;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedTypeIndex);
     WidgetsBinding.instance.addObserver(this);
-    _currentPosition = null; // Do not mock position, wait for real GPS
-    _currentCity = 'Finding location...';
-    _currentArea = 'Detecting your area...';
-    _isInitialLoading = true;
     _initAppAndLocation();
   }
 
   Future<void> _initAppAndLocation() async {
-    final propFuture = _fetchProperties();
-    final locFuture = _refreshLocationFast(updateFeed: true);
-    await Future.wait([propFuture, locFuture]);
+    // Load cached properties IMMEDIATELY so UI shows content fast.
+    // GPS and fresh network data arrive in background.
+    await _loadCachedPropertiesInstantly();
+    await _loadManualLocation();
+
+    // Start GPS stream and fresh data fetch in parallel (non-blocking)
+    _startLocationStream();
+    _fetchProperties(); // fire-and-forget
+
+    // Subscribe to realtime new approvals
+    _subscribeToRealtimeUpdates();
 
     if (mounted) {
-      setState(() {
-        _isInitialLoading = false;
-      });
-      _startAutoLocationRefresh();
       _checkAndOpenInitialProperty();
     }
+  }
+
+  /// Loads cached properties synchronously-fast from SharedPrefs,
+  /// then immediately hides the loading gate so the feed is visible.
+  Future<void> _loadCachedPropertiesInstantly() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Cache version guard: discard if schema is outdated
+      final savedVersion = prefs.getInt('cached_properties_version') ?? 0;
+      if (savedVersion < _cacheVersion) {
+        await prefs.remove('cached_properties');
+        await prefs.remove('cached_properties_ts');
+        await prefs.setInt('cached_properties_version', _cacheVersion);
+      }
+
+      final cachedData = prefs.getString('cached_properties');
+      if (cachedData != null && cachedData.isNotEmpty && mounted) {
+        // Decode off main thread to avoid UI jank
+        final cachedList = await compute(_parsePropertiesIsolate, cachedData);
+        if (mounted) {
+          setState(() {
+            _allProperties = cachedList;
+            _isInitialLoading = false; // Show feed immediately with cache
+          });
+          _precachePropertyImages(cachedList);
+          _checkAndOpenInitialProperty();
+        }
+      } else if (mounted) {
+        // No cache — keep loading spinner until first network result arrives
+        // (will be dismissed in _fetchProperties)
+      }
+    } catch (_) {}
   }
 
   void _checkAndOpenInitialProperty() async {
@@ -346,19 +180,227 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _startAutoLocationRefresh() {
-    _autoLocationTimer?.cancel();
-    _autoLocationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) {
-        _refreshLocationFast(updateFeed: false);
+  Future<void> _loadManualLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lat = prefs.getDouble('manual_lat');
+    final lng = prefs.getDouble('manual_lng');
+    final name = prefs.getString('manual_name');
+
+    if (lat != null && lng != null) {
+      setState(() {
+        _manualLocationOverride = Position(
+          latitude: lat,
+          longitude: lng,
+          timestamp: DateTime.now(),
+          accuracy: 1,
+          altitude: 0,
+          heading: 0,
+          speed: 0,
+          speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
+        );
+        _manualLocationName = name;
+        if (name != null) {
+          _currentCity = name;
+          _currentArea = 'Custom Location';
+        }
+      });
+      _startLocationPromptTimer();
+    }
+  }
+
+  Future<void> _saveManualLocation(Position pos, String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('manual_lat', pos.latitude);
+    await prefs.setDouble('manual_lng', pos.longitude);
+    await prefs.setString('manual_name', name);
+    
+    setState(() {
+      _manualLocationOverride = pos;
+      _manualLocationName = name;
+      _currentCity = name;
+      _currentArea = 'Custom Location';
+    });
+    
+    _startLocationPromptTimer();
+    if (mounted) setState(() {});
+  }
+
+  void _clearManualLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('manual_lat');
+    await prefs.remove('manual_lng');
+    await prefs.remove('manual_name');
+    
+    _locationPromptTimer?.cancel();
+    
+    setState(() {
+      _manualLocationOverride = null;
+      _manualLocationName = null;
+    });
+    
+    _refreshLocationFast(updateFeed: true);
+  }
+
+  void _startLocationPromptTimer() {
+    _locationPromptTimer?.cancel();
+    _locationPromptTimer = Timer(const Duration(minutes: 5), () {
+      if (mounted && _manualLocationOverride != null) {
+        _showLocationPromptSheet();
       }
     });
+  }
+
+  void _showLocationPromptSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkCardElevated : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Iconsax.location_tick, size: 48, color: isDark ? AppTheme.primaryYellow : Colors.black),
+              const SizedBox(height: 16),
+              Text(
+                'Use Current Location?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You are currently viewing a custom location. Would you like to switch back to your real-time GPS location?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: BouncingButton(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.black26 : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'No, Keep Custom',
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : Colors.black87,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: BouncingButton(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _clearManualLocation();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.primaryYellow : Colors.black,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Yes, Switch Back',
+                          style: TextStyle(
+                            color: isDark ? Colors.black : Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Uses Geolocator position stream with distanceFilter so GPS only fires
+  /// when the user physically moves ≥15 meters. Replaces the old 1-second timer.
+  void _startLocationStream() {
+    _locationStream?.cancel();
+    _locationStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.medium,
+        distanceFilter: 15, // metres — only fires on real movement
+      ),
+    ).listen((position) {
+      if (!mounted) return;
+      _currentPosition = position;
+      if (_manualLocationOverride == null) {
+        _updateGeocodingIfNeeded(position);
+        if (mounted) setState(() {}); // Re-sort feed
+      }
+    }, onError: (_) {
+      // Stream errors are non-fatal — fall back to single fetch
+      _refreshLocationFast(updateFeed: false);
+    });
+
+    // Always do one immediate fetch so we have a position on first open
+    _refreshLocationFast(updateFeed: false);
+  }
+
+  /// Supabase realtime: auto-refresh feed when admin approves a new property.
+  void _subscribeToRealtimeUpdates() {
+    try {
+      _propertiesChannel = _supabase
+          .channel('home-properties-feed')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.update,
+            schema: 'public',
+            table: 'properties',
+            callback: (payload) {
+              // Only react to status becoming 'approved'
+              final newStatus = payload.newRecord['status'];
+              if (newStatus == 'approved') {
+                _fetchProperties();
+              }
+            },
+          )
+          .subscribe();
+    } catch (_) {
+      // Realtime is optional — fail silently
+    }
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _autoLocationTimer?.cancel();
+    _pgScrollController.dispose();
+    _rentalScrollController.dispose();
+    _buyScrollController.dispose();
+    _locationStream?.cancel();
+    if (_propertiesChannel != null) {
+      _supabase.removeChannel(_propertiesChannel!);
+    }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -366,27 +408,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _startAutoLocationRefresh();
-      _refreshLocationFast(updateFeed: false);
+      // Restart stream in case it was paused by OS
+      _startLocationStream();
+      _fetchProperties();
     } else if (state == AppLifecycleState.paused) {
-      _autoLocationTimer?.cancel();
+      _locationStream?.cancel();
     }
   }
 
   Future<void> _fetchProperties() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
-      // Load cached properties first and precache photos immediately
-      final String? cachedData = prefs.getString('cached_properties');
-      if (cachedData != null && mounted) {
-        final List<dynamic> decoded = jsonDecode(cachedData);
-        final cachedList = decoded.map((e) => PropertyModel.fromJson(e)).toList();
-        setState(() {
-          _allProperties = cachedList;
-        });
-        _precachePropertyImages(cachedList);
-        _checkAndOpenInitialProperty();
+
+      // Cache freshness check — skip network if cache is <5 minutes old
+      final cachedTs = prefs.getInt('cached_properties_ts');
+      final isCacheFresh = cachedTs != null &&
+          (DateTime.now().millisecondsSinceEpoch - cachedTs) < 5 * 60 * 1000;
+
+      if (isCacheFresh && _allProperties.isNotEmpty) {
+        // Cache is fresh enough — no network call needed right now
+        return;
       }
 
       // Fetch fresh data from network (only approved properties)
@@ -395,25 +436,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           .select()
           .eq('status', 'approved');
 
-      // Update cache
-      await prefs.setString('cached_properties', jsonEncode(data));
+      // Update cache with timestamp and version
+      final encoded = jsonEncode(data);
+      await prefs.setString('cached_properties', encoded);
+      await prefs.setInt('cached_properties_ts', DateTime.now().millisecondsSinceEpoch);
+      await prefs.setInt('cached_properties_version', _cacheVersion);
 
       if (mounted) {
-        final freshList = (data as List)
-            .map((e) => PropertyModel.fromJson(e))
-            .toList();
+        // Decode on background isolate to avoid UI jank
+        final freshList = await compute(_parsePropertiesIsolate, encoded);
         setState(() {
           _allProperties = freshList;
+          _isInitialLoading = false; // Dismiss spinner once we have real data
         });
         _precachePropertyImages(freshList);
         _checkAndOpenInitialProperty();
       }
     } catch (e) {
       if (mounted) {
+        // Dismiss loading spinner even on failure so UI doesn't stay stuck
+        if (_isInitialLoading) setState(() => _isInitialLoading = false);
         if (_allProperties.isNotEmpty) {
-           AppSnackbar.error(context, 'Offline mode: Showing cached properties.');
+          AppSnackbar.error(context, 'Offline mode: Showing cached properties.');
         } else {
-           AppSnackbar.error(context, 'Failed to fetch properties: $e');
+          AppSnackbar.error(context, 'Failed to load properties. Check connection.');
         }
       }
     }
@@ -421,24 +467,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _precachePropertyImages(List<PropertyModel> properties) {
     if (!mounted) return;
-    for (final prop in properties.take(20)) {
+    // Phase 1: Pre-cache thumbnails for first 10 visible cards immediately
+    for (final prop in properties.take(10)) {
       if (prop.imageUrls.isNotEmpty) {
         final firstUrl = prop.imageUrls.first;
         if (firstUrl.startsWith('http')) {
           try {
             precacheImage(
-              CachedNetworkImageProvider(
-                firstUrl,
-                maxWidth: 800,
-              ),
+              CachedNetworkImageProvider(firstUrl, maxWidth: 600),
               context,
             );
           } catch (_) {}
         }
       }
     }
+    // Phase 2: Pre-cache full detail resolution after 2-second idle
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      for (final prop in properties.take(10)) {
+        if (prop.imageUrls.isNotEmpty) {
+          final firstUrl = prop.imageUrls.first;
+          if (firstUrl.startsWith('http')) {
+            try {
+              precacheImage(
+                CachedNetworkImageProvider(firstUrl, maxWidth: 1080),
+                context,
+              );
+            } catch (_) {}
+          }
+        }
+      }
+    });
   }
 
+  /// Single GPS fetch — used for initial load and manual refresh.
+  /// The continuous stream (_startLocationStream) handles subsequent updates.
   Future<void> _refreshLocationFast({bool updateFeed = false}) async {
     if (_isRefreshingLocation) return;
     _isRefreshingLocation = true;
@@ -447,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted) setState(() { _hasLocationPermission = false; });
+        if (mounted) setState(() { _hasLocationPermission = false; _isRefreshingLocation = false; });
         return;
       }
 
@@ -456,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied ||
             permission == LocationPermission.deniedForever) {
-          if (mounted) setState(() { _hasLocationPermission = false; });
+          if (mounted) setState(() { _hasLocationPermission = false; _isRefreshingLocation = false; });
           return;
         }
       }
@@ -467,8 +530,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       try {
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 4),
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 5),
           ),
         );
       } catch (_) {
@@ -478,38 +541,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (position == null) return;
       if (!mounted) return;
       _currentPosition = position;
-
-      try {
-        List<Placemark> placemarks = await Geocoding()
-            .placemarkFromCoordinates(position.latitude, position.longitude)
-            .timeout(const Duration(seconds: 3));
-        if (placemarks.isNotEmpty && mounted) {
-          final place = placemarks.first;
-          setState(() {
-            _currentCity =
-                place.locality ?? place.subLocality ?? place.name ?? 'Finding location...';
-            _currentArea =
-                '${place.subAdministrativeArea ?? place.administrativeArea ?? ''}, ${place.country ?? ''}'
-                    .replaceAll(RegExp(r'^,\s*'), '')
-                    .replaceAll(RegExp(r',\s*$'), '');
-            if (_currentArea.trim().isEmpty) {
-              _currentArea = 'Detecting your area...';
-            }
-          });
-        }
-      } catch (_) {
-        // Keep smooth 'Finding location...' state
+      if (_manualLocationOverride == null) {
+        if (mounted) setState(() {});
+        await _updateGeocodingIfNeeded(position, force: true);
       }
     } catch (_) {
       // Fallback already pre-rendered
     } finally {
       if (mounted) {
-        setState(() {
-          _isRefreshingLocation = false;
-        });
+        setState(() { _isRefreshingLocation = false; });
       } else {
         _isRefreshingLocation = false;
       }
+    }
+  }
+
+  /// Geocoding throttle: only call the network geocoding API when user moves
+  /// more than 500 meters from the last geocoded position, unless forced.
+  Future<void> _updateGeocodingIfNeeded(Position position, {bool force = false}) async {
+    if (!force && _lastGeocodedPosition != null) {
+      final movedMeters = Geolocator.distanceBetween(
+        _lastGeocodedPosition!.latitude,
+        _lastGeocodedPosition!.longitude,
+        position.latitude,
+        position.longitude,
+      );
+      if (movedMeters < 500) return; // Not far enough to re-geocode
+    }
+    _lastGeocodedPosition = position;
+
+    try {
+      final placemarks = await Geocoding()
+          .placemarkFromCoordinates(position.latitude, position.longitude)
+          .timeout(const Duration(seconds: 3));
+      if (placemarks.isNotEmpty && mounted) {
+        final place = placemarks.first;
+        setState(() {
+          _currentCity =
+              place.locality ?? place.subLocality ?? place.name ?? 'Finding location...';
+          _currentArea =
+              '${place.subAdministrativeArea ?? place.administrativeArea ?? ''}, ${place.country ?? ''}'
+                  .replaceAll(RegExp(r'^,\s*'), '')
+                  .replaceAll(RegExp(r',\s*$'), '');
+          if (_currentArea.trim().isEmpty) {
+            _currentArea = 'Detecting your area...';
+          }
+        });
+      }
+    } catch (_) {
+      // Keep current city label — geocoding is non-critical
     }
   }
 
@@ -524,7 +604,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     }
 
-    if (_currentPosition == null) {
+    final currentPos = _effectivePosition;
+    if (currentPos == null) {
       return _allProperties.where(matchesType).toList();
     }
 
@@ -537,8 +618,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         if (!matchesType(property)) return false;
 
         double distanceInMeters = Geolocator.distanceBetween(
-          _currentPosition!.latitude,
-          _currentPosition!.longitude,
+          currentPos.latitude,
+          currentPos.longitude,
           property.latitude,
           property.longitude,
         );
@@ -553,20 +634,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     if (tempFiltered.isEmpty) {
-      tempFiltered = _allProperties.where(matchesType).toList();
+      // Returning empty list triggers the empty state with our new custom location prompts
+      tempFiltered = [];
     }
 
     // Sort strictly in ascending order by distance (closest first: 20m, 30m, 1.2km, etc.)
     tempFiltered.sort((a, b) {
       double distA = Geolocator.distanceBetween(
-        _currentPosition!.latitude,
-        _currentPosition!.longitude,
+        currentPos.latitude,
+        currentPos.longitude,
         a.latitude,
         a.longitude,
       );
       double distB = Geolocator.distanceBetween(
-        _currentPosition!.latitude,
-        _currentPosition!.longitude,
+        currentPos.latitude,
+        currentPos.longitude,
         b.latitude,
         b.longitude,
       );
@@ -577,11 +659,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return tempFiltered;
   }
 
+  /// Get the scroll controller for the active tab
+  ScrollController _controllerForType(String typeStr) {
+    switch (typeStr) {
+      case 'PG': return _pgScrollController;
+      case 'Buy': return _buyScrollController;
+      default: return _rentalScrollController;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (_isInitialLoading || (_currentPosition == null && _hasLocationPermission)) {
+    // Show loading only when truly no data AND no permission issue
+    if (_isInitialLoading && _allProperties.isEmpty && _hasLocationPermission) {
       return Scaffold(
         backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
         body: SizedBox.expand(
@@ -701,55 +793,72 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     }
 
-    return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
-      body: SafeArea(
-        bottom: false,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 650),
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 16.0,
-                        right: 16.0,
-                        top: 6.0,
-                        bottom: 8.0,
+    return PopScope(
+      canPop: false,
+      // Double-back-to-exit: press back twice within 2 seconds to exit
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final now = DateTime.now();
+        if (_lastBackPress != null && now.difference(_lastBackPress!).inSeconds < 2) {
+          SystemNavigator.pop();
+          return;
+        }
+        _lastBackPress = now;
+        AppSnackbar.error(context, 'Press back again to exit');
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
+        body: SafeArea(
+          bottom: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 650),
+              child: Stack(
+                children: [
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 16.0,
+                          right: 16.0,
+                          top: 16.0, // Added 10px top margin
+                          bottom: 8.0,
+                        ),
+                        child: _buildHeader(context),
                       ),
-                      child: _buildHeader(context),
-                    ),
-                    Expanded(
-                      child: PageView(
-                        controller: _pageController,
-                        onPageChanged: (index) {
-                          setState(() {
-                            _selectedTypeIndex = index;
-                          });
-                          HapticFeedback.selectionClick();
-                        },
-                        children: [
-                          _buildTabContent('PG'),
-                          _buildTabContent('Rental'),
-                          _buildTabContent('Buy'),
-                        ],
+                      Expanded(
+                        child: PageView(
+                          controller: _pageController,
+                          onPageChanged: (index) {
+                            setState(() {
+                              _selectedTypeIndex = index;
+                            });
+                            AnalyticsService.instance.logCategoryClick(index == 0 ? 'PG' : (index == 2 ? 'Buy' : 'Rental'));
+                            HapticFeedback.selectionClick();
+                          },
+                          children: [
+                            _buildTabContent('PG'),
+                            _buildTabContent('Rental'),
+                            _buildTabContent('Buy'),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                // Pinned floating bottom toggle with 20px bottom margin
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 20,
-                  child: SafeArea(
-                    top: false,
-                    child: _buildBottomToggle(),
+                    ],
                   ),
-                ),
-              ],
+                  // Pinned floating bottom toggle with 20px bottom margin
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 20,
+                    child: SafeArea(
+                      top: false,
+                      child: Center(
+                        child: _buildBottomToggle(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -768,6 +877,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       emptyLabel = 'Rentals';
     }
 
+    final scrollCtrl = _controllerForType(typeStr);
+
     return RefreshIndicator(
       color: Colors.black,
       backgroundColor: const Color(0xFFFFEB3A),
@@ -776,6 +887,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
       onRefresh: () async {
         HapticFeedback.mediumImpact();
+        // Force-clear cache freshness so full refresh happens
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('cached_properties_ts');
         final refreshFuture = Future.wait([
           _refreshLocationFast(updateFeed: true),
           _fetchProperties(),
@@ -789,6 +903,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
+            controller: scrollCtrl, // Scroll position memory per tab
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             padding: const EdgeInsets.only(
               left: 16.0,
@@ -823,40 +938,67 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             setState(() {
               _currentCity = 'Finding location...';
               _currentArea = 'Detecting your area...';
+              _manualLocationOverride = null;
+              _manualLocationName = null;
             });
             _refreshLocationFast(updateFeed: true);
+          },
+          // Double-tap scrolls active tab back to top
+          onDoubleTap: () {
+            HapticFeedback.mediumImpact();
+            final typeStr = _selectedTypeIndex == 0 ? 'PG' : (_selectedTypeIndex == 2 ? 'Buy' : 'Rental');
+            final ctrl = _controllerForType(typeStr);
+            if (ctrl.hasClients) {
+              ctrl.animateTo(0, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
+            }
           },
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _currentCity,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : Colors.black,
-                  height: 1.15,
+          child: GestureDetector(
+            onTap: _showLocationOptionsSheet,
+            behavior: HitTestBehavior.opaque,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _currentCity,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : Colors.black,
+                          height: 1.15,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: isDark ? Colors.white70 : Colors.black54,
+                      size: 20,
+                    ),
+                  ],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _currentArea,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
-                  fontWeight: FontWeight.w400,
-                  height: 1.15,
+                const SizedBox(height: 2),
+                Text(
+                  _currentArea,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
+                    fontWeight: FontWeight.w400,
+                    height: 1.15,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         // Dark / Light Mode Toggle Button (Hidden for now, available for later activation)
@@ -974,153 +1116,87 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final tabItems = [
-      (label: 'Hostel', icon: Iconsax.building_4),
-      (label: 'Rental', icon: Iconsax.home_2),
-      (label: 'Buy', icon: Iconsax.key),
+      (label: 'Hostel', activeIcon: Iconsax.buildings5, inactiveIcon: Iconsax.buildings),
+      (label: 'Rental', activeIcon: Iconsax.house5, inactiveIcon: Iconsax.house),
+      (label: 'Buy', activeIcon: Iconsax.key5, inactiveIcon: Iconsax.key),
     ];
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 1. Google Photos Style Segmented Capsule Bar (Autolayout / Hug Content)
-        Container(
-          height: 56,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkCard : Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+    return Container(
+      height: 60, // Slightly increased height
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(tabItems.length, (index) {
-              final isSelected = _selectedTypeIndex == index;
-              final item = tabItems[index];
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(tabItems.length, (index) {
+          final isSelected = _selectedTypeIndex == index;
+          final item = tabItems[index];
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: BouncingButton(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    setState(() {
-                      _selectedTypeIndex = index;
-                    });
-                    _pageController.animateToPage(
-                      index,
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeInOutCubic,
-                    );
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeInOutCubic,
-                    padding: isSelected
-                        ? const EdgeInsets.symmetric(horizontal: 19, vertical: 9.5)
-                        : const EdgeInsets.symmetric(horizontal: 14, vertical: 9.5),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFFFFEB3A)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(24),
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: BouncingButton(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _selectedTypeIndex = index;
+                });
+                AnalyticsService.instance.logCategoryClick(item.label);
+                _pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeInOutCubic,
+                );
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeInOutCubic,
+                padding: isSelected
+                    ? const EdgeInsets.only(left: 24, right: 24, top: 10, bottom: 10) // Extra padding for active state
+                    : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFFFFEB3A) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isSelected ? item.activeIcon : item.inactiveIcon, // Use filled icon if selected
+                      size: 20, // Slightly increased icon size
+                      color: isSelected ? Colors.black : (isDark ? Colors.white54 : Colors.black54),
                     ),
-                    alignment: Alignment.center,
-                    child: isSelected
-                        ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                item.icon,
-                                size: 18,
-                                color: Colors.black,
-                              ),
-                              const SizedBox(width: 9.5),
-                              Text(
-                                item.label,
-                                style: const TextStyle(
-                                  fontFamily: 'Inter',
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14.5,
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
-                            ],
-                          )
-                        : Text(
-                            item.label,
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14.5,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-
-        const SizedBox(width: 10),
-
-        // 2. Google Photos Style Floating Circular AI Button
-        BouncingButton(
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AiChatScreen(initialProperties: _allProperties),
-              ),
-            );
-          },
-          child: Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkCard : Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: ClipOval(
-              child: Transform.scale(
-                scale: 1.35,
-                child: Lottie.asset(
-                  'assets/ai.json',
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.contain,
-                  repeat: true,
+                    const SizedBox(width: 5), // Reduced padding between icon and text
+                    Text(
+                      item.label,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        color: isSelected ? Colors.black : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
+                        fontWeight: FontWeight.w600, // Keep constant to prevent layout shifting
+                        fontSize: 15,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-        ),
-      ],
+          );
+        }),
+      ),
     );
   }
 
@@ -1152,20 +1228,68 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 32),
+            BouncingButton(
+              onTap: () {
+                _showLocationOptionsSheet();
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.primaryYellow : Colors.black,
+                  borderRadius: BorderRadius.circular(50), // Fully rounded
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Use another location',
+                  style: TextStyle(
+                    color: isDark ? Colors.black : Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
+  void _showLocationOptionsSheet() async {
+    final currentPos = _effectivePosition ?? Position(
+      latitude: 17.3850, longitude: 78.4867, // Default to Hyderabad
+      timestamp: DateTime.now(), accuracy: 1, altitude: 0, heading: 0, speed: 0, speedAccuracy: 0, altitudeAccuracy: 0, headingAccuracy: 0,
+    );
+
+    final result = await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => LocationPickerSheet(
+        initialLatitude: currentPos.latitude,
+        initialLongitude: currentPos.longitude,
+        properties: _allProperties,
+      ),
+    );
+
+    if (result != null && mounted) {
+      final pos = result['position'] as Position;
+      final address = result['address'] as String;
+      _saveManualLocation(pos, address);
+    }
+  }
+
   Widget _buildPropertyList(List<PropertyModel> properties) {
     return Column(
       children: properties.map((prop) {
         double? distance;
-        if (_currentPosition != null) {
+        final currentPos = _effectivePosition;
+        if (currentPos != null) {
           distance = Geolocator.distanceBetween(
-            _currentPosition!.latitude,
-            _currentPosition!.longitude,
+            currentPos.latitude,
+            currentPos.longitude,
             prop.latitude,
             prop.longitude,
           );
@@ -1177,10 +1301,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             property: prop,
             distanceInMeters: distance,
             onTap: () {
+              // Pre-fetch transport data the moment user taps — before navigation
+              final transportFuture = TransportService.getNearby(
+                prop.latitude,
+                prop.longitude,
+              );
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => PropertyDetailsScreen(property: prop),
+                  builder: (_) => PropertyDetailsScreen(
+                    property: prop,
+                    preloadedTransportFuture: transportFuture,
+                  ),
                 ),
               ).then((_) {
                 setState(() {});
@@ -2056,8 +2188,9 @@ class SkeletonBox extends StatelessWidget {
 
 class _TopLocationLogoSwitcher extends StatefulWidget {
   final VoidCallback onTap;
+  final VoidCallback? onDoubleTap;
 
-  const _TopLocationLogoSwitcher({required this.onTap});
+  const _TopLocationLogoSwitcher({required this.onTap, this.onDoubleTap});
 
   @override
   State<_TopLocationLogoSwitcher> createState() => _TopLocationLogoSwitcherState();
@@ -2090,62 +2223,65 @@ class _TopLocationLogoSwitcherState extends State<_TopLocationLogoSwitcher> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return BouncingButton(
-      onTap: widget.onTap,
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return GestureDetector(
+      onDoubleTap: widget.onDoubleTap,
+      child: BouncingButton(
+        onTap: widget.onTap,
+        child: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkCard : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
+              width: 1,
             ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          switchInCurve: Curves.easeOutBack,
-          switchOutCurve: Curves.easeIn,
-          transitionBuilder: (Widget child, Animation<double> animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.85, end: 1.0).animate(animation),
-                child: child,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-            );
-          },
-          child: _showLogo
-              ? ClipRRect(
-                  key: const ValueKey('app_logo'),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    'assets/logo.png',
-                    width: 34,
-                    height: 34,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Iconsax.location5,
-                      color: isDark ? Colors.white : Colors.black,
-                      size: 24,
-                    ),
-                  ),
-                )
-              : Icon(
-                  Iconsax.location5,
-                  key: const ValueKey('location_icon'),
-                  color: isDark ? Colors.white : Colors.black,
-                  size: 24,
+            ],
+          ),
+          alignment: Alignment.center,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            switchInCurve: Curves.easeOutBack,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.85, end: 1.0).animate(animation),
+                  child: child,
                 ),
+              );
+            },
+            child: _showLogo
+                ? ClipRRect(
+                    key: const ValueKey('app_logo'),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      'assets/logo.png',
+                      width: 34,
+                      height: 34,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Iconsax.location5,
+                        color: isDark ? Colors.white : Colors.black,
+                        size: 24,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    Iconsax.location5,
+                    key: const ValueKey('location_icon'),
+                    color: isDark ? Colors.white : Colors.black,
+                    size: 24,
+                  ),
+          ),
         ),
       ),
     );

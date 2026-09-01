@@ -6,9 +6,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:lottie/lottie.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bouncing_button.dart';
-import 'home_screen.dart' show PropertyModel, PropertyCard;
+import '../models/property_model.dart';
+import 'home_screen.dart' show PropertyCard;
 import 'property_details_screen.dart';
 import 'ai_chat_screen.dart';
+import '../services/analytics_service.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<PropertyModel> properties;
@@ -687,6 +689,11 @@ class _SearchScreenState extends State<SearchScreen> {
               onChanged: (val) {
                 setState(() {});
               },
+              onSubmitted: (val) {
+                if (val.isNotEmpty) {
+                  AnalyticsService.instance.logSearch(val);
+                }
+              },
             ),
           ),
           if (_searchController.text.isNotEmpty)
@@ -739,6 +746,7 @@ class _SearchScreenState extends State<SearchScreen> {
             onTap: () {
               HapticFeedback.selectionClick();
               setState(() => _selectedCategory = name);
+              AnalyticsService.instance.logCategoryClick(name);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),

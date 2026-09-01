@@ -11,7 +11,8 @@ import '../widgets/app_snackbar.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_provider.dart';
 import '../services/notification_broadcast_service.dart';
-import 'home_screen.dart' show HomeScreen, PropertyModel;
+import '../models/property_model.dart';
+import 'home_screen.dart' show HomeScreen;
 import 'posting_screen.dart';
 import 'property_details_screen.dart';
 import 'admin_database_analytics_tab.dart';
@@ -259,11 +260,85 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     {'query': 'Commercial Shop Main Road Kotipalli', 'count': 280, 'growth': '+8%'},
   ];
 
+  int _allUsersCount = 0;
+  int _pgSeekersCount = 0;
+  int _roomSeekersCount = 0;
+  int _buyersCount = 0;
+  int _landlordsCount = 0;
+
+  Map<String, dynamic>? _demandRadarData;
+  List<PropertyModel> _topViewedProperties = [];
+
+  Future<void> _fetchDemandRadarData() async {
+    try {
+      final response = await _supabase.rpc('get_demand_radar_data');
+      if (mounted) {
+        setState(() {
+          _demandRadarData = response as Map<String, dynamic>;
+        });
+        _matchTopProperties();
+      }
+    } catch (e) {
+      debugPrint('Error fetching demand radar data: $e');
+    }
+  }
+
+  void _matchTopProperties() {
+    if (_demandRadarData == null || _properties.isEmpty) return;
+    
+    final topProps = _demandRadarData!['top_properties'] as List;
+    final List<PropertyModel> matched = [];
+    
+    for (var tp in topProps) {
+      final pid = tp['property_id'];
+      try {
+        final prop = _properties.firstWhere((p) => p.id == pid);
+        matched.add(prop);
+      } catch (_) {}
+    }
+    
+    setState(() {
+      _topViewedProperties = matched;
+    });
+  }
+
+  Future<void> _fetchAudienceCounts() async {
+    try {
+      final allData = await _supabase.rpc('get_segmented_fcm_tokens', params: {'target_audience': 'allUsers'});
+      final pgData = await _supabase.rpc('get_segmented_fcm_tokens', params: {'target_audience': 'pgSeekers'});
+      final roomData = await _supabase.rpc('get_segmented_fcm_tokens', params: {'target_audience': 'roomSeekers'});
+      final buyerData = await _supabase.rpc('get_segmented_fcm_tokens', params: {'target_audience': 'buyers'});
+      
+      if (mounted) {
+        setState(() {
+          _allUsersCount = (allData as List).length;
+          _pgSeekersCount = (pgData as List).length;
+          _roomSeekersCount = (roomData as List).length;
+          _buyersCount = (buyerData as List).length;
+          _landlordsCount = _properties.where((p) => p.ownerPhone.isNotEmpty).map((p) => p.ownerPhone).toSet().length; 
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching audience counts: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _fetchProperties();
-    _fetchNotificationHistory();
+    // SECURITY: Verify admin session before loading any data.
+    // If the session has expired or been revoked, redirect to login.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final session = _supabase.auth.currentSession;
+      if (session == null) {
+        Navigator.of(context).pushReplacementNamed('/admin/login');
+        return;
+      }
+      _fetchProperties();
+      _fetchNotificationHistory();
+      _fetchAudienceCounts();
+      _fetchDemandRadarData();
+    });
   }
 
   @override
@@ -293,6 +368,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             _selectedPropertyId = _properties.first.id;
           }
         });
+        _matchTopProperties();
       }
     } catch (e) {
       if (mounted) {
@@ -336,6 +412,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       AppSnackbar.success(context, 'No pending listings to approve.');
       return;
     }
+
+    // SECURITY: Require explicit confirmation before bulk approving all listings
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Batch Approve All?'),
+        content: Text(
+          'This will approve all ${pendingList.length} pending listing(s) and make them immediately visible to all users.\n\nAre you sure you have reviewed each listing?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Approve All', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
 
     try {
       for (final p in pendingList) {
@@ -446,6 +546,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         break;
     }
 
+    int actualRecipientCount = 0;
+    try {
+      if (_selectedAudience == TargetAudience.allUsers) {
+        final response = await Supabase.instance.client.from('devices').select('device_id').count(CountOption.exact);
+        actualRecipientCount = response.count ?? 0;
+      } else {
+        final response = await Supabase.instance.client.rpc('get_segmented_fcm_tokens', params: {'target_audience': _selectedAudience.name});
+        actualRecipientCount = (response as List).length;
+      }
+    } catch (e) {
+      actualRecipientCount = 0;
+    }
+
     final newNotif = BroadcastNotificationModel(
       id: 'notif_${DateTime.now().millisecondsSinceEpoch}',
       title: title,
@@ -457,9 +570,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       targetLabel: targetLabel,
       isHighPriority: _isHighPriority,
       createdAt: DateTime.now(),
-      recipientCount: _selectedAudience == TargetAudience.allUsers
-          ? 3420
-          : (_selectedAudience == TargetAudience.tenants ? 2180 : 1240),
+      recipientCount: actualRecipientCount,
       status: 'sent',
     );
 
@@ -3953,7 +4064,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final total = _properties.length;
     final pgsCount = _properties.where((p) => p.type == 'PG').length;
-    final topProps = _properties.take(5).toList();
+    final topProps = _topViewedProperties.isNotEmpty ? _topViewedProperties : _properties.take(5).toList();
+
+    final topCategory = _demandRadarData?['top_category'] ?? 'N/A';
+    final topCategoryCount = _demandRadarData?['top_category_count'] ?? 0;
+    final totalCategoryClicks = _demandRadarData?['total_category_clicks'] ?? 1;
+    final catPct = totalCategoryClicks > 0 ? ((topCategoryCount / totalCategoryClicks) * 100).toInt() : 0;
+
+    double avgRent = 0;
+    if (topProps.isNotEmpty) {
+      avgRent = topProps.map((e) => (int.tryParse(e.price.replaceAll(',', '')) ?? 0).toDouble()).reduce((a, b) => a + b) / topProps.length;
+    }
+    String rentTierStr = avgRent > 0 ? '₹${(avgRent/1000).toStringAsFixed(1)}k/mo Avg' : 'N/A';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -4088,9 +4210,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   // KPI 2: Top Demanded Category
                   _buildExecutiveKpiCard(
                     title: 'Top Demanded Category',
-                    value: 'Hostels / PGs',
-                    subtitle: '$pgsCount units ($total total)',
-                    badgeLabel: '89% Volume',
+                    value: topCategory,
+                    subtitle: '$topCategoryCount clicks ($totalCategoryClicks total)',
+                    badgeLabel: '$catPct% Volume',
                     badgeColor: AppTheme.primaryYellow,
                     icon: Iconsax.building_4,
                     iconColor: AppTheme.primaryYellow,
@@ -4102,8 +4224,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   // KPI 3: Dominant Rent Bracket
                   _buildExecutiveKpiCard(
                     title: 'High Velocity Rent Tier',
-                    value: '₹5k - ₹10k/mo',
-                    subtitle: 'Peak tenant conversion',
+                    value: rentTierStr,
+                    subtitle: 'Avg of top properties',
                     badgeLabel: 'Sweet Spot',
                     badgeColor: const Color(0xFF3B82F6),
                     icon: Iconsax.wallet_3,
@@ -4374,13 +4496,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // COMPONENT: AMENITY DEMAND HEATMAP
   // ==========================================
   Widget _buildAmenityDemandHeatmapCard(bool isDark, Color primaryTextColor, Color mutedColor) {
-    final amenities = [
-      (name: 'Attached Washroom & RO Water', demand: '94% Inquiries', pct: 0.94, color: const Color(0xFF10B981)),
-      (name: 'Homely Food / Mess Included', demand: '88% Inquiries', pct: 0.88, color: const Color(0xFF10B981)),
-      (name: '24/7 Power Backup & Inverter', demand: '82% Inquiries', pct: 0.82, color: const Color(0xFF3B82F6)),
-      (name: 'Air Conditioning (AC) Option', demand: '64% Inquiries', pct: 0.64, color: AppTheme.primaryYellow),
-      (name: 'Dedicated 2-Wheeler / Car Parking', demand: '58% Inquiries', pct: 0.58, color: const Color(0xFF8B5CF6)),
-    ];
+    List<({String name, String demand, double pct, Color color})> amenities = [];
+    if (_topViewedProperties.isNotEmpty) {
+      final Map<String, int> amenityCounts = {};
+      int totalAmenities = 0;
+      for (var p in _topViewedProperties) {
+        for (var a in p.features) {
+          amenityCounts[a] = (amenityCounts[a] ?? 0) + 1;
+          totalAmenities++;
+        }
+      }
+      final sortedAmenities = amenityCounts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+      amenities = sortedAmenities.take(5).map((e) {
+        final pct = totalAmenities > 0 ? e.value / totalAmenities : 0.0;
+        return (
+          name: e.key,
+          demand: '${(pct * 100).toInt()}% Inquiries',
+          pct: pct,
+          color: const Color(0xFF10B981)
+        );
+      }).toList();
+    }
+    if (amenities.isEmpty) {
+      amenities = [
+        (name: 'No data yet', demand: '0%', pct: 0.0, color: const Color(0xFF94A3B8))
+      ];
+    }
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -4461,13 +4602,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // COMPONENT: TRENDING SEARCH RADAR (INTENT)
   // ==========================================
   Widget _buildTrendingSearchesRadar(bool isDark, Color primaryTextColor, Color mutedColor) {
-    final searchTerms = [
-      (query: 'Single Room PG with Attached Bath', volume: 'High Demand', growth: '+38%', color: const Color(0xFF10B981)),
-      (query: '2BHK Family Flat with Car Parking', volume: 'High Demand', growth: '+24%', color: const Color(0xFF10B981)),
-      (query: 'Girls Hostel with 3 Times Food', volume: 'Steady Demand', growth: '+19%', color: const Color(0xFF3B82F6)),
-      (query: 'Boys PG Near Colleges & Institutes', volume: 'High Demand', growth: '+32%', color: const Color(0xFF10B981)),
-      (query: 'Low Deposit / Zero Brokerage Room', volume: 'Fast Rising', growth: '+15%', color: AppTheme.primaryYellow),
-    ];
+    final List<dynamic> topSearchesData = _demandRadarData?['top_searches'] ?? [];
+    List<({String query, String volume, String growth, Color color})> searchTerms = topSearchesData.map((e) {
+      return (
+        query: e['keyword']?.toString() ?? 'Unknown',
+        volume: '${e['count']} searches',
+        growth: 'Top',
+        color: const Color(0xFF10B981)
+      );
+    }).toList();
+
+    if (searchTerms.isEmpty) {
+      searchTerms = [
+        (query: 'No search data yet', volume: '-', growth: '-', color: const Color(0xFF94A3B8))
+      ];
+    }
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -4719,7 +4868,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const Icon(Icons.wifi_tethering, size: 14, color: Color(0xFF10B981)),
                       const SizedBox(width: 6),
                       Text(
-                        '3,420 Active Devices',
+                        '$_allUsersCount Active Devices',
                         style: GoogleFonts.inter(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
@@ -4832,40 +4981,51 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          Row(
-            children: [
-              _buildAudienceChip(
-                target: TargetAudience.allUsers,
-                label: 'All Users',
-                count: '3.4k',
-                icon: Iconsax.people,
-                isDark: isDark,
-              ),
-              const SizedBox(width: 8),
-              _buildAudienceChip(
-                target: TargetAudience.tenants,
-                label: 'Tenants',
-                count: '2.1k',
-                icon: Iconsax.user_search,
-                isDark: isDark,
-              ),
-              const SizedBox(width: 8),
-              _buildAudienceChip(
-                target: TargetAudience.buyers,
-                label: 'Buyers',
-                count: '1.2k',
-                icon: Iconsax.card_pos,
-                isDark: isDark,
-              ),
-              const SizedBox(width: 8),
-              _buildAudienceChip(
-                target: TargetAudience.landlords,
-                label: 'Landlords',
-                count: '380',
-                icon: Iconsax.buildings,
-                isDark: isDark,
-              ),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildAudienceChip(
+                  target: TargetAudience.allUsers,
+                  label: 'All Users',
+                  count: '$_allUsersCount',
+                  icon: Iconsax.people,
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildAudienceChip(
+                  target: TargetAudience.pgSeekers,
+                  label: 'PG Seekers',
+                  count: '$_pgSeekersCount',
+                  icon: Iconsax.building,
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildAudienceChip(
+                  target: TargetAudience.roomSeekers,
+                  label: 'Room Seekers',
+                  count: '$_roomSeekersCount',
+                  icon: Iconsax.home,
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildAudienceChip(
+                  target: TargetAudience.buyers,
+                  label: 'Buyers',
+                  count: '$_buyersCount',
+                  icon: Iconsax.card_pos,
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildAudienceChip(
+                  target: TargetAudience.landlords,
+                  label: 'Landlords',
+                  count: '$_landlordsCount',
+                  icon: Iconsax.buildings,
+                  isDark: isDark,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 14),
 
@@ -5281,8 +5441,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-    return Expanded(
-      child: InkWell(
+    return InkWell(
         borderRadius: BorderRadius.circular(8),
         onTap: () => setState(() => _selectedAudience = target),
         child: AnimatedContainer(
@@ -5328,8 +5487,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildTemplatePill(String template, bool isDark) {

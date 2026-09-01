@@ -1,7 +1,14 @@
-import 'dart:convert';
-
+/// All secrets are injected at build time via --dart-define flags.
+/// NEVER add hardcoded fallback values here.
+/// On Vercel: set OPENROUTER_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY
+/// in the Vercel dashboard → Project Settings → Environment Variables.
 class Env {
-  static final String openRouterApiKey = const String.fromEnvironment('OPENROUTER_API_KEY').isNotEmpty
-      ? const String.fromEnvironment('OPENROUTER_API_KEY')
-      : utf8.decode(base64.decode('c2stb3ItdjEtOGVhMGViOTk1NDM1YzZhNWIzNTM1YmYzNmVmMzM4YWQ0NmJlYzNlMmMxMDBkNWRiMmQ5MTM4NmRlZWVjZDYxOQ=='));
+  static const String openRouterApiKey =
+      String.fromEnvironment('OPENROUTER_API_KEY');
+
+  static const String supabaseUrl =
+      String.fromEnvironment('SUPABASE_URL');
+
+  static const String supabaseAnonKey =
+      String.fromEnvironment('SUPABASE_ANON_KEY');
 }

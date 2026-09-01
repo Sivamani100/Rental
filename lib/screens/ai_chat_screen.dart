@@ -10,7 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/bouncing_button.dart';
 import '../widgets/app_snackbar.dart';
 import '../services/ai_assistant_service.dart';
-import 'home_screen.dart' show PropertyModel;
+import '../models/property_model.dart';
 import 'property_details_screen.dart';
 
 class AiChatScreen extends StatefulWidget {

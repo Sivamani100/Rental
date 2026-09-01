@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -15,7 +16,7 @@ import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
 import '../theme/app_theme.dart';
 import '../utils/image_compressor.dart';
-import 'home_screen.dart' show PropertyModel;
+import '../models/property_model.dart';
 import 'photo_position_screen.dart';
 
 class PostBottomSheet extends StatefulWidget {
@@ -133,7 +134,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
 
   // --- Draft State ---
   static const String _draftKey = 'posting_draft_v1';
-  bool _hasDraftLoaded = false;
+  static const int _draftMaxAgeMs = 24 * 60 * 60 * 1000; // 1 day in milliseconds
+  Timer? _draftDebounce; // Debounce auto-save to avoid saving on every keystroke
 
   Future<void> _saveDraft() async {
     if (_isEditing || _isSubmitting) return;
@@ -208,6 +210,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         'buyPriceNegotiable': _buyPriceNegotiable,
         'buyParking': _buyParking,
         'buySelectedFeatures': _buySelectedFeatures.toList(),
+        'saved_at': DateTime.now().millisecondsSinceEpoch, // Draft timestamp for expiry
       };
       await prefs.setString(_draftKey, jsonEncode(draftData));
     } catch (e) {
@@ -222,6 +225,17 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       final draftStr = prefs.getString(_draftKey);
       if (draftStr != null && draftStr.isNotEmpty) {
         final Map<String, dynamic> data = jsonDecode(draftStr);
+
+        // 1-day expiry check: discard stale drafts automatically
+        final savedAt = data['saved_at'] as int?;
+        if (savedAt != null) {
+          final ageMs = DateTime.now().millisecondsSinceEpoch - savedAt;
+          if (ageMs > _draftMaxAgeMs) {
+            await prefs.remove(_draftKey);
+            return; // Draft expired — start fresh
+          }
+        }
+
         if (mounted) {
           setState(() {
             _selectedType = data['selectedType'] ?? 'Rental';
@@ -314,7 +328,6 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               _buySelectedFeatures.addAll(List<String>.from(data['buySelectedFeatures']));
             }
 
-            _hasDraftLoaded = true;
           });
         }
       }
@@ -332,76 +345,6 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     }
   }
 
-  void _discardDraftAndReset() async {
-    await _clearDraft();
-    setState(() {
-      _currentStep = 1;
-      _selectedType = 'Rental';
-      _titleController.clear();
-      _priceController.clear();
-      _depositController.clear();
-      _maintenanceController.clear();
-      _addressController.clear();
-      _locationAddress = '';
-      _phoneController.clear();
-      _whatsappController.clear();
-      _descriptionController.clear();
-      _perDayWithFoodController.clear();
-      _perDayWithoutFoodController.clear();
-      _selectedImages.clear();
-      _pgGender = '';
-      _pgSharing = '';
-      _pgAcType = '';
-      _pgBathroom = '';
-      _pgToiletType = '';
-      _pgFoodPlan = '';
-      _pgFoodType = '';
-      _pgWaterSupply = '';
-      _pgDrinkingWater = '';
-      _pgPowerBackup = '';
-      _pgCleaning = '';
-      _pgCurfew = '';
-      _pgNotice = '';
-      _pgManagement = '';
-      _pgSelectedAmenities.clear();
-      _rentalBhk = '';
-      _rentalFurnishing = '';
-      _rentalBeds = '';
-      _rentalBaths = '';
-      _rentalArea = '';
-      _rentalFloor = '';
-      _rentalTotalFloors = '';
-      _rentalAgreement = '';
-      _rentalNotice = '';
-      _rentalWaterBill = '';
-      _rentalEbMeter = '';
-      _rentalTenantPref = '';
-      _rentalPetPolicy = '';
-      _rentalParking = '';
-      _rentalSelectedFeatures.clear();
-      _buyPropertyType = '';
-      _buyBhk = '';
-      _buyFurnishing = '';
-      _buyBeds = '';
-      _buyBaths = '';
-      _buyPlotArea = '';
-      _buyBuiltUpArea = '';
-      _buyFacing = '';
-      _buyConstructionStatus = '';
-      _buyTotalFloors = '';
-      _buyOwnershipType = '';
-      _buyApprovals = '';
-      _buyRoadWidth = '';
-      _buyWaterElectricity = '';
-      _buyPriceNegotiable = '';
-      _buyParking = '';
-      _buySelectedFeatures.clear();
-      _hasDraftLoaded = false;
-    });
-    if (mounted) {
-      AppSnackbar.success(context, 'Draft discarded! Form reset.');
-    }
-  }
 
   @override
   void initState() {
@@ -479,6 +422,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
 
   @override
   void dispose() {
+    _draftDebounce?.cancel();
     _saveDraft();
     _titleController.dispose();
     _priceController.dispose();
@@ -517,11 +461,23 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
 
   Future<void> _pickImages() async {
     try {
+      // SECURITY: Cap image count to 10 per listing to prevent upload abuse
+      const int maxImages = 10;
+      final currentCount = _selectedImages.length + _existingImages.length;
+      if (currentCount >= maxImages) {
+        _showSheetError('Maximum $maxImages photos allowed per listing.');
+        return;
+      }
       final List<XFile> images = await _picker.pickMultiImage();
       if (images.isNotEmpty) {
+        final remaining = maxImages - currentCount;
+        final toAdd = images.take(remaining).toList();
         setState(() {
-          _selectedImages.addAll(images);
+          _selectedImages.addAll(toAdd);
         });
+        if (images.length > remaining) {
+          _showSheetError('Only $remaining more photo(s) added. Maximum $maxImages reached.');
+        }
         _saveDraft();
         if (mounted) {
           _openPhotoPositionScreen();
@@ -574,8 +530,30 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     }
   }
 
+  // ─── INPUT SANITIZATION ─────────────────────────────────────────────────
+  // Strips control characters and enforces max length.
+  // Used before sending any user text to Supabase or the AI prompt.
+  static String _sanitizeText(String input, {int maxLength = 500}) {
+    // Remove null bytes and control characters (except newlines and tabs)
+    String sanitized = input.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '');
+    // Trim and cap length
+    sanitized = sanitized.trim();
+    if (sanitized.length > maxLength) {
+      sanitized = sanitized.substring(0, maxLength);
+    }
+    return sanitized;
+  }
+
   void _submitProperty() {
-    if (_titleController.text.trim().isEmpty) {
+    // ── Input sanitization ─────────────────────────────────────────────────
+    final rawTitle = _sanitizeText(_titleController.text, maxLength: 100);
+    final rawDescription = _sanitizeText(_descriptionController.text, maxLength: 1000);
+    final rawAddress = _sanitizeText(_addressController.text, maxLength: 200);
+    _titleController.text = rawTitle;
+    _descriptionController.text = rawDescription;
+    _addressController.text = rawAddress;
+
+    if (rawTitle.isEmpty) {
       _showSheetError('Please enter a property title');
       setState(() => _currentStep = 2);
       return;
@@ -587,9 +565,22 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       setState(() => _currentStep = 2);
       return;
     }
-    if (_phoneController.text.trim().isEmpty) {
+
+    // SECURITY: Validate phone — must be a valid 10-digit Indian mobile number
+    final rawPhone = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
+    final phoneRegex = RegExp(r'^[6-9]\d{9}$');
+    if (rawPhone.isEmpty) {
       _showSheetError('Please provide owner contact number');
       return;
+    }
+    if (!phoneRegex.hasMatch(rawPhone)) {
+      _showSheetError('Enter a valid 10-digit Indian mobile number (e.g. 9876543210)');
+      return;
+    }
+    _phoneController.text = rawPhone;
+    if (_whatsappController.text.trim().isNotEmpty) {
+      final rawWa = _whatsappController.text.trim().replaceAll(RegExp(r'\D'), '');
+      _whatsappController.text = rawWa.isNotEmpty ? rawWa : rawPhone;
     }
 
     final isPg = _selectedType == 'PG';
@@ -800,6 +791,13 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               : 'Listing submitted for review! It will appear once approved by admin.',
           duration: const Duration(seconds: 4),
         );
+        // Invalidate the property cache so next HomeScreen open fetches fresh data
+        if (!_isEditing) {
+          SharedPreferences.getInstance().then((prefs) {
+            prefs.remove('cached_properties');
+            prefs.remove('cached_properties_ts');
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

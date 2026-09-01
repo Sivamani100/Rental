@@ -12,7 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
 import '../theme/app_theme.dart';
-import 'home_screen.dart' show PropertyModel;
+import '../models/property_model.dart';
 import 'map_screen.dart';
 import 'full_screen_image_viewer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -20,13 +20,19 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/transport_service.dart';
+import '../services/analytics_service.dart';
 import '../utils/image_compressor.dart';
-import 'transport_street_view_screen.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final PropertyModel property;
+  // Pre-started Future from HomeScreen (started on card tap, before navigation)
+  final Future<List<TransportPlace>>? preloadedTransportFuture;
 
-  const PropertyDetailsScreen({super.key, required this.property});
+  const PropertyDetailsScreen({
+    super.key,
+    required this.property,
+    this.preloadedTransportFuture,
+  });
 
   @override
   State<PropertyDetailsScreen> createState() => _PropertyDetailsScreenState();
@@ -45,10 +51,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   void initState() {
     super.initState();
     _checkIfReviewed();
-    _nearbyTransportFuture = TransportService.getNearby(
-      widget.property.latitude,
-      widget.property.longitude,
-    );
+    // Use preloaded Future if available (started on card tap for zero wait time)
+    _nearbyTransportFuture = widget.preloadedTransportFuture ??
+        TransportService.getNearby(
+          widget.property.latitude,
+          widget.property.longitude,
+        );
+
+    // Track property view
+    if (widget.property.id != null) {
+      AnalyticsService.instance.logPropertyView(widget.property.id!, widget.property.type);
+    }
   }
 
   Future<void> _checkIfReviewed() async {
@@ -76,6 +89,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           _hasReviewed = true;
         });
       }
+    } else {
+      // Track this property as viewed; cap list at 200 to prevent unbounded growth
+      reviewedProperties.add(widget.property.id!);
+      if (reviewedProperties.length > 200) {
+        reviewedProperties.removeRange(0, reviewedProperties.length - 200);
+      }
+      // We don't set _hasReviewed = true here; that only happens after actual review submission
     }
   }
 
@@ -2207,10 +2227,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
                         if (widget.property.id != null && widget.property.id!.isNotEmpty) {
                           try {
-                            await Supabase.instance.client
-                                .from('properties')
-                                .update({'is_available': false})
-                                .eq('id', widget.property.id!);
+                            await Supabase.instance.client.rpc(
+                              'toggle_availability',
+                              params: {'p_property_id': widget.property.id!, 'p_is_available': false},
+                            );
                           } catch (e) {
                             debugPrint('Error updating availability: $e');
                           }
@@ -2301,10 +2321,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
                         if (widget.property.id != null && widget.property.id!.isNotEmpty) {
                           try {
-                            await Supabase.instance.client
-                                .from('properties')
-                                .update({'is_available': true})
-                                .eq('id', widget.property.id!);
+                            await Supabase.instance.client.rpc(
+                              'toggle_availability',
+                              params: {'p_property_id': widget.property.id!, 'p_is_available': true},
+                            );
                           } catch (e) {
                             debugPrint('Error updating availability: $e');
                           }
@@ -2650,9 +2670,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   updatedReviews.add(newReview);
                                 }
 
-                                await supabase
-                                    .from('properties')
-                                    .update({'reviews': updatedReviews}).eq('id', widget.property.id!);
+                                await supabase.rpc(
+                                  'add_property_review',
+                                  params: {'p_property_id': widget.property.id!, 'p_review_data': newReview},
+                                );
 
                                 final prefs = await SharedPreferences.getInstance();
                                 final reviewedProps = prefs.getStringList('reviewed_properties') ?? [];
@@ -2874,9 +2895,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                 final updatedSuggestions = List<dynamic>.from(widget.property.suggestedPhotos)
                                   ..addAll(newSuggestions);
 
-                                await supabase
-                                    .from('properties')
-                                    .update({'suggested_photos': updatedSuggestions}).eq('id', widget.property.id!);
+                                await supabase.rpc(
+                                  'add_suggested_photos',
+                                  params: {'p_property_id': widget.property.id!, 'p_new_suggestions': newSuggestions},
+                                );
 
                                 if (mounted) {
                                   setState(() {

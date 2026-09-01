@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// A single nearby transport facility
@@ -70,16 +71,21 @@ class TransportService {
   static Future<List<TransportPlace>> getNearby(double lat, double lng) async {
     final key = _cacheKey(lat, lng);
 
-    // 1️⃣ Try Supabase cache first
-    final cached = await _readCache(key);
-    if (cached != null) return cached;
+    // 1️⃣ Try Supabase cache first (shared across all users)
+    final supabaseCached = await _readCache(key);
+    if (supabaseCached != null) return supabaseCached;
 
-    // 2️⃣ Fetch fresh from Overpass API
+    // 2️⃣ Try local SharedPrefs cache (available offline after first fetch)
+    final localCached = await _readLocalCache(key);
+    if (localCached != null) return localCached;
+
+    // 3️⃣ Fetch fresh from Overpass API
     final fresh = await _fetchFromOverpass(lat, lng);
 
-    // 3️⃣ Persist to Supabase for all future users
+    // 4️⃣ Persist to both Supabase (shared) and local prefs (offline fallback)
     if (fresh.isNotEmpty) {
-      await _writeCache(key, fresh);
+      _writeCache(key, fresh);      // Supabase — fire-and-forget
+      _writeLocalCache(key, fresh); // SharedPrefs — fire-and-forget
     }
 
     return fresh;
@@ -116,13 +122,49 @@ class TransportService {
 
   static Future<void> _writeCache(String key, List<TransportPlace> places) async {
     try {
-      await _db.from('transport_cache').upsert({
+      await Supabase.instance.client.from('transport_cache').upsert({
         'cache_key': key,
         'transport_data': places.map((p) => p.toJson()).toList(),
         'fetched_at': DateTime.now().toIso8601String(),
       });
     } catch (_) {
       // Cache write failure is non-fatal
+    }
+  }
+
+  // ─── LOCAL SHAREDPREFS CACHE (OFFLINE FALLBACK) ──────────────────────────────
+
+  static const _localCachePrefix = 'transport_local_';
+  static const _localCacheExpiryDays = 14; // Local cache: 14 days
+
+  static Future<List<TransportPlace>?> _readLocalCache(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_localCachePrefix$key');
+      if (raw == null) return null;
+      final Map<String, dynamic> stored = jsonDecode(raw);
+      final savedAt = stored['saved_at'] as int? ?? 0;
+      if (DateTime.now().millisecondsSinceEpoch - savedAt >
+          _localCacheExpiryDays * 24 * 60 * 60 * 1000) {
+        return null; // Expired
+      }
+      final data = stored['data'] as List<dynamic>;
+      return data.map((e) => TransportPlace.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> _writeLocalCache(String key, List<TransportPlace> places) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final payload = jsonEncode({
+        'saved_at': DateTime.now().millisecondsSinceEpoch,
+        'data': places.map((p) => p.toJson()).toList(),
+      });
+      await prefs.setString('$_localCachePrefix$key', payload);
+    } catch (_) {
+      // Local cache write failure is non-fatal
     }
   }
 

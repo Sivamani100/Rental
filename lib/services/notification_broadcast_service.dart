@@ -2,12 +2,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../screens/home_screen.dart';
 import '../screens/posting_screen.dart';
+import '../screens/property_loader_screen.dart';
 
 enum TargetAudience {
   allUsers,
-  tenants,
+  pgSeekers,
+  roomSeekers,
   buyers,
   landlords,
 }
@@ -107,8 +110,10 @@ class BroadcastNotificationModel {
     switch (targetAudience) {
       case TargetAudience.allUsers:
         return 'All Users (Rajahmundry)';
-      case TargetAudience.tenants:
-        return 'Tenants & Rent Seekers';
+      case TargetAudience.pgSeekers:
+        return 'PG & Hostel Seekers';
+      case TargetAudience.roomSeekers:
+        return 'Room & Flat Renters';
       case TargetAudience.buyers:
         return 'Property Buyers';
       case TargetAudience.landlords:
@@ -150,7 +155,6 @@ class NotificationBroadcastService {
   }
 
   Future<List<BroadcastNotificationModel>> getHistory() async {
-    // Try fetching from Supabase first
     try {
       final response = await _supabase
           .from('broadcast_notifications')
@@ -162,25 +166,11 @@ class NotificationBroadcastService {
           .map((e) => BroadcastNotificationModel.fromJson(e as Map<String, dynamic>))
           .toList();
 
-      if (list.isNotEmpty) {
-        _localHistory = list;
-        await _saveToLocal();
-        return _localHistory;
-      }
+      _localHistory = list;
+      return _localHistory;
     } catch (_) {
-      // Fallback to local history
+      return [];
     }
-
-    if (_localHistory.isEmpty) {
-      await _loadFromLocal();
-    }
-
-    if (_localHistory.isEmpty) {
-      _localHistory = _getSampleHistory();
-      await _saveToLocal();
-    }
-
-    return _localHistory;
   }
 
   Future<bool> sendBroadcast(BroadcastNotificationModel notification) async {
@@ -214,7 +204,7 @@ class NotificationBroadcastService {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => HomeScreen(initialPropertyId: notification.targetRouteOrId),
+              builder: (_) => PropertyLoaderScreen(propertyId: notification.targetRouteOrId!),
             ),
           );
         }
@@ -227,16 +217,20 @@ class NotificationBroadcastService {
         );
         break;
 
+      case NotificationActionType.externalUrl:
+        if (notification.targetRouteOrId != null && notification.targetRouteOrId!.isNotEmpty) {
+          try {
+            final uri = Uri.parse(notification.targetRouteOrId!);
+            launchUrl(uri, mode: LaunchMode.externalApplication);
+          } catch (_) {}
+        }
+        break;
+
       case NotificationActionType.buyAndSell:
       case NotificationActionType.category:
       case NotificationActionType.searchFilter:
       case NotificationActionType.general:
-      case NotificationActionType.externalUrl:
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (route) => false,
-        );
+        Navigator.popUntil(context, (route) => route.isFirst);
         break;
     }
   }
@@ -263,44 +257,6 @@ class NotificationBroadcastService {
   }
 
   List<BroadcastNotificationModel> _getSampleHistory() {
-    return [
-      BroadcastNotificationModel(
-        id: 'notif_1',
-        title: '🔥 New Luxury 3BHK in Danavaipeta!',
-        body: 'Spacious East-facing 3BHK flat near RTC Complex with 100% Vastu and covered car parking.',
-        targetAudience: TargetAudience.allUsers,
-        actionType: NotificationActionType.category,
-        targetLabel: 'Danavaipeta Flats',
-        targetRouteOrId: 'Danavaipeta',
-        isHighPriority: true,
-        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-        recipientCount: 1420,
-        status: 'sent',
-      ),
-      BroadcastNotificationModel(
-        id: 'notif_2',
-        title: '🏡 List Your Property in Rajahmundry Free',
-        body: 'Post your house, PG, or land for sale with zero broker fee and connect with 5,000+ local buyers.',
-        targetAudience: TargetAudience.landlords,
-        actionType: NotificationActionType.postProperty,
-        targetLabel: 'Post Listing',
-        isHighPriority: false,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-        recipientCount: 380,
-        status: 'sent',
-      ),
-      BroadcastNotificationModel(
-        id: 'notif_3',
-        title: '📉 Price Drop Alert: Morampudi 2BHK',
-        body: 'Rent reduced by ₹2,000/month. Walking distance to highway and schools. Contact owner now.',
-        targetAudience: TargetAudience.tenants,
-        actionType: NotificationActionType.searchFilter,
-        targetLabel: 'Morampudi Rentals',
-        isHighPriority: true,
-        createdAt: DateTime.now().subtract(const Duration(days: 3)),
-        recipientCount: 920,
-        status: 'sent',
-      ),
-    ];
+    return [];
   }
 }

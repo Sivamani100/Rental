@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../screens/home_screen.dart' show PropertyModel;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../models/property_model.dart';
 import '../config/env.dart';
 
 class ChatMessage {
@@ -61,8 +62,8 @@ class AiAssistantService {
   static final AiAssistantService instance = AiAssistantService._internal();
   AiAssistantService._internal();
 
-  static const String _defaultApiKey = '';
   String? _customApiKey;
+  final _secureStorage = const FlutterSecureStorage();
 
   static const String primaryModel = 'openrouter/free';
   static const String fallbackModel = 'meta-llama/llama-3.3-70b-instruct:free';
@@ -70,6 +71,7 @@ class AiAssistantService {
   final List<PropertyModel> _databaseCache = [];
   bool _isSynced = false;
   final List<ChatMessage> _chatHistory = [];
+  DateTime? _lastSyncTime; // Sync debounce — avoid redundant calls within 10 min
 
   List<ChatMessage> get chatHistory => List.unmodifiable(_chatHistory);
   List<PropertyModel> get databaseCache => List.unmodifiable(_databaseCache);
@@ -84,14 +86,12 @@ class AiAssistantService {
 
   Future<void> setApiKey(String key) async {
     _customApiKey = key.trim();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('openrouter_api_key', _customApiKey!);
+    await _secureStorage.write(key: 'openrouter_api_key', value: _customApiKey);
   }
 
   Future<void> loadSavedApiKey() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString('openrouter_api_key');
+      final saved = await _secureStorage.read(key: 'openrouter_api_key');
       if (saved != null && saved.isNotEmpty) {
         _customApiKey = saved;
       }
@@ -106,6 +106,15 @@ class AiAssistantService {
   /// Initialize and sync properties and load persistent local chat history
   Future<void> syncDatabase({List<PropertyModel>? initialProperties}) async {
     await loadSavedApiKey();
+
+    // Sync debounce: skip if already synced and last sync was < 10 minutes ago
+    final now = DateTime.now();
+    if (_isSynced &&
+        _lastSyncTime != null &&
+        now.difference(_lastSyncTime!).inMinutes < 10 &&
+        initialProperties == null) {
+      return;
+    }
 
     if (initialProperties != null && initialProperties.isNotEmpty) {
       _databaseCache.clear();
@@ -133,6 +142,7 @@ class AiAssistantService {
         _databaseCache.clear();
         _databaseCache.addAll(loaded);
         _isSynced = true;
+        _lastSyncTime = DateTime.now(); // Record successful sync time
       }
     } catch (_) {}
 
@@ -155,11 +165,15 @@ class AiAssistantService {
     return _chatHistory;
   }
 
-  /// Persist local chat history
+  /// Persist local chat history (capped at 100 messages to prevent SharedPrefs bloat)
   Future<void> _persistChatHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final encoded = jsonEncode(_chatHistory.map((m) => m.toJson()).toList());
+      // Keep only the most recent 100 messages
+      final toSave = _chatHistory.length > 100
+          ? _chatHistory.sublist(_chatHistory.length - 100)
+          : _chatHistory;
+      final encoded = jsonEncode(toSave.map((m) => m.toJson()).toList());
       await prefs.setString('saved_chat_history_v2', encoded);
     } catch (_) {}
   }
@@ -173,9 +187,22 @@ class AiAssistantService {
     } catch (_) {}
   }
 
+  /// Sanitize text before injecting into AI prompts — prevents prompt injection
+  /// via maliciously crafted property titles, descriptions, or user messages.
+  static String _sanitizeForPrompt(String? input, {int maxLength = 300}) {
+    if (input == null || input.isEmpty) return '';
+    // Strip control characters (keep printable + newline)
+    String s = input.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'), '');
+    // Cap to maxLength to prevent bloated prompts
+    s = s.trim();
+    if (s.length > maxLength) s = s.substring(0, maxLength);
+    return s;
+  }
+
   /// Process natural language query via OpenRouter Free AI with conversation memory
   Future<ChatMessage> processQuery(String userQueryText, {String? imagePath}) async {
-    final cleanInput = userQueryText.trim();
+    // SECURITY: Sanitize user input before processing — prevents chat-level prompt injection
+    final cleanInput = _sanitizeForPrompt(userQueryText.trim(), maxLength: 500);
     if (cleanInput.isEmpty && imagePath == null) {
       return ChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -326,22 +353,27 @@ $propertiesContext
     for (int i = 0; i < _databaseCache.length; i++) {
       final p = _databaseCache[i];
       final id = p.id ?? 'prop_$i';
+      // SECURITY: All property fields are sanitized before injection into the AI system prompt
+      // to prevent prompt injection attacks via malicious listing content.
       sb.writeln('--- PROPERTY ID: $id ---');
-      sb.writeln('Title: ${p.title}');
-      sb.writeln('Type: ${p.type} | BHK: ${p.bhkType ?? p.beds + " Bed"} | Baths: ${p.baths}');
-      sb.writeln('Location: ${p.locationStr}');
-      sb.writeln('Rent: ${p.price}/month | Deposit: ₹${p.securityDeposit ?? "Contact owner"}');
-      sb.writeln('Tenant Preference: ${p.tenantPreference ?? "Any"} | Gender: ${p.genderPreference ?? "All"}');
-      sb.writeln('Cleanliness: ${p.cleanlinessInfo ?? "Regular cleaning & well maintained"}');
+      sb.writeln('Title: ${_sanitizeForPrompt(p.title, maxLength: 100)}');
+      sb.writeln('Type: ${_sanitizeForPrompt(p.type)} | BHK: ${_sanitizeForPrompt(p.bhkType ?? "${p.beds} Bed")} | Baths: ${_sanitizeForPrompt(p.baths)}');
+      sb.writeln('Location: ${_sanitizeForPrompt(p.locationStr, maxLength: 150)}');
+      sb.writeln('Rent: ${_sanitizeForPrompt(p.price)}/month | Deposit: ₹${_sanitizeForPrompt(p.securityDeposit ?? "Contact owner")}');
+      sb.writeln('Tenant Preference: ${_sanitizeForPrompt(p.tenantPreference ?? "Any")} | Gender: ${_sanitizeForPrompt(p.genderPreference ?? "All")}');
+      sb.writeln('Cleanliness: ${_sanitizeForPrompt(p.cleanlinessInfo ?? "Regular cleaning & well maintained")}');
       if (p.foodDetails != null && p.foodDetails!.isNotEmpty) {
-        sb.writeln('Food/Mess: ${p.foodDetails} (Per day food: ${p.perDayWithFood ?? "Included"})');
+        sb.writeln('Food/Mess: ${_sanitizeForPrompt(p.foodDetails)} (Per day food: ${_sanitizeForPrompt(p.perDayWithFood ?? "Included")})');
       }
-      if (p.drinkingWater != null) sb.writeln('Water: ${p.drinkingWater} | Supply: ${p.waterSupply ?? "24/7"}');
-      if (p.powerBackup != null) sb.writeln('Power Backup: ${p.powerBackup}');
-      if (p.parkingInfo != null) sb.writeln('Parking: ${p.parkingInfo}');
-      if (p.features.isNotEmpty) sb.writeln('Features: ${p.features.join(", ")}');
-      if (p.description != null && p.description!.isNotEmpty) sb.writeln('Description: ${p.description}');
-      sb.writeln('Owner Contact: ${p.ownerPhone}');
+      if (p.drinkingWater != null) sb.writeln('Water: ${_sanitizeForPrompt(p.drinkingWater)} | Supply: ${_sanitizeForPrompt(p.waterSupply ?? "24/7")}');
+      if (p.powerBackup != null) sb.writeln('Power Backup: ${_sanitizeForPrompt(p.powerBackup)}');
+      if (p.parkingInfo != null) sb.writeln('Parking: ${_sanitizeForPrompt(p.parkingInfo)}');
+      if (p.features.isNotEmpty) sb.writeln('Features: ${p.features.map((f) => _sanitizeForPrompt(f)).join(", ")}');
+      if (p.description != null && p.description!.isNotEmpty) {
+        sb.writeln('Description: ${_sanitizeForPrompt(p.description, maxLength: 200)}');
+      }
+      // NOTE: Owner phone is intentionally NOT included in the AI prompt context
+      // to protect owner privacy and prevent mass contact scraping via the AI.
       sb.writeln();
     }
 
