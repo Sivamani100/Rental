@@ -13,21 +13,15 @@ class PushNotificationService {
     try {
       if (Firebase.apps.isEmpty) return;
 
-      // Enable foreground notification banners & sounds
+      // Enable foreground notification presentation options
       await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
         sound: true,
       );
 
-      // Handle when the app is in foreground
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        print('Received a foreground message: ${message.messageId}');
-      });
-
       // Handle when the user taps on a notification and the app is in background but opened
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        print('Message clicked! ${message.messageId}');
         _handleMessage(message);
       });
 
@@ -39,7 +33,7 @@ class PushNotificationService {
         });
       }
     } catch (e) {
-      print('PushNotificationService init error: $e');
+      // Ignore init errors
     }
   }
 
@@ -49,7 +43,7 @@ class PushNotificationService {
         final notifModel = BroadcastNotificationModel.fromJson(message.data);
         _navigateWithModel(notifModel);
       } catch (e) {
-        print('Error parsing notification data: $e');
+        // Ignore parse errors
       }
     }
   }

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../screens/home_screen.dart';
 import '../screens/posting_screen.dart';
 import '../screens/property_loader_screen.dart';
 

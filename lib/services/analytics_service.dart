@@ -68,7 +68,7 @@ class AnalyticsService {
   Future<String> _getDeviceId() async {
     final prefs = await SharedPreferences.getInstance();
     String? id = prefs.getString('device_id');
-    if (id != null && id.isNotEmpty && !id.startsWith('TP1A') && !id.startsWith('UP1A') && !id.startsWith('SP1A')) {
+    if (id != null && id.isNotEmpty && !id.startsWith('TP1A') && !id.startsWith('UP1A') && !id.startsWith('SP1A') && !id.startsWith('BP2A')) {
       return id;
     }
 

@@ -175,7 +175,10 @@ serve(async (req) => {
         } else {
           failureCount++;
           console.error(`Failed to send to token ${token}: status=${response.status} body=${resText}`);
-          throw new Error(`FCM Error (${response.status}): ${resText}`);
+          if (response.status === 404 || resText.includes("UNREGISTERED") || resText.includes("NotRegistered")) {
+            // Automatically clean up stale/uninstalled token from public.devices
+            await supabase.from("devices").delete().eq("fcm_token", token);
+          }
         }
       }
 
