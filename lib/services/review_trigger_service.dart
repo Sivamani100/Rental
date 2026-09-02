@@ -1,50 +1,33 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Background Tracking Service that manages Google Play In-App Reviews with progressive retries and fail-safe fallbacks.
+/// Background Tracking Service that manages Google Play In-App Reviews.
 ///
-/// Multi-Tier Escalation Schedule:
-/// - Stage 0: 5 minutes (300 seconds)
-/// - Stage 1: 15 minutes (900 seconds)
-/// - Stage 2: 30 minutes (1800 seconds)
-/// - Stage 3: 60 minutes (3600 seconds)
-/// - Stage 4+: Every additional 30 minutes
+/// Features:
+/// 1. Cumulative Active Usage Tracker: Counts 300 seconds (5 minutes) of active app usage across sessions.
+/// 2. Lifecycle Security: Pauses timer when app goes to background (`paused`, `inactive`).
+/// 3. Play Store Quota Safeguard: Flags `has_prompted_review_v1` so review is requested only ONCE per installation.
+/// 4. Dual-Mode Trigger:
+///    - Production Play Store Builds: Displays Native Google Play In-App Review bottom-sheet overlay.
+///    - Local USB Debug Builds (`kDebugMode` / `isManualTest`) & Fallbacks: Automatically opens Play Store Listing fallback so testing always succeeds!
 class ReviewTriggerService with WidgetsBindingObserver {
   ReviewTriggerService._();
   static final ReviewTriggerService instance = ReviewTriggerService._();
 
-  static const String _keyAccumulatedSeconds = 'accumulated_usage_seconds_v2';
-  static const String _keyStage = 'review_prompt_stage_v2';
-  static const String _keyHasGivenFeedback = 'has_given_feedback_v2';
+  static const String _keyAccumulatedSeconds = 'accumulated_usage_seconds_v1';
+  static const String _keyHasPrompted = 'has_prompted_review_v1';
+  static const int targetUsageSeconds = 300; // 5 Minutes = 300 seconds
 
   Timer? _timer;
   int _accumulatedSeconds = 0;
-  int _stage = 0;
-  bool _hasGivenFeedback = false;
+  bool _hasPrompted = false;
   bool _isInitialized = false;
 
   int get accumulatedSeconds => _accumulatedSeconds;
-  int get stage => _stage;
-  bool get hasGivenFeedback => _hasGivenFeedback;
-  int get currentTargetSeconds => getTargetSecondsForStage(_stage);
-
-  /// Calculates target active usage seconds for the given escalation stage
-  static int getTargetSecondsForStage(int stageIndex) {
-    switch (stageIndex) {
-      case 0:
-        return 300; // 5 minutes
-      case 1:
-        return 900; // 15 minutes
-      case 2:
-        return 1800; // 30 minutes
-      case 3:
-        return 3600; // 60 minutes
-      default:
-        return 3600 + (stageIndex - 3) * 1800; // Every +30 minutes
-    }
-  }
+  bool get hasPrompted => _hasPrompted;
 
   /// Initializes usage tracking and starts lifecycle monitoring.
   Future<void> initialize() async {
@@ -54,43 +37,23 @@ class ReviewTriggerService with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       _accumulatedSeconds = prefs.getInt(_keyAccumulatedSeconds) ?? 0;
-      _stage = prefs.getInt(_keyStage) ?? 0;
-      _hasGivenFeedback = prefs.getBool(_keyHasGivenFeedback) ?? false;
+      _hasPrompted = prefs.getBool(_keyHasPrompted) ?? false;
 
-      if (_hasGivenFeedback) {
-        debugPrint('⭐️ [ReviewTriggerService] User has already submitted feedback! Tracker halted permanently.');
-        return;
-      }
+      debugPrint('⭐️ [ReviewTriggerService] Loaded state — Accumulated: ${_accumulatedSeconds}s / ${targetUsageSeconds}s, Prompted: $_hasPrompted');
 
-      final target = getTargetSecondsForStage(_stage);
-      debugPrint('⭐️ [ReviewTriggerService] Loaded state — Usage: ${_accumulatedSeconds}s / ${target}s (${(target / 60).round()}m target), Stage: $_stage');
+      if (_hasPrompted) return;
 
       WidgetsBinding.instance.removeObserver(this);
       WidgetsBinding.instance.addObserver(this);
 
       _startActiveTimer();
 
-      // Fail-Safe Launch Check: If target milestone was already met, trigger review immediately!
-      if (_accumulatedSeconds >= target) {
-        debugPrint('🚀 [ReviewTriggerService] Target milestone already reached on launch! Triggering review dialog now...');
-        _triggerMilestoneReview();
+      // If 5 minutes was already reached in a previous session, trigger review on launch
+      if (_accumulatedSeconds >= targetUsageSeconds) {
+        requestInAppReview();
       }
     } catch (e) {
       debugPrint('⚠️ [ReviewTriggerService] Error during initialization: $e');
-    }
-  }
-
-  /// Permanently marks feedback as completed so no future stage prompts (15m, 30m, etc.) are ever triggered.
-  Future<void> markFeedbackGiven() async {
-    _hasGivenFeedback = true;
-    _stopActiveTimer();
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_keyHasGivenFeedback, true);
-      debugPrint('✅ [ReviewTriggerService] Feedback marked as completed! Future stage prompts permanently disabled.');
-    } catch (e) {
-      debugPrint('Error saving feedback status: $e');
     }
   }
 
@@ -102,32 +65,26 @@ class ReviewTriggerService with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_hasGivenFeedback) return;
+    if (_hasPrompted) return;
 
     if (state == AppLifecycleState.resumed) {
-      debugPrint('▶️ [ReviewTriggerService] App Resumed — Restarting progressive usage tracker timer.');
+      debugPrint('▶️ [ReviewTriggerService] App Resumed — Restarting usage tracker timer.');
       _startActiveTimer();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
-      debugPrint('⏸️ [ReviewTriggerService] App Backgrounded — Pausing progressive usage tracker timer.');
+      debugPrint('⏸️ [ReviewTriggerService] App Backgrounded — Pausing usage tracker timer.');
       _stopActiveTimer();
     }
   }
 
   /// Starts the 10-second tick timer while app is active in foreground
   void _startActiveTimer() {
-    if (_hasGivenFeedback || _timer != null) return;
+    if (_hasPrompted || _timer != null) return;
 
     _timer = Timer.periodic(const Duration(seconds: 10), (_) async {
-      if (_hasGivenFeedback) {
-        _stopActiveTimer();
-        return;
-      }
-
       _accumulatedSeconds += 10;
-      final target = getTargetSecondsForStage(_stage);
-      debugPrint('⏱️ [ReviewTriggerService] Active usage: ${_accumulatedSeconds}s / ${target}s (Stage $_stage)');
+      debugPrint('⏱️ [ReviewTriggerService] Active usage: ${_accumulatedSeconds}s / ${targetUsageSeconds}s');
 
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -136,27 +93,11 @@ class ReviewTriggerService with WidgetsBindingObserver {
         debugPrint('Error saving usage seconds: $e');
       }
 
-      if (_accumulatedSeconds >= target) {
-        _triggerMilestoneReview();
+      if (_accumulatedSeconds >= targetUsageSeconds) {
+        _stopActiveTimer();
+        await requestInAppReview();
       }
     });
-  }
-
-  /// Handles milestone trigger and advances stage
-  Future<void> _triggerMilestoneReview() async {
-    final target = getTargetSecondsForStage(_stage);
-    debugPrint('🎉 [ReviewTriggerService] Reached milestone of ${target}s! Triggering review for Stage $_stage...');
-
-    // Advance stage to prepare for next milestone (15m, 30m, 60m...)
-    _stage += 1;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_keyStage, _stage);
-    } catch (e) {
-      debugPrint('Error saving review stage: $e');
-    }
-
-    await requestInAppReview();
   }
 
   /// Stops and cancels the active tick timer
@@ -165,9 +106,9 @@ class ReviewTriggerService with WidgetsBindingObserver {
     _timer = null;
   }
 
-  /// Triggers Google Play Native In-App Review with automatic store listing fallback
+  /// Triggers Google Play Native In-App Review Bottom Sheet prompt with automatic fallback for Debug/USB builds
   Future<void> requestInAppReview({bool isManualTest = false}) async {
-    if (_hasGivenFeedback && !isManualTest) return;
+    if (_hasPrompted && !isManualTest) return;
 
     try {
       final InAppReview inAppReview = InAppReview.instance;
@@ -176,21 +117,28 @@ class ReviewTriggerService with WidgetsBindingObserver {
       debugPrint('🔍 [ReviewTriggerService] Is InAppReview Available: $isAvailable');
 
       if (isAvailable) {
-        debugPrint('🚀 [ReviewTriggerService] Invoking InAppReview.requestReview() natively...');
+        // Flag prompted immediately to comply with Play Store rate limits
+        _hasPrompted = true;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_keyHasPrompted, true);
+
+        debugPrint('🚀 [ReviewTriggerService] Invoking InAppReview.requestReview()');
         await inAppReview.requestReview();
 
-        // In debug builds / local USB testing, Google Play silently suppresses the native overlay.
-        // In debug mode or manual test, also trigger store listing fallback so tester gets immediate review UI!
+        // NOTE ON GOOGLE PLAY BEHAVIOR:
+        // Google Play Core silently suppresses the native overlay UI on local USB debug builds (`flutter run`)
+        // or sideloaded APKs because the app was not downloaded directly from Play Store.
+        // In debug mode (`kDebugMode`) or manual test mode, also open store listing fallback so testing always works!
         if (kDebugMode || isManualTest) {
           debugPrint('🛠️ [ReviewTriggerService] Debug mode / USB build detected — opening Play Store listing fallback for verification...');
           await inAppReview.openStoreListing(appStoreId: 'com.arkiolabs.rental');
         }
       } else {
-        debugPrint('⚠️ [ReviewTriggerService] InAppReview native overlay not available. Opening Play Store listing fallback...');
+        debugPrint('⚠️ [ReviewTriggerService] InAppReview not available on current device/environment. Opening Store Listing...');
         await inAppReview.openStoreListing(appStoreId: 'com.arkiolabs.rental');
       }
     } catch (e) {
-      debugPrint('❌ [ReviewTriggerService] Failed to launch native In-App Review dialog: $e. Opening Store Listing...');
+      debugPrint('❌ [ReviewTriggerService] Failed to launch In-App Review dialog: $e. Opening Store Listing fallback...');
       try {
         await InAppReview.instance.openStoreListing(appStoreId: 'com.arkiolabs.rental');
       } catch (_) {}
@@ -201,15 +149,13 @@ class ReviewTriggerService with WidgetsBindingObserver {
   Future<void> resetForTesting() async {
     _stopActiveTimer();
     _accumulatedSeconds = 0;
-    _stage = 0;
-    _hasGivenFeedback = false;
+    _hasPrompted = false;
 
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyAccumulatedSeconds);
-      await prefs.remove(_keyStage);
-      await prefs.remove(_keyHasGivenFeedback);
-      debugPrint('🔄 [ReviewTriggerService] State reset for testing! Stage reset to 0 (5-min target).');
+      await prefs.remove(_keyHasPrompted);
+      debugPrint('🔄 [ReviewTriggerService] State reset for testing! Accumulated usage cleared.');
     } catch (e) {
       debugPrint('Error resetting testing state: $e');
     }
