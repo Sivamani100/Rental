@@ -11,6 +11,7 @@ import '../widgets/app_snackbar.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_provider.dart';
 import '../services/notification_broadcast_service.dart';
+import '../services/ai_auto_notifier_service.dart';
 import '../models/property_model.dart';
 import 'home_screen.dart' show HomeScreen;
 import 'posting_screen.dart';
@@ -171,6 +172,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final bool _isHighPriority = true;
   bool _isSendingNotification = false;
   List<BroadcastNotificationModel> _broadcastHistory = [];
+
+  // AI Auto-Notifier State (8 AM, 1 PM, 6 PM IST)
+  int _notificationSubTabIndex = 0; // 0: Manual Broadcast, 1: AI Auto-Notifier
+  AutoNotifierSettings? _autoNotifierSettings;
+  bool _isLoadingAutoSettings = false;
+  bool _isSavingAutoSettings = false;
+  bool _isGeneratingAiNotif = false;
+  bool _isDispatchingAutoNotif = false;
+  TargetAudience _selectedAutoAudience = TargetAudience.allUsers;
+  bool _isDispatchingSmartSegments = false;
+  final _aiInstructionsController = TextEditingController();
+  Map<String, String>? _previewAiNotif;
 
   // Rajamahendravaram Key Localities (Mutable List)
   late List<String> _rajahmundryLocalities = [
@@ -338,6 +351,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _fetchNotificationHistory();
       _fetchAudienceCounts();
       _fetchDemandRadarData();
+      _fetchAutoNotifierSettings();
     });
   }
 
@@ -347,12 +361,124 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     _notifBodyController.dispose();
     _notifImageController.dispose();
     _customUrlController.dispose();
+    _aiInstructionsController.dispose();
     _bannerTitleController.dispose();
     _bannerSubtitleController.dispose();
     _bannerTagController.dispose();
     _bannerButtonController.dispose();
     _emergencyTickerTextController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchAutoNotifierSettings() async {
+    setState(() => _isLoadingAutoSettings = true);
+    final settings = await AiAutoNotifierService.instance.fetchSettings();
+    AiAutoNotifierService.instance.startPeriodicSchedulerTimer();
+    if (mounted) {
+      setState(() {
+        _autoNotifierSettings = settings;
+        if (_aiInstructionsController.text.isEmpty) {
+          _aiInstructionsController.text = settings?.aiInstructions ?? '';
+        }
+        _isLoadingAutoSettings = false;
+      });
+    }
+  }
+
+  Future<void> _toggleAutoNotifier(bool enabled) async {
+    setState(() => _isSavingAutoSettings = true);
+    final success = await AiAutoNotifierService.instance.updateSettings(isEnabled: enabled);
+    if (mounted) {
+      setState(() => _isSavingAutoSettings = false);
+      if (success) {
+        AppSnackbar.success(
+          context,
+          enabled ? '🟢 AI Auto-Notifier ENABLED (8 AM, 1 PM, 6 PM IST)' : '🔴 AI Auto-Notifier PAUSED',
+        );
+        _fetchAutoNotifierSettings();
+      } else {
+        AppSnackbar.error(context, 'Failed to update auto-notifier status.');
+      }
+    }
+  }
+
+  Future<void> _saveAiInstructions() async {
+    final text = _aiInstructionsController.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _isSavingAutoSettings = true);
+    final success = await AiAutoNotifierService.instance.updateSettings(aiInstructions: text);
+    if (mounted) {
+      setState(() => _isSavingAutoSettings = false);
+      if (success) {
+        AppSnackbar.success(context, 'AI Notification Guidelines updated!');
+        _fetchAutoNotifierSettings();
+      } else {
+        AppSnackbar.error(context, 'Failed to save AI guidelines.');
+      }
+    }
+  }
+
+  Future<void> _generateAiNotificationPreview() async {
+    setState(() => _isGeneratingAiNotif = true);
+    final result = await AiAutoNotifierService.instance.generateAiNotification(
+      customPrompt: _aiInstructionsController.text.trim(),
+      targetAudience: _selectedAutoAudience,
+    );
+    if (mounted) {
+      setState(() {
+        _previewAiNotif = result;
+        _isGeneratingAiNotif = false;
+      });
+      if (result != null) {
+        AppSnackbar.success(
+          context,
+          'AI generated personalized content for ${_selectedAutoAudience.name}!',
+        );
+      } else {
+        AppSnackbar.error(context, 'Failed to generate AI notification.');
+      }
+    }
+  }
+
+  Future<void> _sendTestAutoNotification() async {
+    if (_previewAiNotif == null) {
+      await _generateAiNotificationPreview();
+    }
+    if (_previewAiNotif == null) return;
+
+    setState(() => _isDispatchingAutoNotif = true);
+    final success = await AiAutoNotifierService.instance.dispatchAutoNotification(
+      title: _previewAiNotif!['title']!,
+      body: _previewAiNotif!['body']!,
+      targetRoute: _previewAiNotif!['target_route']!,
+      targetAudience: _selectedAutoAudience,
+    );
+    if (mounted) {
+      setState(() => _isDispatchingAutoNotif = false);
+      if (success) {
+        AppSnackbar.success(
+          context,
+          '🚀 AI Notification dispatched live to ${_selectedAutoAudience.name}!',
+        );
+        _fetchNotificationHistory();
+      } else {
+        AppSnackbar.error(context, 'Failed to dispatch notification.');
+      }
+    }
+  }
+
+  Future<void> _dispatchSmartPersonalizedMultiSegments() async {
+    setState(() => _isDispatchingSmartSegments = true);
+    final results = await AiAutoNotifierService.instance.dispatchPersonalizedMultiSegmentNotifications();
+    if (mounted) {
+      setState(() => _isDispatchingSmartSegments = false);
+      final successfulCount = results.values.where((v) => v).length;
+      AppSnackbar.success(
+        context,
+        '🎯 Dispatched personalized AI notifications to $successfulCount/3 segregated audience groups (PG Seekers, Room Seekers, Buyers)!',
+      );
+      _fetchNotificationHistory();
+    }
   }
 
   Future<void> _fetchProperties() async {
@@ -4886,7 +5012,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Blast instant push alerts with deep-links to listings, categories, or post pages to all Rajamahendravaram tenants.',
+                        'Blast instant manual push alerts or manage 8 AM, 1 PM & 6 PM automated AI notifications.',
                         style: GoogleFonts.inter(
                           fontSize: 12.5,
                           color: mutedColor,
@@ -4924,27 +5050,659 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           const SizedBox(height: 16),
 
-          LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth > 980) {
-                return Row(
+          // Sub-Tab Segmented Selector
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E2330) : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  onTap: () => setState(() => _notificationSubTabIndex = 0),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _notificationSubTabIndex == 0
+                          ? (isDark ? AppTheme.primaryYellow : Colors.white)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: _notificationSubTabIndex == 0
+                          ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Iconsax.send_2,
+                          size: 16,
+                          color: _notificationSubTabIndex == 0
+                              ? (isDark ? Colors.black : Colors.black87)
+                              : mutedColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '📢 Manual Broadcast',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: _notificationSubTabIndex == 0 ? FontWeight.w700 : FontWeight.w500,
+                            color: _notificationSubTabIndex == 0
+                                ? (isDark ? Colors.black : Colors.black87)
+                                : mutedColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                InkWell(
+                  onTap: () => setState(() => _notificationSubTabIndex = 1),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _notificationSubTabIndex == 1
+                          ? (isDark ? AppTheme.primaryYellow : Colors.white)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: _notificationSubTabIndex == 1
+                          ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Iconsax.cpu,
+                          size: 16,
+                          color: _notificationSubTabIndex == 1
+                              ? (isDark ? Colors.black : Colors.black87)
+                              : mutedColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '🤖 AI Auto-Notifier (8 AM, 1 PM, 6 PM)',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: _notificationSubTabIndex == 1 ? FontWeight.w700 : FontWeight.w500,
+                            color: _notificationSubTabIndex == 1
+                                ? (isDark ? Colors.black : Colors.black87)
+                                : mutedColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Sub-Tab 0: Manual Broadcast Composer OR Sub-Tab 1: AI Auto-Notifier Manager
+          if (_notificationSubTabIndex == 0)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 980) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: _buildNotificationComposerForm(isDark)),
+                      const SizedBox(width: 16),
+                      Expanded(flex: 2, child: _buildNotificationLiveMockupAndHistory(isDark)),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    children: [
+                      _buildNotificationComposerForm(isDark),
+                      const SizedBox(height: 16),
+                      _buildNotificationLiveMockupAndHistory(isDark),
+                    ],
+                  );
+                }
+              },
+            )
+          else
+            _buildAiAutoNotifierSubTab(isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiAutoNotifierSubTab(bool isDark) {
+    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final isEnabled = _autoNotifierSettings?.isEnabled ?? true;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Master Toggle Control Banner
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161922) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isEnabled
+                  ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                  : Colors.red.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isEnabled
+                      ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                      : Colors.red.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    isEnabled ? Iconsax.timer_1 : Iconsax.timer_pause,
+                    color: isEnabled ? const Color(0xFF10B981) : Colors.red,
+                    size: 26,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 3, child: _buildNotificationComposerForm(isDark)),
-                    const SizedBox(width: 16),
-                    Expanded(flex: 2, child: _buildNotificationLiveMockupAndHistory(isDark)),
+                    Row(
+                      children: [
+                        Text(
+                          'Automated AI Push Notifier',
+                          style: GoogleFonts.inter(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: primaryTextColor,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isEnabled
+                                ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                                : Colors.red.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isEnabled ? '🟢 ACTIVE' : '🔴 PAUSED',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: isEnabled ? const Color(0xFF10B981) : Colors.red,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isEnabled
+                          ? 'Automatic notifications will be generated by AI and dispatched daily at 8:00 AM, 1:00 PM, and 6:00 PM IST.'
+                          : 'Automated notification dispatches are currently paused. Toggle ON to resume automatic AI sending.',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        color: mutedColor,
+                      ),
+                    ),
                   ],
-                );
-              } else {
-                return Column(
+                ),
+              ),
+              const SizedBox(width: 16),
+              Transform.scale(
+                scale: 1.1,
+                child: Switch(
+                  value: isEnabled,
+                  activeColor: const Color(0xFF10B981),
+                  onChanged: _isSavingAutoSettings ? null : (val) => _toggleAutoNotifier(val),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+
+        // 2. Scheduled Time Slots Overview Cards
+        Text(
+          '⏰ Scheduled Time Slots (Daily IST)',
+          style: GoogleFonts.inter(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w800,
+            color: primaryTextColor,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildTimeSlotCard(
+                isDark: isDark,
+                time: '8:00 AM',
+                title: 'Morning Pulse',
+                subtitle: 'Student PGs & Early Flat Hunting',
+                icon: Iconsax.sun_1,
+                color: const Color(0xFFF59E0B),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildTimeSlotCard(
+                isDark: isDark,
+                time: '1:00 PM',
+                title: 'Lunch Break Peak',
+                subtitle: 'Quick AI Property Search & Filters',
+                icon: Iconsax.sun_fog,
+                color: const Color(0xFF3B82F6),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildTimeSlotCard(
+                isDark: isDark,
+                time: '6:00 PM',
+                title: 'Evening Prime',
+                subtitle: 'Post-Work Direct Owner Chat & Visits',
+                icon: Iconsax.moon,
+                color: const Color(0xFF8B5CF6),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // 3. AI Guidelines & System Prompt Editor Card
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161922) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Iconsax.magicpen, color: AppTheme.primaryYellow, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'AI Notification Guidelines & Prompt Rules',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: primaryTextColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  ElevatedButton.icon(
+                    onPressed: _isSavingAutoSettings ? null : _saveAiInstructions,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryYellow,
+                      foregroundColor: Colors.black,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: _isSavingAutoSettings
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          )
+                        : const Icon(Iconsax.tick_circle, size: 16),
+                    label: Text(
+                      'Save Guidelines',
+                      style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Customize instructions for the Notification AI. The AI generates title, body copy, and selects approved generic target routes.',
+                style: GoogleFonts.inter(fontSize: 12, color: mutedColor),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _aiInstructionsController,
+                maxLines: 4,
+                style: GoogleFonts.inter(fontSize: 13, color: primaryTextColor),
+                decoration: InputDecoration(
+                  hintText: 'Enter AI prompt instructions...',
+                  filled: true,
+                  fillColor: isDark ? const Color(0xFF0F1219) : const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFCBD5E1),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // 4. Live AI Generator & Personalized Segmented Dispatch
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161922) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Iconsax.flash_1, color: Color(0xFF3B82F6), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Personalized Audience Segregation & Live Preview',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: primaryTextColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Target Audience Dropdown Selector
+              Row(
+                children: [
+                  Text(
+                    '🎯 Segregated Audience Group:',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: primaryTextColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0F1219) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    child: DropdownButton<TargetAudience>(
+                      value: _selectedAutoAudience,
+                      underline: const SizedBox(),
+                      dropdownColor: isDark ? const Color(0xFF1E2330) : Colors.white,
+                      style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700, color: primaryTextColor),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedAutoAudience = val;
+                            _previewAiNotif = null; // reset preview
+                          });
+                        }
+                      },
+                      items: const [
+                        DropdownMenuItem(
+                          value: TargetAudience.allUsers,
+                          child: Text('🌐 All Registered Users'),
+                        ),
+                        DropdownMenuItem(
+                          value: TargetAudience.pgSeekers,
+                          child: Text('🎓 PG & Hostel Seekers'),
+                        ),
+                        DropdownMenuItem(
+                          value: TargetAudience.roomSeekers,
+                          child: Text('🏡 Room & Flat Seekers'),
+                        ),
+                        DropdownMenuItem(
+                          value: TargetAudience.buyers,
+                          child: Text('🔑 Property Buyers'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Action Buttons Row
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _isGeneratingAiNotif ? null : _generateAiNotificationPreview,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3B82F6),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                    ),
+                    icon: _isGeneratingAiNotif
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Iconsax.cpu, size: 16),
+                    label: Text(
+                      '⚡ Generate AI Preview',
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: (_previewAiNotif == null || _isDispatchingAutoNotif)
+                        ? null
+                        : _sendTestAutoNotification,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                    ),
+                    icon: _isDispatchingAutoNotif
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Iconsax.send_2, size: 16),
+                    label: Text(
+                      '🚀 Dispatch to Selected Segment',
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _isDispatchingSmartSegments ? null : _dispatchSmartPersonalizedMultiSegments,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8B5CF6),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                    ),
+                    icon: _isDispatchingSmartSegments
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Iconsax.magic_star, size: 16),
+                    label: Text(
+                      '🎯 Auto-Dispatch All 3 Segments',
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              if (_previewAiNotif != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F1219) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            _previewAiNotif!['title'] ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                              color: primaryTextColor,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF8B5CF6).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Target: ${_previewAiNotif!['target_route']?.toUpperCase()}',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF8B5CF6),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _previewAiNotif!['body'] ?? '',
+                        style: GoogleFonts.inter(fontSize: 13, color: mutedColor),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+
+              // Strict Constraints Callout Card
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCardElevated : const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark ? AppTheme.darkBorder : const Color(0xFFFDE68A),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    _buildNotificationComposerForm(isDark),
-                    const SizedBox(height: 16),
-                    _buildNotificationLiveMockupAndHistory(isDark),
+                    const Icon(Iconsax.info_circle, size: 16, color: Color(0xFFD97706)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Constraint Enforced: AI is restricted to generic destination routes (pg, rental, ai_chat, posting, nearby, search). No specific property ID is ever linked.',
+                        style: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF92400E),
+                        ),
+                      ),
+                    ),
                   ],
-                );
-              }
-            },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimeSlotCard({
+    required bool isDark,
+    required String time,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF161922) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: color),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                time,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: primaryTextColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              color: mutedColor,
+            ),
           ),
         ],
       ),
