@@ -128,9 +128,8 @@ serve(async (req) => {
             android: {
               priority: "HIGH",
               notification: {
-                channel_id: "high_importance_channel",
-                sound: "default",
-                default_sound: true,
+                channel_id: "rental_signature_channel",
+                sound: "rental_chime",
                 notification_priority: "PRIORITY_MAX",
                 visibility: "PUBLIC"
               }
