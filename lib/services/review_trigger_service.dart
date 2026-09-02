@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Background Tracking Service that manages Google Play In-App Reviews with progressive retries.
+/// Background Tracking Service that manages Google Play In-App Reviews with progressive retries and fail-safe fallbacks.
 ///
-/// Escalation Rules:
-/// 1. If user completes/gives feedback at Stage 0 (5 mins), `markFeedbackGiven()` is invoked and ALL future stages (15m, 30m, 60m...) are permanently canceled.
-/// 2. If user ignores/dismisses without giving feedback, service escalates to next milestone (Stage 1: 15m, Stage 2: 30m, Stage 3: 60m...).
+/// Multi-Tier Escalation Schedule:
+/// - Stage 0: 5 minutes (300 seconds)
+/// - Stage 1: 15 minutes (900 seconds)
+/// - Stage 2: 30 minutes (1800 seconds)
+/// - Stage 3: 60 minutes (3600 seconds)
+/// - Stage 4+: Every additional 30 minutes
 class ReviewTriggerService with WidgetsBindingObserver {
   ReviewTriggerService._();
   static final ReviewTriggerService instance = ReviewTriggerService._();
@@ -66,6 +69,12 @@ class ReviewTriggerService with WidgetsBindingObserver {
       WidgetsBinding.instance.addObserver(this);
 
       _startActiveTimer();
+
+      // Fail-Safe Launch Check: If target milestone was already met, trigger review immediately!
+      if (_accumulatedSeconds >= target) {
+        debugPrint('🚀 [ReviewTriggerService] Target milestone already reached on launch! Triggering review dialog now...');
+        _triggerMilestoneReview();
+      }
     } catch (e) {
       debugPrint('⚠️ [ReviewTriggerService] Error during initialization: $e');
     }
@@ -128,20 +137,26 @@ class ReviewTriggerService with WidgetsBindingObserver {
       }
 
       if (_accumulatedSeconds >= target) {
-        debugPrint('🎉 [ReviewTriggerService] Reached milestone of ${target}s! Triggering review dialog for Stage $_stage...');
-        
-        // Advance stage immediately to prepare for next milestone (15m, 30m, 60m...)
-        _stage += 1;
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setInt(_keyStage, _stage);
-        } catch (e) {
-          debugPrint('Error saving review stage: $e');
-        }
-
-        await requestInAppReview();
+        _triggerMilestoneReview();
       }
     });
+  }
+
+  /// Handles milestone trigger and advances stage
+  Future<void> _triggerMilestoneReview() async {
+    final target = getTargetSecondsForStage(_stage);
+    debugPrint('🎉 [ReviewTriggerService] Reached milestone of ${target}s! Triggering review for Stage $_stage...');
+
+    // Advance stage to prepare for next milestone (15m, 30m, 60m...)
+    _stage += 1;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_keyStage, _stage);
+    } catch (e) {
+      debugPrint('Error saving review stage: $e');
+    }
+
+    await requestInAppReview();
   }
 
   /// Stops and cancels the active tick timer
@@ -150,7 +165,7 @@ class ReviewTriggerService with WidgetsBindingObserver {
     _timer = null;
   }
 
-  /// Triggers Google Play Native In-App Review Bottom Sheet prompt
+  /// Triggers Google Play Native In-App Review with automatic store listing fallback
   Future<void> requestInAppReview({bool isManualTest = false}) async {
     if (_hasGivenFeedback && !isManualTest) return;
 
@@ -161,17 +176,17 @@ class ReviewTriggerService with WidgetsBindingObserver {
       debugPrint('🔍 [ReviewTriggerService] Is InAppReview Available: $isAvailable');
 
       if (isAvailable) {
-        debugPrint('🚀 [ReviewTriggerService] Invoking InAppReview.requestReview()');
+        debugPrint('🚀 [ReviewTriggerService] Invoking InAppReview.requestReview() natively...');
         await inAppReview.requestReview();
       } else {
-        debugPrint('⚠️ [ReviewTriggerService] InAppReview not available on current device/environment.');
-        if (isManualTest) {
-          // Open Play Store listing fallback if manual trigger on unsupported environment
-          await inAppReview.openStoreListing(appStoreId: 'com.arkiolabs.rental');
-        }
+        debugPrint('⚠️ [ReviewTriggerService] InAppReview native overlay not available. Opening Play Store listing fallback...');
+        await inAppReview.openStoreListing(appStoreId: 'com.arkiolabs.rental');
       }
     } catch (e) {
-      debugPrint('❌ [ReviewTriggerService] Failed to launch In-App Review dialog: $e');
+      debugPrint('❌ [ReviewTriggerService] Failed to launch native In-App Review dialog: $e. Opening Store Listing...');
+      try {
+        await InAppReview.instance.openStoreListing(appStoreId: 'com.arkiolabs.rental');
+      } catch (_) {}
     }
   }
 
