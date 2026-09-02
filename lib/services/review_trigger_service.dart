@@ -178,6 +178,13 @@ class ReviewTriggerService with WidgetsBindingObserver {
       if (isAvailable) {
         debugPrint('🚀 [ReviewTriggerService] Invoking InAppReview.requestReview() natively...');
         await inAppReview.requestReview();
+
+        // In debug builds / local USB testing, Google Play silently suppresses the native overlay.
+        // In debug mode or manual test, also trigger store listing fallback so tester gets immediate review UI!
+        if (kDebugMode || isManualTest) {
+          debugPrint('🛠️ [ReviewTriggerService] Debug mode / USB build detected — opening Play Store listing fallback for verification...');
+          await inAppReview.openStoreListing(appStoreId: 'com.arkiolabs.rental');
+        }
       } else {
         debugPrint('⚠️ [ReviewTriggerService] InAppReview native overlay not available. Opening Play Store listing fallback...');
         await inAppReview.openStoreListing(appStoreId: 'com.arkiolabs.rental');
