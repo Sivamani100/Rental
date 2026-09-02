@@ -25,29 +25,40 @@ class CompressedImageResult {
   String get compressedPretty => '${(compressedSize / 1024).toStringAsFixed(1)} KB';
 }
 
+class _IsolateCompressParams {
+  final Uint8List originalBytes;
+  final int maxDimension;
+  final int targetMaxBytes;
+  final Uint8List? watermarkBytes;
+
+  _IsolateCompressParams({
+    required this.originalBytes,
+    required this.maxDimension,
+    required this.targetMaxBytes,
+    this.watermarkBytes,
+  });
+}
+
 /// Advanced 30 KB Smart Image Compressor & Format Optimizer.
-///
-/// Rules:
-/// 1. Strict Target Size: All images > 30 KB are converted and compressed down to <= 30 KB.
-/// 2. Fast Bypass Rule: If an image is ALREADY <= 30 KB (e.g. 1 KB, 15 KB, 28 KB), NO CONVERSION is performed.
-/// 3. Competitive Multi-Format Benchmarking (WebP vs MozJPEG) to select whichever format produces the smallest payload.
-/// 4. Crisp visual sharpness (880px resolution + cubic resampling) with clean watermark integration.
+/// Uses background isolates (compute) to avoid blocking the main UI thread.
 class ImageCompressor {
   /// Strict target limit: 30 KB (30,720 bytes)
   static const int defaultTargetBytes = 30 * 1024; // 30 KB
 
   /// Smart compresses any image bytes down to <= 30 KB with sharp visual quality.
+  /// Runs off the main UI thread via `compute()` isolate task.
   static Future<CompressedImageResult> smartCompress(
     Uint8List originalBytes, {
-    int maxDimension = 960, // Optimal resolution for 30KB
+    int maxDimension = 960,
     int targetMaxBytes = defaultTargetBytes,
     img.Image? watermark,
+    Uint8List? watermarkRawBytes,
   }) async {
     final int originalSize = originalBytes.length;
 
     // 0. Strict 30 KB Bypass Rule:
-    // If the image is ALREADY <= 30 KB and no watermark is requested, skip conversion entirely!
-    if (originalSize <= targetMaxBytes && watermark == null) {
+    // If image is ALREADY <= 30 KB and no watermark is requested, skip processing instantly!
+    if (originalSize <= targetMaxBytes && watermark == null && watermarkRawBytes == null) {
       String ext = 'jpg';
       String mime = 'image/jpeg';
       if (originalBytes.length > 8 && originalBytes[0] == 0x89 && originalBytes[1] == 0x50) {
@@ -58,7 +69,7 @@ class ImageCompressor {
         mime = 'image/webp';
       }
 
-      debugPrint('⚡ 30KB Fast Bypass: Image is already ${(originalSize / 1024).toStringAsFixed(1)} KB (<= 30 KB), skipping conversion.');
+      debugPrint('⚡ 30KB Fast Bypass: Image is already ${(originalSize / 1024).toStringAsFixed(1)} KB (<= 30 KB).');
 
       return CompressedImageResult(
         bytes: originalBytes,
@@ -68,6 +79,35 @@ class ImageCompressor {
         compressedSize: originalSize,
       );
     }
+
+    try {
+      final params = _IsolateCompressParams(
+        originalBytes: originalBytes,
+        maxDimension: maxDimension,
+        targetMaxBytes: targetMaxBytes,
+        watermarkBytes: watermarkRawBytes,
+      );
+
+      // Offload heavy image processing (decoding, resizing, WebP/JPEG encoding) to background isolate
+      return await compute(_processImageInIsolate, params);
+    } catch (e) {
+      debugPrint('ImageCompressor compute isolate fallback: $e');
+      return CompressedImageResult(
+        bytes: originalBytes,
+        mimeType: 'image/jpeg',
+        fileExtension: 'jpg',
+        originalSize: originalSize,
+        compressedSize: originalSize,
+      );
+    }
+  }
+
+  /// Top-level background isolate function for compute()
+  static CompressedImageResult _processImageInIsolate(_IsolateCompressParams params) {
+    final Uint8List originalBytes = params.originalBytes;
+    final int originalSize = originalBytes.length;
+    final int targetMaxBytes = params.targetMaxBytes;
+    final int maxDimension = params.maxDimension;
 
     try {
       final decoded = img.decodeImage(originalBytes);
@@ -83,7 +123,7 @@ class ImageCompressor {
 
       img.Image processed = decoded;
 
-      // 1. Resolution Normalization (960px width/height gives crisp clarity on all mobile & desktop displays)
+      // 1. Resolution Normalization
       if (processed.width > maxDimension || processed.height > maxDimension) {
         if (processed.width > processed.height) {
           processed = img.copyResize(processed, width: maxDimension, interpolation: img.Interpolation.cubic);
@@ -93,30 +133,29 @@ class ImageCompressor {
       }
 
       // 2. Clean Watermark Stamping
-      if (watermark != null && processed.width >= 120 && processed.height >= 120) {
-        int targetWatermarkWidth = (processed.width * 0.20).toInt().clamp(50, 260);
-        img.Image scaledWatermark = img.copyResize(watermark, width: targetWatermarkWidth, interpolation: img.Interpolation.linear);
-        int padding = 12;
-        int dstX = (processed.width - scaledWatermark.width - padding).clamp(0, processed.width);
-        int dstY = (processed.height - scaledWatermark.height - padding).clamp(0, processed.height);
-        img.compositeImage(processed, scaledWatermark, dstX: dstX, dstY: dstY);
+      if (params.watermarkBytes != null) {
+        final watermarkDecoded = img.decodeImage(params.watermarkBytes!);
+        if (watermarkDecoded != null && processed.width >= 120 && processed.height >= 120) {
+          int targetWatermarkWidth = (processed.width * 0.20).toInt().clamp(50, 260);
+          img.Image scaledWatermark = img.copyResize(watermarkDecoded, width: targetWatermarkWidth, interpolation: img.Interpolation.linear);
+          int padding = 12;
+          int dstX = (processed.width - scaledWatermark.width - padding).clamp(0, processed.width);
+          int dstY = (processed.height - scaledWatermark.height - padding).clamp(0, processed.height);
+          img.compositeImage(processed, scaledWatermark, dstX: dstX, dstY: dstY);
+        }
       }
 
-      // 3. Competitive Multi-Format Benchmarking (WebP vs JPEG)
+      // 3. Multi-Format Benchmarking (WebP vs JPEG)
       Uint8List bestBytes;
       String bestMime;
       String bestExt;
 
-      // Test WebP candidate
       Uint8List? webpCandidate;
       try {
         final webp = img.encodeWebP(processed);
         webpCandidate = Uint8List.fromList(webp);
-      } catch (e) {
-        debugPrint('WebP encoding fallback: $e');
-      }
+      } catch (_) {}
 
-      // Test JPEG candidate (Quality 65)
       final jpg = img.encodeJpg(processed, quality: 65);
       final Uint8List jpgCandidate = Uint8List.fromList(jpg);
 
@@ -131,7 +170,6 @@ class ImageCompressor {
       }
 
       // 4. Progressive 30 KB Target Compression Loop
-      // If above 30 KB, progressively adapts quality & dimensions to guarantee <= 30 KB
       if (bestBytes.length > targetMaxBytes) {
         int currentQuality = 60;
         int currentDim = maxDimension;
@@ -166,12 +204,10 @@ class ImageCompressor {
         }
       }
 
-      // 5. Never-Inflate Rule: If compression produced larger size than original on small files
-      if (bestBytes.length > originalSize && watermark == null) {
+      // 5. Never-Inflate Rule
+      if (bestBytes.length > originalSize && params.watermarkBytes == null) {
         bestBytes = originalBytes;
       }
-
-      debugPrint('⚡ 30KB Smart Compressor: ${(originalSize / 1024).toStringAsFixed(1)}KB -> ${(bestBytes.length / 1024).toStringAsFixed(1)}KB ($bestExt, ${((1 - bestBytes.length / originalSize) * 100).toStringAsFixed(1)}% saved)');
 
       return CompressedImageResult(
         bytes: bestBytes,
@@ -181,7 +217,6 @@ class ImageCompressor {
         compressedSize: bestBytes.length,
       );
     } catch (e) {
-      debugPrint('ImageCompressor error fallback: $e');
       return CompressedImageResult(
         bytes: originalBytes,
         mimeType: 'image/jpeg',
@@ -197,13 +232,13 @@ class ImageCompressor {
     Uint8List originalBytes, {
     int maxDimension = 960,
     int targetMaxBytes = defaultTargetBytes,
-    img.Image? watermark,
+    Uint8List? watermarkRawBytes,
   }) async {
     final res = await smartCompress(
       originalBytes,
       maxDimension: maxDimension,
       targetMaxBytes: targetMaxBytes,
-      watermark: watermark,
+      watermarkRawBytes: watermarkRawBytes,
     );
     return res.bytes;
   }

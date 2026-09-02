@@ -471,9 +471,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _deleteProperty(String id) async {
     try {
+      // 1. Fetch exact image URLs directly from database to guarantee storage deletion
+      List<String> imageUrls = [];
+      try {
+        final data = await _supabase.from('properties').select('image_urls').eq('id', id).maybeSingle();
+        if (data != null && data['image_urls'] != null) {
+          imageUrls = List<String>.from(data['image_urls'] as List);
+        }
+      } catch (_) {}
+
+      // Fallback to local memory if database query had no result
+      if (imageUrls.isEmpty) {
+        final PropertyModel? prop = _properties.cast<PropertyModel?>().firstWhere(
+          (p) => p?.id == id,
+          orElse: () => null,
+        );
+        if (prop != null) {
+          imageUrls = prop.imageUrls;
+        }
+      }
+
+      // 2. Delete photos from Supabase Storage bucket 'property_images'
+      if (imageUrls.isNotEmpty) {
+        final List<String> storagePaths = [];
+        for (final url in imageUrls) {
+          if (url.contains('/property_images/')) {
+            final fileName = url.split('/property_images/').last.split('?').first;
+            if (fileName.isNotEmpty) {
+              storagePaths.add(fileName);
+            }
+          }
+        }
+        if (storagePaths.isNotEmpty) {
+          try {
+            await _supabase.storage.from('property_images').remove(storagePaths);
+          } catch (storageErr) {
+            debugPrint('Failed to delete storage photos: $storageErr');
+          }
+        }
+      }
+
+      // 3. Delete database row
       await _supabase.from('properties').delete().eq('id', id);
       if (mounted) {
-        AppSnackbar.success(context, 'Property deleted successfully');
+        AppSnackbar.success(context, 'Property & photos permanently deleted');
         _fetchProperties();
       }
     } catch (e) {
