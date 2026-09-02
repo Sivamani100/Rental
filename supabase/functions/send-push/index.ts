@@ -129,7 +129,7 @@ serve(async (req) => {
               priority: "HIGH",
               notification: {
                 channel_id: "rental_signature_channel",
-                sound: "whatsapp_web_pop",
+                sound: "correct",
                 notification_priority: "PRIORITY_MAX",
                 visibility: "PUBLIC"
               }
