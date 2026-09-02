@@ -17,6 +17,7 @@ import 'config/env.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/push_notification_service.dart';
 import 'services/in_app_update_service.dart';
+import 'services/review_trigger_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -89,7 +90,9 @@ class RentalApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: ThemeController.instance.themeMode,
-            builder: (context, child) => InAppUpdateWrapper(child: child ?? const SizedBox.shrink()),
+            builder: (context, child) => ReviewTriggerWrapper(
+              child: InAppUpdateWrapper(child: child ?? const SizedBox.shrink()),
+            ),
             onGenerateRoute: (settings) {
               final rawName = settings.name ?? '/';
               final uri = Uri.parse(rawName);
