@@ -22,7 +22,7 @@ class AutoNotifierSettings {
   });
 
   factory AutoNotifierSettings.fromJson(Map<String, dynamic> json) {
-    List<String> times = ['08:00', '13:00', '18:00'];
+    List<String> times = ['08:00', '13:00', '13:20', '18:00'];
     if (json['schedule_times'] != null) {
       times = List<String>.from(json['schedule_times']);
     }
@@ -78,23 +78,36 @@ class AiAutoNotifierService {
       final nowUtc = DateTime.now().toUtc();
       final nowIst = nowUtc.add(const Duration(hours: 5, minutes: 30));
 
-      final currentHour = nowIst.hour; // 8 for 8 AM, 13 for 1 PM, 18 for 6 PM
-      final isScheduledSlot = currentHour == 8 || currentHour == 13 || currentHour == 18;
+      final hour = nowIst.hour;
+      final minute = nowIst.minute;
 
-      if (!isScheduledSlot) return;
+      String? activeSlot;
+      if (hour == 8 && minute < 30) {
+        activeSlot = '08:00';
+      } else if (hour == 13 && minute < 15) {
+        activeSlot = '13:00';
+      } else if (hour == 13 && minute >= 15 && minute < 45) {
+        activeSlot = '13:20';
+      } else if (hour == 18 && minute < 30) {
+        activeSlot = '18:00';
+      }
 
-      // Check if last dispatch was already sent during this same hour today
+      if (activeSlot == null) return;
+
+      // Check if last dispatch was already sent for this slot today
       if (settings.lastDispatchAt != null) {
         final lastDispatchIst = settings.lastDispatchAt!.toUtc().add(const Duration(hours: 5, minutes: 30));
-        if (lastDispatchIst.year == nowIst.year &&
+        final isSameDay = lastDispatchIst.year == nowIst.year &&
             lastDispatchIst.month == nowIst.month &&
-            lastDispatchIst.day == nowIst.day &&
-            lastDispatchIst.hour == currentHour) {
+            lastDispatchIst.day == nowIst.day;
+
+        // If sent within the last 15 minutes, skip
+        if (isSameDay && nowIst.difference(lastDispatchIst).inMinutes < 15) {
           return;
         }
       }
 
-      debugPrint('⏰ Automated AI Notification Schedule Triggered for ${nowIst.hour}:00 IST!');
+      debugPrint('⏰ Automated AI Notification Schedule Triggered for slot [$activeSlot IST]!');
       await dispatchPersonalizedMultiSegmentNotifications();
     } catch (e) {
       debugPrint('Error in scheduled notification trigger: $e');
