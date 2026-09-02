@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -188,25 +187,13 @@ class ReviewTriggerService with WidgetsBindingObserver {
       debugPrint('🔍 [ReviewTriggerService] Is InAppReview Available: $isAvailable');
 
       if (isAvailable) {
-        debugPrint('🚀 [ReviewTriggerService] Invoking InAppReview.requestReview()');
+        debugPrint('🚀 [ReviewTriggerService] Invoking native InAppReview.requestReview()');
         await inAppReview.requestReview();
-
-        // In debug builds / USB testing (`kDebugMode` or `isManualTest`), Google Play Core
-        // suppresses the native overlay UI because the APK was not downloaded from Play Store.
-        // Therefore, in debug mode or manual test mode, also open store listing fallback!
-        if (kDebugMode || isManualTest) {
-          debugPrint('🛠️ [ReviewTriggerService] Debug mode / USB build detected — opening Play Store listing fallback...');
-          await inAppReview.openStoreListing(appStoreId: 'com.arkiolabs.rental');
-        }
       } else {
-        debugPrint('⚠️ [ReviewTriggerService] InAppReview not available on current device/environment. Opening Store Listing...');
-        await inAppReview.openStoreListing(appStoreId: 'com.arkiolabs.rental');
+        debugPrint('⚠️ [ReviewTriggerService] InAppReview not available on current device/environment.');
       }
     } catch (e) {
-      debugPrint('❌ [ReviewTriggerService] Failed to launch In-App Review dialog: $e. Opening Store Listing fallback...');
-      try {
-        await InAppReview.instance.openStoreListing(appStoreId: 'com.arkiolabs.rental');
-      } catch (_) {}
+      debugPrint('❌ [ReviewTriggerService] Failed to launch In-App Review dialog: $e');
     }
   }
 
