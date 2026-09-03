@@ -1084,10 +1084,17 @@ class _SearchScreenState extends State<SearchScreen> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Container(
+              width: double.infinity,
               height: MediaQuery.of(context).size.height * 0.90,
               decoration: BoxDecoration(
                 color: isDark ? AppTheme.darkScaffold : Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+                    width: 1.5,
+                  ),
+                ),
               ),
               child: Column(
                 children: [
@@ -1896,15 +1903,20 @@ class _SearchScreenState extends State<SearchScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Lottie.asset(
-              'assets/Nothing founded.json',
-              width: 220,
-              height: 220,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => Icon(
-                Iconsax.search_status,
-                size: 80,
-                color: mutedColor.withValues(alpha: 0.4),
+            ColorFiltered(
+              colorFilter: isDark
+                  ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
+                  : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+              child: Lottie.asset(
+                'assets/Nothing founded.json',
+                width: 220,
+                height: 220,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => Icon(
+                  Iconsax.search_status,
+                  size: 80,
+                  color: mutedColor.withValues(alpha: 0.4),
+                ),
               ),
             ),
             const SizedBox(height: 12),

@@ -216,28 +216,22 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return BouncingButton(
       scaleFactor: 0.92,
       onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: isDark ? Colors.black.withValues(alpha: 0.55) : Colors.white.withValues(alpha: 0.8),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.08),
-                width: 1,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              icon,
-              color: iconColor ?? (isDark ? Colors.white : const Color(0xFF1E1E1E)),
-              size: 20,
-            ),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E2330) : Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+            width: 1,
           ),
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          color: iconColor ?? (isDark ? Colors.white : const Color(0xFF1E1E1E)),
+          size: 20,
         ),
       ),
     );
@@ -579,7 +573,19 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           maxChildSize: 0.9,
           expand: false,
           builder: (context, scrollController) {
-            return Column(
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: Column(
               children: [
                 const SizedBox(height: 12),
                 Container(
@@ -736,12 +742,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   ),
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   // --- Section Header with Theme Badge Layout ---
   Widget _buildSectionHeader(String title, IconData icon) {
@@ -1854,8 +1861,20 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   ),
                                   children: [
                                     TileLayer(
-                                      urlTemplate: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                       userAgentPackageName: 'com.example.rental',
+                                      tileBuilder: (context, tileWidget, tile) {
+                                        if (!isDark) return tileWidget;
+                                        return ColorFiltered(
+                                          colorFilter: const ColorFilter.matrix([
+                                            -0.85, 0, 0, 0, 240,
+                                            0, -0.85, 0, 0, 240,
+                                            0, 0, -0.85, 0, 240,
+                                            0, 0, 0, 1, 0,
+                                          ]),
+                                          child: tileWidget,
+                                        );
+                                      },
                                     ),
                                     MarkerLayer(
                                       markers: [
@@ -2081,13 +2100,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               width: 1,
             ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
-              offset: const Offset(0, -4),
-              blurRadius: 16,
-            ),
-          ],
         ),
         child: SafeArea(
           top: false,
@@ -2105,13 +2117,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFEB3A),
                         borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFFFEB3A).withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -2140,16 +2145,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   onTap: () => _launchWhatsApp(widget.property.ownerWhatsapp ?? widget.property.ownerPhone),
                   child: Container(
                     padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF25D366),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF25D366),
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF25D366).withValues(alpha: 0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
                     child: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: 22),
                   ),
@@ -2172,8 +2170,20 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkScaffold : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+                width: 1.5,
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2250,10 +2260,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               const SizedBox(height: 16),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   void _showRevokeConfirmationDialog() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -2265,8 +2276,20 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkScaffold : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+                width: 1.5,
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -2347,10 +2370,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               const SizedBox(height: 16),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildReviewItem(dynamic review) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -2464,7 +2488,19 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkScaffold : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom + 20,
                 left: 20,
@@ -2735,12 +2771,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   const SizedBox(height: 16),
                 ],
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   void _showContributePhotosSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -2755,7 +2792,19 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkScaffold : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom + 20,
                 left: 20,
@@ -2948,10 +2997,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   const SizedBox(height: 16),
                 ],
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 }

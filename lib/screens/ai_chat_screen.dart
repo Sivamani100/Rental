@@ -341,17 +341,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
           Container(
             width: 66,
             height: 66,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppTheme.primaryYellow,
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primaryYellow.withValues(alpha: isDark ? 0.45 : 0.35),
-                  blurRadius: 24,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             alignment: Alignment.center,
             child: const Icon(
@@ -408,13 +400,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
                           color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
                           width: 1,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -600,13 +585,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
           color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -935,13 +913,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
@@ -986,13 +957,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
                 width: 1,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             padding: const EdgeInsets.fromLTRB(8, 4, 6, 4),
             child: Row(

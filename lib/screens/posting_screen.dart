@@ -761,10 +761,17 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     final double maxDialogHeight = MediaQuery.of(context).size.height * 0.88;
 
     return Container(
+      width: double.infinity,
       constraints: BoxConstraints(maxHeight: maxDialogHeight),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkScaffold : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+            width: 1.5,
+          ),
+        ),
       ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
@@ -1242,16 +1249,21 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   duration: const Duration(milliseconds: 250),
                   child: SizedBox(
                     height: lottieHeight,
-                    child: Lottie.asset(
-                      lottiePath,
-                      fit: BoxFit.contain,
-                      repeat: true,
-                      animate: true,
-                      errorBuilder: (context, error, stackTrace) => Center(
-                        child: Icon(
-                          icon,
-                          size: 40,
-                          color: isDark ? AppTheme.primaryYellow : Colors.black54,
+                    child: ColorFiltered(
+                      colorFilter: isDark
+                          ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
+                          : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+                      child: Lottie.asset(
+                        lottiePath,
+                        fit: BoxFit.contain,
+                        repeat: true,
+                        animate: true,
+                        errorBuilder: (context, error, stackTrace) => Center(
+                          child: Icon(
+                            icon,
+                            size: 40,
+                            color: isDark ? AppTheme.primaryYellow : Colors.black54,
+                          ),
                         ),
                       ),
                     ),
@@ -1411,18 +1423,23 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 SizedBox(
                   width: 140,
                   height: 120,
-                  child: Lottie.asset(
-                    lottiePath,
-                    width: 140,
-                    height: 120,
-                    fit: BoxFit.contain,
-                    repeat: true,
-                    animate: true,
-                    errorBuilder: (context, error, stackTrace) => Center(
-                      child: Icon(
-                        icon,
-                        size: 48,
-                        color: isDark ? AppTheme.primaryYellow : Colors.black54,
+                  child: ColorFiltered(
+                    colorFilter: isDark
+                        ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
+                        : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+                    child: Lottie.asset(
+                      lottiePath,
+                      width: 140,
+                      height: 120,
+                      fit: BoxFit.contain,
+                      repeat: true,
+                      animate: true,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Icon(
+                          icon,
+                          size: 48,
+                          color: isDark ? AppTheme.primaryYellow : Colors.black54,
+                        ),
                       ),
                     ),
                   ),

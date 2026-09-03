@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/app_snackbar.dart';
 import '../widgets/bouncing_button.dart';
+import '../theme/app_theme.dart';
 
 class MapScreen extends StatelessWidget {
   final double latitude;
@@ -32,7 +33,10 @@ class MapScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -47,10 +51,10 @@ class MapScreen extends StatelessWidget {
                 filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.75),
+                    color: isDark ? Colors.black.withValues(alpha: 0.65) : Colors.white.withValues(alpha: 0.75),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.8),
                       width: 1.2,
                     ),
                     boxShadow: [
@@ -61,7 +65,7 @@ class MapScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(Iconsax.arrow_left_2, color: Colors.black, size: 20),
+                  child: Icon(Iconsax.arrow_left_2, color: isDark ? Colors.white : Colors.black, size: 20),
                 ),
               ),
             ),
@@ -77,8 +81,20 @@ class MapScreen extends StatelessWidget {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.rental',
+                tileBuilder: (context, tileWidget, tile) {
+                  if (!isDark) return tileWidget;
+                  return ColorFiltered(
+                    colorFilter: const ColorFilter.matrix([
+                      -0.85, 0, 0, 0, 240,
+                      0, -0.85, 0, 0, 240,
+                      0, 0, -0.85, 0, 240,
+                      0, 0, 0, 1, 0,
+                    ]),
+                    child: tileWidget,
+                  );
+                },
               ),
               MarkerLayer(
                 markers: [
@@ -87,8 +103,8 @@ class MapScreen extends StatelessWidget {
                     width: 50,
                     height: 50,
                     child: Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E2330) : Colors.white,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Iconsax.location5, color: Colors.red, size: 40),
@@ -112,7 +128,7 @@ class MapScreen extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     decoration: BoxDecoration(
-                      color: Colors.black,
+                      color: isDark ? AppTheme.primaryYellow : Colors.black,
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
@@ -122,17 +138,21 @@ class MapScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Iconsax.routing, color: Colors.white, size: 20),
-                        SizedBox(width: 8),
+                        Icon(
+                          Iconsax.routing,
+                          color: isDark ? Colors.black : Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
                         Text(
-                          'Get Directions',
+                          'Get Directions to $title',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: isDark ? Colors.black : Colors.white,
                             fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
@@ -147,4 +167,3 @@ class MapScreen extends StatelessWidget {
     );
   }
 }
-

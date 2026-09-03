@@ -17,6 +17,7 @@ import 'home_screen.dart' show HomeScreen;
 import 'posting_screen.dart';
 import 'property_details_screen.dart';
 import 'admin_database_analytics_tab.dart';
+import 'admin_scraping_pipeline_tab.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -1348,6 +1349,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 isDark: isDark,
                 isDrawer: isDrawer,
               ),
+              const SizedBox(height: 4),
+              _buildModernSidebarItem(
+                index: 8,
+                icon: Iconsax.radar_1,
+                label: 'AI Scraper Pipeline (Demo)',
+                isHighlight: true,
+                isCollapsed: isCollapsed,
+                isDark: isDark,
+                isDrawer: isDrawer,
+              ),
             ],
           ),
         ),
@@ -2135,6 +2146,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return 'Landlords & Registered Users Directory';
       case 7:
         return 'Supabase Database & Cloud Storage Telemetry';
+      case 8:
+        return 'AI Hostel Discovery & Scraping Pipeline (Simulation)';
       default:
         return 'Admin Dashboard';
     }
@@ -2160,6 +2173,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           isDark: isDark,
           onRefreshParent: _fetchProperties,
         );
+      case 8:
+        return AdminScrapingPipelineTab(isDark: isDark);
       default:
         return _buildOverviewTab(isDark);
     }
@@ -3612,18 +3627,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => FractionallySizedBox(
+        widthFactor: 1.0,
         heightFactor: 0.94,
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          child: Scaffold(
-            backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
-            body: SafeArea(
-              child: PostBottomSheet(
-                propertyToEdit: prop,
-                onPropertyCreated: (updatedProp) {
-                  _fetchProperties();
-                  AppSnackbar.success(context, '✅ Property "${updatedProp.title}" updated successfully!');
-                },
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkScaffold : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+                width: 1.5,
+              ),
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: Scaffold(
+              backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
+              body: SafeArea(
+                child: PostBottomSheet(
+                  propertyToEdit: prop,
+                  onPropertyCreated: (updatedProp) {
+                    _fetchProperties();
+                    AppSnackbar.success(context, '✅ Property "${updatedProp.title}" updated successfully!');
+                  },
+                ),
               ),
             ),
           ),

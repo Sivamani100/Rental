@@ -263,6 +263,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           decoration: BoxDecoration(
             color: isDark ? AppTheme.darkCardElevated : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+                width: 1.5,
+              ),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -691,11 +697,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     child: OverflowBox(
                       maxHeight: 500,
                       maxWidth: 500,
-                      child: Lottie.asset(
-                        'assets/loadingg.json',
-                        width: 500,
-                        height: 500,
-                        fit: BoxFit.contain,
+                      child: ColorFiltered(
+                        colorFilter: isDark
+                            ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
+                            : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+                        child: Lottie.asset(
+                          'assets/loadingg.json',
+                          width: 500,
+                          height: 500,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),
@@ -727,11 +738,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Lottie.asset(
-                    'assets/location.json',
-                    width: 250,
-                    height: 250,
-                    fit: BoxFit.contain,
+                  ColorFiltered(
+                    colorFilter: isDark
+                        ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
+                        : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+                    child: Lottie.asset(
+                      'assets/location.json',
+                      width: 250,
+                      height: 250,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   Text(
@@ -1218,11 +1234,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Lottie.asset(
-              'assets/Nothing founded.json',
-              width: 250,
-              height: 250,
-              fit: BoxFit.contain,
+            ColorFiltered(
+              colorFilter: isDark
+                  ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
+                  : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+              child: Lottie.asset(
+                'assets/Nothing founded.json',
+                width: 250,
+                height: 250,
+                fit: BoxFit.contain,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -2243,14 +2264,8 @@ class _TopLocationLogoSwitcherState extends State<_TopLocationLogoSwitcher> {
               color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
               width: 1,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
+          clipBehavior: Clip.antiAlias,
           alignment: Alignment.center,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
@@ -2271,8 +2286,8 @@ class _TopLocationLogoSwitcherState extends State<_TopLocationLogoSwitcher> {
                     borderRadius: BorderRadius.circular(10),
                     child: Image.asset(
                       'assets/logo.png',
-                      width: 34,
-                      height: 34,
+                      width: 38,
+                      height: 38,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => Icon(
                         Iconsax.location5,

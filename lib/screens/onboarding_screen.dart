@@ -437,22 +437,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Lottie.asset(
-            'assets/location.json',
-            fit: BoxFit.contain,
-            repeat: true,
-            errorBuilder: (_, _, _) => Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryYellow.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: Icon(
-                  Iconsax.location5,
-                  size: 56,
-                  color: Colors.black,
+          ColorFiltered(
+            colorFilter: isDark
+                ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
+                : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+            child: Lottie.asset(
+              'assets/location.json',
+              fit: BoxFit.contain,
+              repeat: true,
+              errorBuilder: (_, _, _) => Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryYellow.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Icon(
+                    Iconsax.location5,
+                    size: 56,
+                    color: Colors.black,
+                  ),
                 ),
               ),
             ),

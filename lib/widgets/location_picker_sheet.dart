@@ -108,10 +108,17 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
       // Padding for keyboard
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
+        width: double.infinity,
         height: MediaQuery.of(context).size.height * 0.9, // 90% of screen height
         decoration: BoxDecoration(
           color: isDark ? AppTheme.darkScaffold : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(
+            top: BorderSide(
+              color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+              width: 1.5,
+            ),
+          ),
         ),
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -140,8 +147,20 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.rental',
+                    tileBuilder: (context, tileWidget, tile) {
+                      if (!isDark) return tileWidget;
+                      return ColorFiltered(
+                        colorFilter: const ColorFilter.matrix([
+                          -0.85, 0, 0, 0, 240,
+                          0, -0.85, 0, 0, 240,
+                          0, 0, -0.85, 0, 240,
+                          0, 0, 0, 1, 0,
+                        ]),
+                        child: tileWidget,
+                      );
+                    },
                   ),
                   MarkerLayer(
                     markers: () {
