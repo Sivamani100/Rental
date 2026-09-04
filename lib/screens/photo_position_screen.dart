@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bouncing_button.dart';
+import '../widgets/image_cropper_sheet.dart';
 
 class PhotoItem {
   final XFile? file;
@@ -89,6 +90,24 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
         _selectedIndex = (_photos.length - 1).clamp(0, _photos.length);
       }
     });
+  }
+
+  Future<void> _cropPhoto(int index) async {
+    if (index < 0 || index >= _photos.length) return;
+    final item = _photos[index];
+    if (item.isNetwork || item.file == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cropping is supported for newly added local photos')),
+      );
+      return;
+    }
+
+    final cropped = await ImageCropperSheet.open(context, item.file!);
+    if (cropped != null && mounted) {
+      setState(() {
+        _photos[index] = PhotoItem(file: cropped);
+      });
+    }
   }
 
   void _finishAndSave() {
@@ -240,33 +259,14 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                 // Main Selected Photo Preview Viewport
                 Expanded(
                   flex: 5,
-                  child: Container(
-                    margin: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.darkCard : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
-                        width: 1.2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (_photos.isNotEmpty && _selectedIndex < _photos.length)
+                        Image(
+                          image: _getImageProvider(_photos[_selectedIndex]),
+                          fit: BoxFit.contain,
                         ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(19),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if (_photos.isNotEmpty && _selectedIndex < _photos.length)
-                            Image(
-                              image: _getImageProvider(_photos[_selectedIndex]),
-                              fit: BoxFit.contain,
-                            ),
 
                           // Top-Left Badge: Cover or Photo Position Number
                           Positioned(
@@ -317,59 +317,48 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                             left: 12,
                             right: 12,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                               decoration: BoxDecoration(
                                 color: isDark
-                                    ? Colors.black.withValues(alpha: 0.85)
-                                    : Colors.white.withValues(alpha: 0.92),
-                                borderRadius: BorderRadius.circular(16),
+                                    ? Colors.black.withValues(alpha: 0.7)
+                                    : Colors.white.withValues(alpha: 0.85),
+                                borderRadius: BorderRadius.circular(100),
                                 border: Border.all(
                                   color: isDark ? Colors.white12 : Colors.black12,
+                                  width: 0.5,
                                 ),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                 children: [
-                                  // Left Arrow
                                   IconButton(
                                     tooltip: 'Move Left',
-                                    icon: const Icon(Iconsax.arrow_left_2, size: 20),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    icon: const Icon(Iconsax.arrow_left_2, size: 18),
                                     onPressed: _selectedIndex > 0
                                         ? () => _movePhoto(_selectedIndex, _selectedIndex - 1)
                                         : null,
                                   ),
-
-                                  // Make Cover Action
                                   if (_selectedIndex != 0)
                                     BouncingButton(
                                       onTap: () => _setAsCover(_selectedIndex),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
+                                          horizontal: 14,
                                           vertical: 6,
                                         ),
                                         decoration: BoxDecoration(
                                           color: AppTheme.primaryYellow,
-                                          borderRadius: BorderRadius.circular(20),
+                                          borderRadius: BorderRadius.circular(100),
                                         ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.star_rounded,
-                                              size: 16,
-                                              color: Colors.black,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'Set as Cover',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                          ],
+                                        child: Text(
+                                          'Set as Cover',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black,
+                                          ),
                                         ),
                                       ),
                                     )
@@ -379,34 +368,41 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                       children: [
                                         const Icon(
                                           Iconsax.tick_circle,
-                                          size: 16,
+                                          size: 14,
                                           color: Color(0xFF10B981),
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          'Main Cover Active',
+                                          'Cover Photo',
                                           style: GoogleFonts.inter(
-                                            fontSize: 12,
+                                            fontSize: 11,
                                             fontWeight: FontWeight.w700,
                                             color: const Color(0xFF10B981),
                                           ),
                                         ),
                                       ],
                                     ),
-
-                                  // Right Arrow
                                   IconButton(
                                     tooltip: 'Move Right',
-                                    icon: const Icon(Iconsax.arrow_right_3, size: 20),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    icon: const Icon(Iconsax.arrow_right_3, size: 18),
                                     onPressed: _selectedIndex < _photos.length - 1
                                         ? () => _movePhoto(_selectedIndex, _selectedIndex + 1)
                                         : null,
                                   ),
-
-                                  // Delete Button
                                   IconButton(
-                                    tooltip: 'Delete Photo',
-                                    icon: const Icon(Iconsax.trash, size: 20, color: Colors.redAccent),
+                                    tooltip: 'Crop Photo',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    icon: const Icon(Iconsax.crop, size: 18),
+                                    onPressed: () => _cropPhoto(_selectedIndex),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Delete',
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    icon: const Icon(Iconsax.trash, size: 18, color: Colors.redAccent),
                                     onPressed: () => _deletePhoto(_selectedIndex),
                                   ),
                                 ],
@@ -415,8 +411,6 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                           ),
                         ],
                       ),
-                    ),
-                  ),
                 ),
 
                 // Bottom Thumbnail Reorder Bar

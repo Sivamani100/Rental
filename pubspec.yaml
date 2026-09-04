@@ -2,7 +2,7 @@ name: rental
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.11+12
+version: 1.0.12+13
 
 environment:
   sdk: ^3.12.1
@@ -39,6 +39,7 @@ dependencies:
   device_info_plus: ^13.2.0
   in_app_update: ^4.2.3
   in_app_review: ^2.0.9
+  image_cropper: ^12.2.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

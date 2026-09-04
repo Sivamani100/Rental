@@ -863,18 +863,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ],
                   ),
-                  // Pinned floating bottom toggle with 20px bottom margin
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 20,
-                    child: SafeArea(
-                      top: false,
-                      child: Align(
-                        alignment: Alignment.bottomCenter,
-                        child: _buildBottomToggle(),
-                      ),
-                    ),
+                  // Pinned floating bottom toggle, always sitting 20px above
+                  // the system navigation bar (works for gesture, 2-btn & 3-btn nav)
+                  Builder(
+                    builder: (ctx) {
+                      final navBarHeight = MediaQuery.of(ctx).padding.bottom;
+                      return Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: navBarHeight + 20,
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: _buildBottomToggle(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

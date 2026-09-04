@@ -36,8 +36,34 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    // Automatic Native App Deep Link Invocation for Shared Property Links
+    (function() {
+      try {
+        var urlParams = new URLSearchParams(window.location.search);
+        var propId = urlParams.get('propertyId') || urlParams.get('id');
+        if (!propId && window.location.pathname.indexOf('/property/') === 0) {
+          propId = window.location.pathname.replace('/property/', '').trim();
+        }
+        if (propId) {
+          var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          if (isMobile) {
+            var appUri = 'arkio://rental/property?id=' + encodeURIComponent(propId);
+            setTimeout(function() {
+              window.location.href = appUri;
+            }, 300);
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
+  <!-- cropperjs -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

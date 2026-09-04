@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -128,7 +129,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     final propertyId = widget.property.id ?? '';
     final shareUrl = 'https://rental.arkio.in/?propertyId=$propertyId';
     final shareText =
-        'Check out "${widget.property.title}" (${widget.property.type == 'PG' ? 'PG / Hostel' : (widget.property.type == 'Buy' || widget.property.type == 'Sale' ? 'Property for Sale' : 'Rental House')}) for ${widget.property.price} on Arkio Rental:\n$shareUrl';
+        '🏡 Check out "${widget.property.title}" (${widget.property.type == 'PG' ? 'PG / Hostel' : (widget.property.type == 'Buy' || widget.property.type == 'Sale' ? 'Property for Sale' : 'Rental House')}) for ${widget.property.price} on Arkio Rental!\n\n📱 Open in App:\n$shareUrl';
 
     try {
       await SharePlus.instance.share(
@@ -1945,6 +1946,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       // 8b. NEARBY TRANSPORT SECTION
                       // ==========================================
                       _buildTransportSection(),
+                      const SizedBox(height: 24),
 
                       // ==========================================
                       // 9. CONTRIBUTE PHOTOS CARD
@@ -2079,6 +2081,16 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         )
                       else
                         ...widget.property.reviews.map((r) => _buildReviewItem(r)),
+
+                      // ==========================================
+                      // 11. REPORT INCORRECT LISTING SECTION
+                      // ==========================================
+                      _buildReportListingSection(),
+
+                      // ==========================================
+                      // 12. BOTTOM FLAT RE-VERIFY NOTE (NO SHADOWS / NO BUTTONS)
+                      // ==========================================
+                      _buildReverifyNoteCard(),
                     ],
                   ),
                 ),
@@ -3004,4 +3016,306 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     },
   );
 }
+
+  // ==========================================
+  // REPORT LISTING SECTION
+  // ==========================================
+  Widget _buildReportListingSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCard : const Color(0xFFFAFAFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: isDark ? 0.18 : 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Iconsax.flag, color: Colors.redAccent, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Report Incorrect Listing',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Wrong rent, unreachable phone, or wrong details?',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: _showReportIncorrectInfoSheet,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              side: const BorderSide(color: Colors.redAccent, width: 1.2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ),
+            child: Text(
+              'Report',
+              style: GoogleFonts.inter(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: Colors.redAccent,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // SIMPLE FLAT RE-VERIFY NOTE (NO SHADOWS, NO BUTTONS)
+  // ==========================================
+  Widget _buildReverifyNoteCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final type = widget.property.type;
+
+    String ownerRoleName = 'Hostel / PG Owner';
+    if (type == 'Rental') {
+      ownerRoleName = 'Flat / House Owner';
+    } else if (type == 'Buy' || type == 'Sale') {
+      ownerRoleName = 'Property Seller';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16, bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1B1B20) : const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFFD97706).withValues(alpha: 0.3) : const Color(0xFFFDE68A),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Iconsax.info_circle,
+            color: isDark ? AppTheme.primaryYellow : const Color(0xFFD97706),
+            size: 17,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              'Note: Please re-verify property details, rent, deposit, and room availability directly with the $ownerRoleName before making any payment or advance agreements.',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                height: 1.4,
+                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF92400E),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReportIncorrectInfoSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    String selectedReason = 'Wrong Monthly Rent / Deposit';
+    final TextEditingController commentsController = TextEditingController();
+    bool isSubmitting = false;
+
+    final reasons = [
+      'Wrong Monthly Rent / Deposit',
+      'Phone Number Unreachable',
+      'Property Already Rented / Occupied',
+      'Fake or Misleading Photos',
+      'Incorrect Location / Address',
+      'Other Discrepancy',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                left: 20,
+                right: 20,
+                top: 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Iconsax.flag, color: Colors.redAccent, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Report Incorrect Information',
+                            style: GoogleFonts.inter(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, size: 20),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Help us keep listings accurate. What is incorrect about this post?',
+                    style: TextStyle(
+                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: reasons.map((r) {
+                      final isSelected = selectedReason == r;
+                      return ChoiceChip(
+                        label: Text(r),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          if (val) setModalState(() => selectedReason = r);
+                        },
+                        selectedColor: Colors.redAccent.withValues(alpha: 0.2),
+                        backgroundColor: isDark ? AppTheme.darkCard : Colors.grey.shade100,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                        side: BorderSide(
+                          color: isSelected ? Colors.redAccent : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+                        ),
+                        labelStyle: GoogleFonts.inter(
+                          fontSize: 11.5,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? Colors.redAccent : (isDark ? Colors.white70 : Colors.black87),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: commentsController,
+                    maxLines: 2,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Additional details (optional)...',
+                      hintStyle: TextStyle(color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400, fontSize: 12),
+                      filled: true,
+                      fillColor: isDark ? AppTheme.darkCard : const Color(0xFFFAFAFC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  BouncingButton(
+                    onTap: isSubmitting
+                        ? null
+                        : () async {
+                            setModalState(() => isSubmitting = true);
+                            try {
+                              // 1. Save report directly into Supabase listing_reports table
+                              await Supabase.instance.client.from('listing_reports').insert({
+                                'property_id': widget.property.id ?? '',
+                                'property_title': widget.property.title,
+                                'property_type': widget.property.type,
+                                'owner_phone': widget.property.ownerPhone,
+                                'reason': selectedReason,
+                                'comments': commentsController.text.trim(),
+                                'reporter_device_id': _deviceId,
+                                'status': 'pending',
+                                'created_at': DateTime.now().toIso8601String(),
+                              });
+
+                              // 2. Log analytics event
+                              await AnalyticsService.instance.logEvent(
+                                'report_listing',
+                                category: widget.property.type,
+                                itemId: widget.property.id,
+                              );
+                            } catch (e) {
+                              debugPrint('Error saving report to Supabase: $e');
+                            }
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              AppSnackbar.success(
+                                context,
+                                'Thank you! Report submitted. Our team will verify with the owner.',
+                              );
+                            }
+                          },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Center(
+                        child: isSubmitting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : Text(
+                                'Submit Report to Admin',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }

@@ -17,6 +17,7 @@ import '../widgets/bouncing_button.dart';
 import '../theme/app_theme.dart';
 import '../utils/image_compressor.dart';
 import '../models/property_model.dart';
+import '../widgets/image_cropper_sheet.dart';
 import 'photo_position_screen.dart';
 
 class PostBottomSheet extends StatefulWidget {
@@ -39,7 +40,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   int _currentStep = 1;
   static const int _totalSteps = 6;
   String _selectedType = 'Rental'; // 'Rental' or 'PG'
-  
+
+
   List<String> _existingImages = [];
   bool get _isEditing => widget.propertyToEdit != null;
 
@@ -94,6 +96,29 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   String _pgManagement = '';
 
   final Set<String> _pgSelectedAmenities = {};
+
+  // Dynamic Category-Based Labels & Hints
+  String get _titleLabel {
+    if (_selectedType == 'PG') {
+      return 'Hostel / PG Name';
+    } else if (_selectedType == 'Rental') {
+      return 'House / Flat Name';
+    } else if (_selectedType == 'Buy' || _selectedType == 'Sale') {
+      return 'Property / Building Title';
+    }
+    return 'Property Name';
+  }
+
+  String get _titleHint {
+    if (_selectedType == 'PG') {
+      return 'e.g. Sri Vigneswara Luxury Boys PG / Ladies Hostel';
+    } else if (_selectedType == 'Rental') {
+      return 'e.g. Sri Sai Nivas 2BHK Flat / Independent House';
+    } else if (_selectedType == 'Buy' || _selectedType == 'Sale') {
+      return 'e.g. 3 BHK Luxury Villa / Commercial Land for Sale';
+    }
+    return 'e.g. Property Title';
+  }
 
   // --- Rental Specific State (Clean default: nothing pre-selected) ---
   String _rentalBhk = '';
@@ -233,7 +258,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           final ageMs = DateTime.now().millisecondsSinceEpoch - savedAt;
           if (ageMs > _draftMaxAgeMs) {
             await prefs.remove(_draftKey);
-            return; // Draft expired — start fresh
+            return; // Draft expired â€” start fresh
           }
         }
 
@@ -531,7 +556,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     }
   }
 
-  // ─── INPUT SANITIZATION ─────────────────────────────────────────────────
+  // â”€â”€â”€ INPUT SANITIZATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Strips control characters and enforces max length.
   // Used before sending any user text to Supabase or the AI prompt.
   static String _sanitizeText(String input, {int maxLength = 500}) {
@@ -546,7 +571,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   }
 
   void _submitProperty() {
-    // ── Input sanitization ─────────────────────────────────────────────────
+    // â”€â”€ Input sanitization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     final rawTitle = _sanitizeText(_titleController.text, maxLength: 100);
     final rawDescription = _sanitizeText(_descriptionController.text, maxLength: 1000);
     final rawAddress = _sanitizeText(_addressController.text, maxLength: 200);
@@ -555,7 +580,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
     _addressController.text = rawAddress;
 
     if (rawTitle.isEmpty) {
-      _showSheetError('Please enter a property title');
+      _showSheetError('Please enter the ${_titleLabel.toLowerCase()}');
       setState(() => _currentStep = 2);
       return;
     }
@@ -567,7 +592,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       return;
     }
 
-    // SECURITY: Validate phone — must be a valid 10-digit Indian mobile number
+    // SECURITY: Validate phone â€” must be a valid 10-digit Indian mobile number
     final rawPhone = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
     final phoneRegex = RegExp(r'^[6-9]\d{9}$');
     if (rawPhone.isEmpty) {
@@ -623,9 +648,9 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
 
     String formattedPrice;
     if (isBuy) {
-      formattedPrice = '₹${_priceController.text.trim()}';
+      formattedPrice = 'â‚¹${_priceController.text.trim()}';
     } else {
-      formattedPrice = '₹${_priceController.text.trim()}/m';
+      formattedPrice = 'â‚¹${_priceController.text.trim()}/m';
     }
 
     String propBeds;
@@ -681,11 +706,11 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           : _phoneController.text.trim(),
       features: features.toSet().toList(),
       securityDeposit: isBuy
-          ? (_depositController.text.trim().isNotEmpty ? 'Advance: ₹${_depositController.text.trim()}' : null)
-          : (_depositController.text.trim().isNotEmpty ? '₹${_depositController.text.trim()}' : null),
+          ? (_depositController.text.trim().isNotEmpty ? 'Advance: â‚¹${_depositController.text.trim()}' : null)
+          : (_depositController.text.trim().isNotEmpty ? 'â‚¹${_depositController.text.trim()}' : null),
       maintenanceCharges: isBuy
           ? (_maintenanceController.text.trim().isNotEmpty ? _maintenanceController.text.trim() : null)
-          : (_maintenanceController.text.trim().isNotEmpty ? '₹${_maintenanceController.text.trim()}' : 'Included'),
+          : (_maintenanceController.text.trim().isNotEmpty ? 'â‚¹${_maintenanceController.text.trim()}' : 'Included'),
       noticePeriod: (isPg ? _pgNotice : _rentalNotice).isNotEmpty ? (isPg ? _pgNotice : _rentalNotice) : null,
       agreementDuration: isBuy
           ? (_buyOwnershipType.isNotEmpty ? _buyOwnershipType : 'Direct Freehold Sale')
@@ -1122,6 +1147,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           icon: Iconsax.shop,
         ),
         const SizedBox(height: 12),
+
       ],
     );
   }
@@ -1684,6 +1710,36 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                                   ),
                                 ),
                               ),
+                              if (!isExisting)
+                                Positioned(
+                                  bottom: 4,
+                                  right: 14,
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      final localIndex = index - _existingImages.length;
+                                      final cropped = await ImageCropperSheet.open(context, _selectedImages[localIndex]);
+                                      if (cropped != null && mounted) {
+                                        setState(() {
+                                          _selectedImages[localIndex] = cropped;
+                                        });
+                                        _saveDraft();
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.85),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: AppTheme.primaryYellow, width: 1.2),
+                                      ),
+                                      child: const Icon(
+                                        Iconsax.crop,
+                                        color: AppTheme.primaryYellow,
+                                        size: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         );
@@ -1697,16 +1753,14 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         const SizedBox(height: 12),
         _buildCustomInput(
           controller: _titleController,
-          label: 'Property Title',
-          hint: _selectedType == 'Buy'
-              ? 'e.g. 3 BHK Luxury Villa / Commercial Land for Sale'
-              : (_selectedType == 'PG' ? 'e.g. Deluxe Boys PG - MVP Colony' : 'e.g. 2BHK House - Srinivasa Nagar'),
+          label: _titleLabel,
+          hint: _titleHint,
         ),
         const SizedBox(height: 12),
         if (_selectedType == 'Buy')
           _buildCustomInput(
             controller: _priceController,
-            label: 'Total Selling Price (₹)',
+            label: 'Total Selling Price (â‚¹)',
             hint: 'e.g. 4500000 (45 Lakhs)',
             keyboardType: TextInputType.number,
           )
@@ -1716,7 +1770,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               Expanded(
                 child: _buildCustomInput(
                   controller: _priceController,
-                  label: _selectedType == 'PG' ? 'Monthly Fee / Rent (₹)' : 'Monthly Rent (₹)',
+                  label: _selectedType == 'PG' ? 'Monthly Fee / Rent (â‚¹)' : 'Monthly Rent (â‚¹)',
                   hint: 'e.g. 5500',
                   keyboardType: TextInputType.number,
                 ),
@@ -1725,7 +1779,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               Expanded(
                 child: _buildCustomInput(
                   controller: _depositController,
-                  label: _selectedType == 'PG' ? 'Security Deposit / Advance (₹)' : 'Security Deposit (₹)',
+                  label: _selectedType == 'PG' ? 'Security Deposit / Advance (â‚¹)' : 'Security Deposit (â‚¹)',
                   hint: 'e.g. 5000',
                   keyboardType: TextInputType.number,
                 ),
@@ -1739,7 +1793,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               Expanded(
                 child: _buildCustomInput(
                   controller: _perDayWithFoodController,
-                  label: 'Per Day (With Food) ₹',
+                  label: 'Per Day (With Food) â‚¹',
                   hint: 'e.g. 300',
                   keyboardType: TextInputType.number,
                 ),
@@ -1748,7 +1802,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               Expanded(
                 child: _buildCustomInput(
                   controller: _perDayWithoutFoodController,
-                  label: 'Per Day (Without Food) ₹',
+                  label: 'Per Day (Without Food) â‚¹',
                   hint: 'e.g. 200',
                   keyboardType: TextInputType.number,
                 ),
@@ -2771,8 +2825,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               const SizedBox(height: 8),
               Text(
                 _selectedType == 'Buy'
-                    ? 'Total Asking Price: ₹${_priceController.text.isNotEmpty ? _priceController.text : '0'}${_buyPriceNegotiable.isNotEmpty ? " • $_buyPriceNegotiable" : ""}'
-                    : '₹${_priceController.text.isNotEmpty ? _priceController.text : '0'}/month${_depositController.text.isNotEmpty ? " • Deposit: ₹${_depositController.text}" : ""}',
+                    ? 'Total Asking Price: â‚¹${_priceController.text.isNotEmpty ? _priceController.text : '0'}${_buyPriceNegotiable.isNotEmpty ? " â€¢ $_buyPriceNegotiable" : ""}'
+                    : 'â‚¹${_priceController.text.isNotEmpty ? _priceController.text : '0'}/month${_depositController.text.isNotEmpty ? " â€¢ Deposit: â‚¹${_depositController.text}" : ""}',
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
@@ -3287,11 +3341,12 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
         await supabase.from('properties').insert(propertyJson);
       }
 
-      // Invalidate property cache
+      // Invalidate property cache and draft cache
       if (!widget.isEditing) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('cached_properties');
         await prefs.remove('cached_properties_ts');
+        await prefs.remove('posting_draft_v2');
       }
 
       _progressRampTimer?.cancel();
@@ -3406,7 +3461,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Uploading',
+                    widget.isEditing ? 'Updating' : 'Uploading',
                     style: GoogleFonts.inter(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -3416,8 +3471,8 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                   ),
                   Text(
                     _statusState == _UploadStatusState.uploading
-                        ? 'Uploading Property...'
-                        : (_statusState == _UploadStatusState.success ? 'Upload Complete' : 'Upload Failed'),
+                        ? (widget.isEditing ? 'Updating Property...' : 'Uploading Property...')
+                        : (_statusState == _UploadStatusState.success ? (widget.isEditing ? 'Update Complete' : 'Upload Complete') : (widget.isEditing ? 'Update Failed' : 'Upload Failed')),
                     style: GoogleFonts.inter(
                       fontSize: 11.5,
                       color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
@@ -3522,7 +3577,9 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
           ),
           const SizedBox(height: 3),
           Text(
-            'Please keep the app open while we upload your listing.',
+            widget.isEditing
+                ? 'Please keep the app open while we update your listing.'
+                : 'Please keep the app open while we upload your listing.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 11.5,
@@ -3562,7 +3619,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
 
           // Main Headline
           Text(
-            'Property Posted Successfully!',
+            widget.isEditing ? 'Property Updated Successfully!' : 'Property Posted Successfully!',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 17.5,
@@ -3668,7 +3725,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
           const SizedBox(height: 16),
 
           Text(
-            'Posting Failed',
+            widget.isEditing ? 'Update Failed' : 'Posting Failed',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 17.5,
@@ -3689,7 +3746,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
               ),
             ),
             child: Text(
-              _errorMessage.isNotEmpty ? _errorMessage : 'Unable to upload property. Check connection.',
+              _errorMessage.isNotEmpty ? _errorMessage : (widget.isEditing ? 'Unable to update property. Check connection.' : 'Unable to upload property. Check connection.'),
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 12.5,

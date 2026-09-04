@@ -17,7 +17,6 @@ import 'home_screen.dart' show HomeScreen;
 import 'posting_screen.dart';
 import 'property_details_screen.dart';
 import 'admin_database_analytics_tab.dart';
-import 'admin_scraping_pipeline_tab.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -225,6 +224,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Map<String, dynamic>? _demandRadarData;
   List<PropertyModel> _topViewedProperties = [];
+  List<Map<String, dynamic>> _userReports = [];
+  bool _isLoadingUserReports = false;
+
+  Future<void> _fetchUserReports() async {
+    setState(() => _isLoadingUserReports = true);
+    try {
+      final res = await _supabase.from('listing_reports').select().order('created_at', ascending: false);
+      if (mounted) {
+        setState(() {
+          _userReports = List<Map<String, dynamic>>.from(res);
+          _isLoadingUserReports = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching user reports: $e');
+      if (mounted) setState(() => _isLoadingUserReports = false);
+    }
+  }
 
   Future<void> _fetchDemandRadarData() async {
     try {
@@ -296,6 +313,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       _fetchAudienceCounts();
       _fetchDemandRadarData();
       _fetchAutoNotifierSettings();
+      _fetchUserReports();
     });
   }
 
@@ -1342,6 +1360,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 4),
 
               _buildModernSidebarItem(
+                index: 5,
+                icon: Iconsax.flag,
+                label: 'User Reports',
+                badgeCount: _userReports.where((r) => r['status'] == 'pending').length > 0
+                    ? _userReports.where((r) => r['status'] == 'pending').length
+                    : null,
+                isCollapsed: isCollapsed,
+                isDark: isDark,
+                isDrawer: isDrawer,
+              ),
+
+              const SizedBox(height: 4),
+
+              _buildModernSidebarItem(
                 index: 7,
                 icon: Iconsax.data,
                 label: 'Database & Storage',
@@ -1350,15 +1382,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 isDrawer: isDrawer,
               ),
               const SizedBox(height: 4),
-              _buildModernSidebarItem(
-                index: 8,
-                icon: Iconsax.radar_1,
-                label: 'AI Scraper Pipeline (Demo)',
-                isHighlight: true,
-                isCollapsed: isCollapsed,
-                isDark: isDark,
-                isDrawer: isDrawer,
-              ),
+
             ],
           ),
         ),
@@ -2144,10 +2168,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return 'Push Notification & Broadcast Hub';
       case 4:
         return 'Landlords & Registered Users Directory';
+      case 5:
+        return 'User Reports & Flagged Listings Hub';
       case 7:
         return 'Supabase Database & Cloud Storage Telemetry';
-      case 8:
-        return 'AI Hostel Discovery & Scraping Pipeline (Simulation)';
       default:
         return 'Admin Dashboard';
     }
@@ -2168,16 +2192,334 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return _buildPushNotificationsTab(isDark);
       case 4:
         return _buildUsersTab(isDark);
+      case 5:
+        return _buildUserReportsTab(isDark);
       case 7:
         return AdminDatabaseAnalyticsTab(
           isDark: isDark,
           onRefreshParent: _fetchProperties,
         );
-      case 8:
-        return AdminScrapingPipelineTab(isDark: isDark);
       default:
         return _buildOverviewTab(isDark);
     }
+  }
+
+  // ==========================================
+  // TAB 5: USER REPORTS & FLAGGED LISTINGS
+  // ==========================================
+  Widget _buildUserReportsTab(bool isDark) {
+    final mutedColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final pendingReports = _userReports.where((r) => r['status'] == 'pending').length;
+
+    return RefreshIndicator(
+      onRefresh: _fetchUserReports,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Banner Header
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF161922) : Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Iconsax.flag, color: Colors.redAccent, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'User Reported Listings',
+                              style: GoogleFonts.inter(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: primaryTextColor,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (pendingReports > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '$pendingReports Pending',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Review discrepancies submitted by app users regarding wrong rent, unreachable owner numbers, or misleading photos.',
+                          style: TextStyle(fontSize: 12, color: mutedColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Iconsax.refresh, color: isDark ? Colors.white70 : Colors.black87),
+                    onPressed: _fetchUserReports,
+                    tooltip: 'Refresh Reports',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            if (_isLoadingUserReports)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(color: AppTheme.primaryYellow),
+                ),
+              )
+            else if (_userReports.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF161922) : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Iconsax.shield_tick, size: 48, color: Colors.green.shade400),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No Reported Listings',
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: primaryTextColor),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'All community posts are in good standing! No discrepancy flags have been submitted.',
+                      style: TextStyle(fontSize: 12.5, color: mutedColor),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _userReports.length,
+                itemBuilder: (context, index) {
+                  final r = _userReports[index];
+                  final isPending = r['status'] == 'pending';
+                  final createdStr = r['created_at'] != null
+                      ? r['created_at'].toString().split('T').first
+                      : '';
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF161922) : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isPending
+                            ? Colors.redAccent.withValues(alpha: 0.4)
+                            : (isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0)),
+                        width: isPending ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Iconsax.danger, color: Colors.redAccent, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    r['property_title'] ?? 'Property Listing',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTextColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          r['property_type'] ?? 'Listing',
+                                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: mutedColor),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'ID: ${r['property_id']}',
+                                        style: TextStyle(fontSize: 11, color: mutedColor),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        createdStr,
+                                        style: TextStyle(fontSize: 11, color: mutedColor),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Reason Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withValues(alpha: isDark ? 0.2 : 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Iconsax.info_circle, color: Colors.redAccent, size: 14),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Reported Reason: ${r['reason']}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? const Color(0xFFFCA5A5) : Colors.red.shade900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        if (r['comments'] != null && r['comments'].toString().trim().isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'User Comment: "${r['comments']}"',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+                        const SizedBox(height: 10),
+
+                        Row(
+                          children: [
+                            if (r['owner_phone'] != null && r['owner_phone'].toString().isNotEmpty)
+                              InkWell(
+                                onTap: () async {
+                                  final uri = Uri.parse('tel:${r['owner_phone']}');
+                                  if (await canLaunchUrl(uri)) await launchUrl(uri);
+                                },
+                                child: Row(
+                                  children: [
+                                    const Icon(Iconsax.call, size: 14, color: AppTheme.primaryYellow),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Owner: ${r['owner_phone']}',
+                                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: primaryTextColor),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            const Spacer(),
+                            if (isPending) ...[
+                              OutlinedButton(
+                                onPressed: () async {
+                                  try {
+                                    await _supabase.from('listing_reports').update({'status': 'dismissed'}).eq('id', r['id']);
+                                    AppSnackbar.success(context, 'Report dismissed');
+                                    _fetchUserReports();
+                                  } catch (e) {
+                                    AppSnackbar.error(context, 'Failed: $e');
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  side: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: Text('Dismiss', style: TextStyle(fontSize: 11.5, color: mutedColor)),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () => _deleteProperty(r['property_id']),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const Text('Delete Listing', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                              ),
+                            ] else
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text('Resolved', style: TextStyle(fontSize: 11, color: mutedColor)),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ==========================================

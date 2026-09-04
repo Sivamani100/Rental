@@ -122,18 +122,18 @@ class AnalyticsService {
   }
 
   Future<void> logPropertyView(String propertyId, String? category) async {
-    await _logEvent('view', category: category, itemId: propertyId);
+    await logEvent('view', category: category, itemId: propertyId);
   }
 
   Future<void> logSearch(String query, {String? category}) async {
-    await _logEvent('search', category: category, itemId: query); // Using itemId to store the query temporarily
+    await logEvent('search', category: category, itemId: query); // Using itemId to store the query temporarily
   }
   
   Future<void> logCategoryClick(String category) async {
-    await _logEvent('category_click', category: category);
+    await logEvent('category_click', category: category);
   }
 
-  Future<void> _logEvent(String eventType, {String? category, String? itemId}) async {
+  Future<void> logEvent(String eventType, {String? category, String? itemId}) async {
     if (_deviceId == null) return;
 
     try {

@@ -29,6 +29,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
 
+  // Enable edge-to-edge rendering so the app draws behind
+  // the status bar AND the Android 3-button/gesture navigation bar.
+  // SafeArea widgets in each screen then push content up/down correctly
+  // regardless of whether the phone uses gestures or 3-button navigation.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   // Turbocharge Flutter ImageCache for instant photo rendering
   PaintingBinding.instance.imageCache.maximumSize = 1000;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 250 << 20; // 250 MB
@@ -80,7 +86,11 @@ class RentalApp extends StatelessWidget {
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
             statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-            systemNavigationBarColor: isDark ? AppTheme.darkScaffold : Colors.white,
+            // Fully transparent so the edge-to-edge app draws behind the nav bar.
+            // SafeArea handles the actual content padding for all nav styles
+            // (gesture bar, 2-button, 3-button).
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarDividerColor: Colors.transparent,
             systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
           ),
           child: MaterialApp(

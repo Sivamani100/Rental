@@ -147,80 +147,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // 50px top margin from top of screen
-            const SizedBox(height: 50),
 
-            // Top Brand Bar (Logo + App Name on left, Page Dots on right)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Left: Brand Logo & Title
-                  Row(
-                    children: [
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryYellow,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.black,
-                            width: 2.5,
-                          ),
-                        ),
-                        child: Center(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.asset(
-                              'assets/logo.png',
-                              width: 22,
-                              height: 22,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => const Icon(
-                                Iconsax.home_hashtag,
-                                color: Colors.black,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Rental',
-                        style: GoogleFonts.inter(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Right: Page Indicator Dots
-                  Row(
-                    children: List.generate(_totalPages, (index) {
-                      final isSelected = _currentPage == index;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 260),
-                        margin: const EdgeInsets.only(left: 5),
-                        width: isSelected ? 22 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppTheme.primaryYellow
-                              : (isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.15)),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      );
-                    }),
-                  ),
-                ],
-              ),
-            ),
 
             // Page View with Exactly 2 Permission Screens
             Expanded(
@@ -261,9 +188,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
 
+            // Page Indicator Dots
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_totalPages, (index) {
+                  final isSelected = _currentPage == index;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: isSelected ? 24 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppTheme.primaryYellow
+                          : (isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.15)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  );
+                }),
+              ),
+            ),
+
             // Bottom CTA Action Button
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 35),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 60),
               child: SizedBox(
                 width: double.infinity,
                 height: 52,
@@ -351,13 +301,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       title,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
                         color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
-                        letterSpacing: -0.4,
+                        letterSpacing: -0.8,
+                        height: 1.1,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
 
                     // Description Subtitle
                     Padding(
@@ -366,10 +317,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         description,
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
-                          fontSize: 13.5,
+                          fontSize: 16,
                           fontWeight: FontWeight.w500,
                           color: mutedColor,
-                          height: 1.35,
+                          height: 1.4,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ),
@@ -470,139 +422,114 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildNotificationBannerGraphic(bool isDark) {
     final currentText = _notificationVariants[_currentNotifIndex % _notificationVariants.length];
 
-    return SizedBox(
-      width: 320,
-      height: 135,
-      child: Stack(
-        alignment: Alignment.topCenter,
-        clipBehavior: Clip.none,
-        children: [
-          // Background stacked layer 2
-          Positioned(
-            top: 20,
-            child: Container(
-              width: 270,
-              height: 75,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : const Color(0xFFE5E8EB),
-                borderRadius: BorderRadius.circular(22),
-              ),
-            ),
-          ),
-
-          // Main Active Animated Notification Card
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 1000),
-              switchInCurve: Curves.easeInOutCubic,
-              switchOutCurve: Curves.easeInOutCubic,
-              transitionBuilder: (child, animation) {
-                return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0.0, -0.2),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                key: ValueKey<int>(_currentNotifIndex),
-                width: 320,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isDark ? AppTheme.darkCardElevated : Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: isDark
-                        ? AppTheme.darkBorder
-                        : Colors.black.withValues(alpha: 0.08),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
+    return Center(
+      child: SizedBox(
+        width: double.infinity,
+        height: 120,
+        child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 1000),
+                switchInCurve: Curves.easeInOutCubic,
+                switchOutCurve: Curves.easeInOutCubic,
+                transitionBuilder: (child, animation) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.0, -0.2),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: FadeTransition(
+                      opacity: animation,
+                      child: child,
                     ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Brand Logo Container
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(14),
+                  );
+                },
+                child: Container(
+                  key: ValueKey<int>(_currentNotifIndex),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkCardElevated : Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isDark
+                          ? AppTheme.darkBorder
+                          : Colors.black.withValues(alpha: 0.08),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.10),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
                       ),
-                      child: Center(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(
-                            'assets/logo.png',
-                            width: 26,
-                            height: 26,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, _, _) => const Icon(
-                              Icons.auto_awesome,
-                              color: Colors.white,
-                              size: 20,
+                    ],
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Brand Logo Container
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              'assets/logo.png',
+                              width: 32,
+                              height: 32,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => const Icon(
+                                Icons.auto_awesome,
+                                color: Colors.white,
+                                size: 24,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 14),
 
-                    // Notification Text Content
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Rental App',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
-                              letterSpacing: -0.2,
+                      // Notification Text Content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Rental App',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                                letterSpacing: -0.2,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            currentText,
-                            style: GoogleFonts.inter(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w500,
-                              color: isDark
-                                  ? AppTheme.darkTextSecondary
-                                  : const Color(0xFF4B5563),
-                              height: 1.3,
+                            const SizedBox(height: 3),
+                            Text(
+                              currentText,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: isDark
+                                    ? AppTheme.darkTextSecondary
+                                    : const Color(0xFF4B5563),
+                                height: 1.3,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
+          );
   }
 }
