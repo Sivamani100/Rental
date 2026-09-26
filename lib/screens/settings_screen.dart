@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:iconsax/iconsax.dart';
 import '../theme/app_theme.dart';
-import 'package:flutter_dynamic_icon/flutter_dynamic_icon.dart';
+import 'package:flutter_dynamic_icon_plus/flutter_dynamic_icon_plus.dart';
 import 'package:flutter/services.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -101,8 +101,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap: () async {
                             setState(() => _selectedLogoColor = color);
                             try {
-                              if (await FlutterDynamicIcon.supportsAlternateIcons) {
-                                await FlutterDynamicIcon.setAlternateIconName('.MainActivityColor$i');
+                              if (await FlutterDynamicIconPlus.supportsAlternateIcons) {
+                                await FlutterDynamicIconPlus.setAlternateIconName('.MainActivityColor$i');
                               }
                             } on PlatformException catch (e) {
                               debugPrint("Failed to change app icon: ${e.message}");
