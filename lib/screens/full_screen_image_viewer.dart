@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
@@ -45,7 +46,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
           child: CircularProgressIndicator(),
         ),
         errorWidget: (context, url, error) => const Center(
-          child: Icon(Iconsax.image, size: 64, color: Colors.white54),
+          child: Icon(CupertinoIcons.photo, size: 64, color: Colors.white54),
         ),
       );
     } else if (path.startsWith('assets/')) {
@@ -53,7 +54,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         path,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const Center(
-          child: Icon(Iconsax.image, size: 64, color: Colors.white54),
+          child: Icon(CupertinoIcons.photo, size: 64, color: Colors.white54),
         ),
       );
     } else if (kIsWeb) {
@@ -61,7 +62,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         path,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const Center(
-          child: Icon(Iconsax.image, size: 64, color: Colors.white54),
+          child: Icon(CupertinoIcons.photo, size: 64, color: Colors.white54),
         ),
       );
     } else {
@@ -69,7 +70,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         File(path),
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const Center(
-          child: Icon(Iconsax.image, size: 64, color: Colors.white54),
+          child: Icon(CupertinoIcons.photo, size: 64, color: Colors.white54),
         ),
       );
     }
@@ -123,7 +124,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                               width: 1.2,
                             ),
                           ),
-                          child: const Icon(Iconsax.close_circle, color: Colors.white, size: 22),
+                          child: const Icon(CupertinoIcons.clear_circled_solid, color: Colors.white, size: 22),
                         ),
                       ),
                     ),

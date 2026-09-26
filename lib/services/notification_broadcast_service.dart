@@ -212,7 +212,7 @@ class NotificationBroadcastService {
       case NotificationActionType.postProperty:
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const PostBottomSheet()),
+          MaterialPageRoute(builder: (_) => const PostingScreen()),
         );
         break;
 

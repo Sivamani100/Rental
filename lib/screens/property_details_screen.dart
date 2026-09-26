@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
@@ -164,7 +165,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         errorWidget: (context, url, error) => Container(
           color: Colors.grey.shade300,
           child: const Center(
-            child: Icon(Iconsax.image, color: Colors.grey, size: 40),
+            child: Icon(CupertinoIcons.photo, color: Colors.grey, size: 40),
           ),
         ),
       );
@@ -176,7 +177,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         errorBuilder: (context, error, stackTrace) => Container(
           color: Colors.grey.shade300,
           child: const Center(
-            child: Icon(Iconsax.image, color: Colors.grey, size: 40),
+            child: Icon(CupertinoIcons.photo, color: Colors.grey, size: 40),
           ),
         ),
       );
@@ -188,7 +189,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         errorBuilder: (context, error, stackTrace) => Container(
           color: Colors.grey.shade300,
           child: const Center(
-            child: Icon(Iconsax.image, color: Colors.grey, size: 40),
+            child: Icon(CupertinoIcons.photo, color: Colors.grey, size: 40),
           ),
         ),
       );
@@ -200,7 +201,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         errorBuilder: (context, error, stackTrace) => Container(
           color: Colors.grey.shade300,
           child: const Center(
-            child: Icon(Iconsax.image, color: Colors.grey, size: 40),
+            child: Icon(CupertinoIcons.photo, color: Colors.grey, size: 40),
           ),
         ),
       );
@@ -241,12 +242,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   // --- Transport type styling helpers ---
   IconData _transportIcon(String type) {
     final lower = type.toLowerCase();
-    if (lower.contains('bus')) return Iconsax.bus;
-    if (lower.contains('auto')) return Iconsax.car;
-    if (lower.contains('train') || lower.contains('railway')) return Icons.train_outlined;
-    if (lower.contains('metro')) return Icons.tram_outlined;
-    if (lower.contains('airport') || lower.contains('aero')) return Iconsax.airplane;
-    return Iconsax.location;
+    if (lower.contains('bus')) return CupertinoIcons.bus;
+    if (lower.contains('auto')) return CupertinoIcons.car_detailed;
+    if (lower.contains('train') || lower.contains('railway')) return CupertinoIcons.tram_fill;
+    if (lower.contains('metro')) return CupertinoIcons.tram_fill;
+    if (lower.contains('airport') || lower.contains('aero')) return CupertinoIcons.airplane;
+    return CupertinoIcons.location_solid;
   }
 
   Widget _buildTransportSection() {
@@ -255,7 +256,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Nearby Transport', Iconsax.bus),
+        _buildSectionHeader('Nearby Transport', CupertinoIcons.bus),
         const SizedBox(height: 12),
         FutureBuilder<List<TransportPlace>>(
           future: _nearbyTransportFuture,
@@ -309,7 +310,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : AppTheme.primaryYellow.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(Iconsax.info_circle, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
+                      child: Icon(CupertinoIcons.info_circle_fill, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -377,7 +378,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           padding: const EdgeInsets.only(left: 4, bottom: 20),
           child: Row(
             children: [
-              Icon(Iconsax.info_circle, size: 14, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400),
+              Icon(CupertinoIcons.info_circle_fill, size: 14, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -449,7 +450,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              Icon(Iconsax.location, size: 14, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
+                              Icon(CupertinoIcons.location_solid, size: 14, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
@@ -534,7 +535,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Iconsax.location, size: 14, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
+                      Icon(CupertinoIcons.location_solid, size: 14, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -634,7 +635,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close, color: isDark ? Colors.white54 : Colors.black54),
+                        icon: Icon(CupertinoIcons.clear, color: isDark ? Colors.white54 : Colors.black54),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -731,7 +732,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 4),
-                                    Icon(Icons.arrow_forward_ios, size: 10, color: primaryColor),
+                                    Icon(CupertinoIcons.forward, size: 10, color: primaryColor),
                                   ],
                                 ),
                               ),
@@ -877,7 +878,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             children: List.generate(validItems.length, (idx) {
               final item = validItems[idx];
               return _buildDetailRow(
-                icon: item['icon'] as IconData? ?? Iconsax.info_circle,
+                icon: item['icon'] as IconData? ?? CupertinoIcons.info_circle_fill,
                 label: item['label'] as String,
                 value: item['value'] as String,
                 showDivider: idx < validItems.length - 1,
@@ -1055,25 +1056,25 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             _buildGlassIconButton(
-                              icon: Iconsax.arrow_left_2,
+                              icon: CupertinoIcons.chevron_left,
                               onTap: () => Navigator.pop(context),
                             ),
                             Row(
                               children: [
                                 _buildGlassIconButton(
-                                  icon: Icons.share_rounded,
+                                  icon: CupertinoIcons.share,
                                   onTap: _shareProperty,
                                 ),
                                 const SizedBox(width: 10),
                                 if (widget.property.isAvailable)
                                   _buildGlassIconButton(
-                                    icon: Iconsax.slash,
+                                    icon: CupertinoIcons.nosign,
                                     onTap: _showAvailabilityBottomSheet,
                                     iconColor: isDark ? Colors.white : const Color(0xFF1E1E1E),
                                   )
                                 else
                                   _buildGlassIconButton(
-                                    icon: Icons.undo_rounded,
+                                    icon: CupertinoIcons.arrow_uturn_left,
                                     onTap: _showRevokeConfirmationDialog,
                                     iconColor: const Color(0xFF1A9E5B),
                                   ),
@@ -1140,7 +1141,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(Iconsax.gallery, color: Colors.white, size: 13),
+                                      const Icon(CupertinoIcons.photo, color: Colors.white, size: 13),
                                       const SizedBox(width: 5),
                                       Text(
                                         '${_currentImageIndex + 1} / ${widget.property.imageUrls.length}',
@@ -1183,7 +1184,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  isPg ? Iconsax.building_3 : (isBuy ? Iconsax.shop : Iconsax.home_2),
+                                  isPg ? CupertinoIcons.building_2_fill : (isBuy ? CupertinoIcons.tag_fill : CupertinoIcons.house_fill),
                                   size: 13,
                                   color: isDark ? AppTheme.primaryYellow : Colors.black,
                                 ),
@@ -1211,7 +1212,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Iconsax.star1, color: Colors.amber, size: 13),
+                                  const Icon(CupertinoIcons.star_fill, color: Colors.amber, size: 13),
                                   const SizedBox(width: 4),
                                   Text(
                                     widget.property.averageRating.toStringAsFixed(1),
@@ -1267,28 +1268,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       const SizedBox(height: 12),
 
                       // Title
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            TextSpan(text: '${widget.property.title} '),
-                            WidgetSpan(
-                              alignment: PlaceholderAlignment.middle,
-                              child: Icon(
-                                Iconsax.verify5,
-                                size: 20,
-                                color: isDark ? Colors.white : Colors.black,
-                              ),
-                            ),
-                          ],
-                        ),
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          height: 1.25,
-                          color: isDark ? Colors.white : const Color(0xFF1E1E1E),
-                          letterSpacing: -0.3,
-                        ),
-                      ),
+                      Text(widget.property.title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, height: 1.25, color: isDark ? Colors.white : const Color(0xFF1E1E1E), letterSpacing: -0.5)),
                       const SizedBox(height: 8),
 
                       // Location & Address Row
@@ -1297,7 +1277,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         children: [
                           const Padding(
                             padding: EdgeInsets.only(top: 2),
-                            child: Icon(Iconsax.location5, color: Color(0xFFF59E0B), size: 16),
+                            child: Icon(CupertinoIcons.location_solid, color: Color(0xFFF59E0B), size: 16),
                           ),
                           const SizedBox(width: 6),
                           Expanded(
@@ -1407,7 +1387,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                     children: [
                                       Row(
                                         children: [
-                                          Icon(Iconsax.receipt_item, size: 15, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600),
+                                          Icon(CupertinoIcons.doc_text_fill, size: 15, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600),
                                           const SizedBox(width: 8),
                                           Text(
                                             isBuy ? 'Rate / Price per Unit' : 'Maintenance Charges',
@@ -1442,7 +1422,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                     children: [
                                       Row(
                                         children: [
-                                          Icon(Iconsax.calendar_1, size: 15, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600),
+                                          Icon(CupertinoIcons.calendar, size: 15, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600),
                                           const SizedBox(width: 8),
                                           Text(
                                             'Per Day (With Food)',
@@ -1476,7 +1456,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                     children: [
                                       Row(
                                         children: [
-                                          Icon(Iconsax.calendar, size: 15, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600),
+                                          Icon(CupertinoIcons.calendar, size: 15, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600),
                                           const SizedBox(width: 8),
                                           Text(
                                             'Per Day (Without Food)',
@@ -1512,41 +1492,41 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         title: isPg
                             ? 'Room & Occupancy Details'
                             : (isBuy ? 'Property Specifications & Dimensions' : 'Property Overview & Layout'),
-                        icon: isPg ? Iconsax.user : (isBuy ? Iconsax.building_3 : Iconsax.home_2),
+                        icon: isPg ? CupertinoIcons.person_fill : (isBuy ? CupertinoIcons.building_2_fill : CupertinoIcons.house_fill),
                         items: [
                           if (isPg) ...[
                             if (widget.property.sharingType != null && widget.property.sharingType!.isNotEmpty)
-                              {'icon': Iconsax.profile_2user, 'label': 'Room Sharing', 'value': widget.property.sharingType!},
+                              {'icon': CupertinoIcons.person_2_fill, 'label': 'Room Sharing', 'value': widget.property.sharingType!},
                             if (widget.property.genderPreference != null && widget.property.genderPreference!.isNotEmpty)
-                              {'icon': Iconsax.user, 'label': 'Gender Preference', 'value': widget.property.genderPreference!},
+                              {'icon': CupertinoIcons.person_fill, 'label': 'Gender Preference', 'value': widget.property.genderPreference!},
                             if (widget.property.bathroomType != null && widget.property.bathroomType!.isNotEmpty)
-                              {'icon': Iconsax.drop, 'label': 'Bathroom Setup', 'value': widget.property.bathroomType!},
+                              {'icon': CupertinoIcons.drop_fill, 'label': 'Bathroom Setup', 'value': widget.property.bathroomType!},
                             if (widget.property.area.isNotEmpty)
-                              {'icon': Iconsax.maximize_4, 'label': 'Carpet Area', 'value': widget.property.area},
+                              {'icon': CupertinoIcons.fullscreen, 'label': 'Carpet Area', 'value': widget.property.area},
                             if (widget.property.acType != null && widget.property.acType!.isNotEmpty)
-                              {'icon': Iconsax.wind_2, 'label': 'AC / Climate', 'value': widget.property.acType!},
+                              {'icon': CupertinoIcons.wind, 'label': 'AC / Climate', 'value': widget.property.acType!},
                           ] else if (isBuy) ...[
                             if (widget.property.bhkType != null && widget.property.bhkType!.isNotEmpty)
-                              {'icon': Iconsax.home_2, 'label': 'BHK Configuration', 'value': widget.property.bhkType!},
+                              {'icon': CupertinoIcons.house_fill, 'label': 'BHK Configuration', 'value': widget.property.bhkType!},
                             if (widget.property.baths.isNotEmpty)
-                              {'icon': Iconsax.routing_2, 'label': 'Facing Direction', 'value': widget.property.baths},
+                              {'icon': CupertinoIcons.arrow_swap, 'label': 'Facing Direction', 'value': widget.property.baths},
                             if (widget.property.area.isNotEmpty)
-                              {'icon': Iconsax.maximize_4, 'label': 'Plot & Built-up Space', 'value': widget.property.area},
+                              {'icon': CupertinoIcons.fullscreen, 'label': 'Plot & Built-up Space', 'value': widget.property.area},
                             if (widget.property.furnishingStatus != null && widget.property.furnishingStatus!.isNotEmpty)
-                              {'icon': Iconsax.lamp_1, 'label': 'Furnishing & Interior', 'value': widget.property.furnishingStatus!},
+                              {'icon': CupertinoIcons.lightbulb_fill, 'label': 'Furnishing & Interior', 'value': widget.property.furnishingStatus!},
                             if (widget.property.parkingInfo != null && widget.property.parkingInfo!.isNotEmpty)
-                              {'icon': Iconsax.car, 'label': 'Parking Space', 'value': widget.property.parkingInfo!},
+                              {'icon': CupertinoIcons.car_detailed, 'label': 'Parking Space', 'value': widget.property.parkingInfo!},
                           ] else ...[
                             if (widget.property.bhkType != null && widget.property.bhkType!.isNotEmpty)
-                              {'icon': Iconsax.home_2, 'label': 'BHK Configuration', 'value': widget.property.bhkType!},
+                              {'icon': CupertinoIcons.house_fill, 'label': 'BHK Configuration', 'value': widget.property.bhkType!},
                             if (widget.property.furnishingStatus != null && widget.property.furnishingStatus!.isNotEmpty)
-                              {'icon': Iconsax.lamp_1, 'label': 'Furnishing Status', 'value': widget.property.furnishingStatus!},
+                              {'icon': CupertinoIcons.lightbulb_fill, 'label': 'Furnishing Status', 'value': widget.property.furnishingStatus!},
                             if (widget.property.beds.isNotEmpty)
-                              {'icon': Iconsax.building_3, 'label': 'Bedrooms', 'value': widget.property.beds},
+                              {'icon': CupertinoIcons.building_2_fill, 'label': 'Bedrooms', 'value': widget.property.beds},
                             if (widget.property.baths.isNotEmpty)
-                              {'icon': Iconsax.drop, 'label': 'Bathrooms', 'value': widget.property.baths},
+                              {'icon': CupertinoIcons.drop_fill, 'label': 'Bathrooms', 'value': widget.property.baths},
                             if (widget.property.area.isNotEmpty)
-                              {'icon': Iconsax.maximize_4, 'label': 'Super Built-up Area', 'value': widget.property.area},
+                              {'icon': CupertinoIcons.fullscreen, 'label': 'Super Built-up Area', 'value': widget.property.area},
                           ],
                         ],
                       ),
@@ -1554,7 +1534,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       // ==========================================
                       // 5. DESCRIPTION
                       // ==========================================
-                      _buildSectionHeader('Description', Iconsax.document_text),
+                      _buildSectionHeader('Description', CupertinoIcons.doc_text_fill),
                       const SizedBox(height: 10),
                       Container(
                         width: double.infinity,
@@ -1588,138 +1568,138 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         // Food, Mess & Drinking Water
                         _buildVerticalSectionCard(
                           title: 'Food, Mess & Dining',
-                          icon: Iconsax.coffee,
+                          icon: CupertinoIcons.circle_grid_hex,
                           items: [
                             if (widget.property.foodDetails != null)
-                              {'icon': Iconsax.coffee, 'label': 'Meal Plan Included', 'value': widget.property.foodDetails!},
+                              {'icon': CupertinoIcons.circle_grid_hex, 'label': 'Meal Plan Included', 'value': widget.property.foodDetails!},
                             if (widget.property.foodQuality != null)
-                              {'icon': Iconsax.heart, 'label': 'Food Quality & Type', 'value': widget.property.foodQuality!},
+                              {'icon': CupertinoIcons.heart, 'label': 'Food Quality & Type', 'value': widget.property.foodQuality!},
                             if (widget.property.drinkingWater != null)
-                              {'icon': Iconsax.drop, 'label': 'Drinking Water', 'value': widget.property.drinkingWater!},
+                              {'icon': CupertinoIcons.drop_fill, 'label': 'Drinking Water', 'value': widget.property.drinkingWater!},
                           ],
                         ),
 
                         // Utilities & Living Comfort
                         _buildVerticalSectionCard(
                           title: 'Utilities & Living Comfort',
-                          icon: Iconsax.flash_1,
+                          icon: CupertinoIcons.bolt_fill,
                           items: [
                             if (widget.property.waterSupply != null)
-                              {'icon': Iconsax.drop, 'label': 'Water Supply', 'value': widget.property.waterSupply!},
+                              {'icon': CupertinoIcons.drop_fill, 'label': 'Water Supply', 'value': widget.property.waterSupply!},
                             if (widget.property.powerBackup != null)
-                              {'icon': Iconsax.flash_1, 'label': 'Power Backup', 'value': widget.property.powerBackup!},
+                              {'icon': CupertinoIcons.bolt_fill, 'label': 'Power Backup', 'value': widget.property.powerBackup!},
                             if (widget.property.acType != null)
-                              {'icon': Iconsax.wind_2, 'label': 'AC Setup', 'value': widget.property.acType!},
+                              {'icon': CupertinoIcons.wind, 'label': 'AC Setup', 'value': widget.property.acType!},
                             if (widget.property.bathroomType != null)
-                              {'icon': Iconsax.drop, 'label': 'Bathroom Setup', 'value': widget.property.bathroomType!},
+                              {'icon': CupertinoIcons.drop_fill, 'label': 'Bathroom Setup', 'value': widget.property.bathroomType!},
                           ],
                         ),
 
                         // Security, Hygiene & Housekeeping
                         _buildVerticalSectionCard(
                           title: 'Hygiene & Security',
-                          icon: Iconsax.shield_tick,
+                          icon: CupertinoIcons.shield_fill,
                           items: [
                             if (widget.property.cleanlinessInfo != null)
-                              {'icon': Iconsax.broom, 'label': 'Housekeeping & Cleaning', 'value': widget.property.cleanlinessInfo!},
+                              {'icon': CupertinoIcons.paintbrush, 'label': 'Housekeeping & Cleaning', 'value': widget.property.cleanlinessInfo!},
                             if (widget.property.securityInfo != null)
-                              {'icon': Iconsax.shield_tick, 'label': 'Security & CCTV', 'value': widget.property.securityInfo!},
+                              {'icon': CupertinoIcons.shield_fill, 'label': 'Security & CCTV', 'value': widget.property.securityInfo!},
                             if (widget.property.verificationPolicy != null)
-                              {'icon': Iconsax.security_user, 'label': 'ID Verification', 'value': widget.property.verificationPolicy!},
+                              {'icon': CupertinoIcons.shield_fill, 'label': 'ID Verification', 'value': widget.property.verificationPolicy!},
                           ],
                         ),
 
                         // Rules, Curfew & Management
                         _buildVerticalSectionCard(
                           title: 'Rules, Curfew & Management',
-                          icon: Iconsax.clock,
+                          icon: CupertinoIcons.clock_fill,
                           items: [
                             if (widget.property.gateRules != null)
-                              {'icon': Iconsax.clock, 'label': 'Gate Curfew / Timings', 'value': widget.property.gateRules!},
+                              {'icon': CupertinoIcons.clock_fill, 'label': 'Gate Curfew / Timings', 'value': widget.property.gateRules!},
                             if (widget.property.noticePeriod != null)
-                              {'icon': Iconsax.calendar, 'label': 'Notice Period', 'value': widget.property.noticePeriod!},
+                              {'icon': CupertinoIcons.calendar, 'label': 'Notice Period', 'value': widget.property.noticePeriod!},
                             if (widget.property.agreementDuration != null)
-                              {'icon': Iconsax.document_text, 'label': 'Agreement / Lock-in', 'value': widget.property.agreementDuration!},
+                              {'icon': CupertinoIcons.doc_text_fill, 'label': 'Agreement / Lock-in', 'value': widget.property.agreementDuration!},
                             if (widget.property.managementInfo != null)
-                              {'icon': Iconsax.user_tag, 'label': 'Warden / Management', 'value': widget.property.managementInfo!},
+                              {'icon': CupertinoIcons.person_fill, 'label': 'Warden / Management', 'value': widget.property.managementInfo!},
                           ],
                         ),
                       ] else if (isBuy) ...[
                         // Buy: Legal Clearances & Approvals
                         _buildVerticalSectionCard(
                           title: 'Legal Clearances & Approvals',
-                          icon: Iconsax.document_text,
+                          icon: CupertinoIcons.doc_text_fill,
                           items: [
                             if (widget.property.billsInfo != null)
-                              {'icon': Iconsax.shield_tick, 'label': 'Approvals & Clear Title', 'value': widget.property.billsInfo!},
+                              {'icon': CupertinoIcons.shield_fill, 'label': 'Approvals & Clear Title', 'value': widget.property.billsInfo!},
                             if (widget.property.agreementDuration != null)
-                              {'icon': Iconsax.user_tag, 'label': 'Seller & Ownership Type', 'value': widget.property.agreementDuration!},
+                              {'icon': CupertinoIcons.person_fill, 'label': 'Seller & Ownership Type', 'value': widget.property.agreementDuration!},
                             if (widget.property.tenantPreference != null)
-                              {'icon': Iconsax.tag, 'label': 'Price Negotiability', 'value': widget.property.tenantPreference!},
+                              {'icon': CupertinoIcons.tag_fill, 'label': 'Price Negotiability', 'value': widget.property.tenantPreference!},
                           ],
                         ),
 
                         // Buy: Road Access & Infrastructure
                         _buildVerticalSectionCard(
                           title: 'Road Access & Infrastructure',
-                          icon: Iconsax.routing,
+                          icon: CupertinoIcons.arrow_swap,
                           items: [
                             if (widget.property.petPolicy != null)
-                              {'icon': Iconsax.routing, 'label': 'Connecting Road Width', 'value': widget.property.petPolicy!},
+                              {'icon': CupertinoIcons.arrow_swap, 'label': 'Connecting Road Width', 'value': widget.property.petPolicy!},
                             if (widget.property.meterStatus != null)
-                              {'icon': Iconsax.drop, 'label': 'Water & Power Supply', 'value': widget.property.meterStatus!},
+                              {'icon': CupertinoIcons.drop_fill, 'label': 'Water & Power Supply', 'value': widget.property.meterStatus!},
                             if (widget.property.parkingInfo != null)
-                              {'icon': Iconsax.car, 'label': 'Parking Infrastructure', 'value': widget.property.parkingInfo!},
+                              {'icon': CupertinoIcons.car_detailed, 'label': 'Parking Infrastructure', 'value': widget.property.parkingInfo!},
                           ],
                         ),
                       ] else ...[
                         // Rental: Space & Physical Condition
                         _buildVerticalSectionCard(
                           title: 'Physical Condition & Fittings',
-                          icon: Iconsax.setting_2,
+                          icon: CupertinoIcons.settings,
                           items: [
                             if (widget.property.bhkType != null)
-                              {'icon': Iconsax.home_2, 'label': 'BHK Type', 'value': widget.property.bhkType!},
+                              {'icon': CupertinoIcons.house_fill, 'label': 'BHK Type', 'value': widget.property.bhkType!},
                             if (widget.property.furnishingStatus != null)
-                              {'icon': Iconsax.lamp_1, 'label': 'Furnishing Status', 'value': widget.property.furnishingStatus!},
+                              {'icon': CupertinoIcons.lightbulb_fill, 'label': 'Furnishing Status', 'value': widget.property.furnishingStatus!},
                             if (widget.property.plumbingStatus != null)
-                              {'icon': Iconsax.drop, 'label': 'Plumbing & Drainage', 'value': widget.property.plumbingStatus!},
+                              {'icon': CupertinoIcons.drop_fill, 'label': 'Plumbing & Drainage', 'value': widget.property.plumbingStatus!},
                             if (widget.property.seepageStatus != null)
-                              {'icon': Iconsax.shield, 'label': 'Walls & Roof Seepage', 'value': widget.property.seepageStatus!},
+                              {'icon': CupertinoIcons.shield_fill, 'label': 'Walls & Roof Seepage', 'value': widget.property.seepageStatus!},
                             if (widget.property.electricalStatus != null)
-                              {'icon': Iconsax.flash_1, 'label': 'Electrical Wiring', 'value': widget.property.electricalStatus!},
+                              {'icon': CupertinoIcons.bolt_fill, 'label': 'Electrical Wiring', 'value': widget.property.electricalStatus!},
                           ],
                         ),
 
                         // Rental: Water, Electricity & Bills
                         _buildVerticalSectionCard(
                           title: 'Water, Electricity & Metering',
-                          icon: Iconsax.receipt_item,
+                          icon: CupertinoIcons.doc_text_fill,
                           items: [
                             if (widget.property.meterStatus != null)
-                              {'icon': Iconsax.flash_1, 'label': 'EB Metering', 'value': widget.property.meterStatus!},
+                              {'icon': CupertinoIcons.bolt_fill, 'label': 'EB Metering', 'value': widget.property.meterStatus!},
                             if (widget.property.billsInfo != null)
-                              {'icon': Iconsax.receipt_item, 'label': 'Bills & Utilities Policy', 'value': widget.property.billsInfo!},
+                              {'icon': CupertinoIcons.doc_text_fill, 'label': 'Bills & Utilities Policy', 'value': widget.property.billsInfo!},
                             if (widget.property.waterSupply != null)
-                              {'icon': Iconsax.drop, 'label': 'Water Facility', 'value': widget.property.waterSupply!},
+                              {'icon': CupertinoIcons.drop_fill, 'label': 'Water Facility', 'value': widget.property.waterSupply!},
                             if (widget.property.parkingInfo != null)
-                              {'icon': Iconsax.car, 'label': 'Parking Space', 'value': widget.property.parkingInfo!},
+                              {'icon': CupertinoIcons.car_detailed, 'label': 'Parking Space', 'value': widget.property.parkingInfo!},
                           ],
                         ),
 
                         // Rental: Agreement & Policies
                         _buildVerticalSectionCard(
                           title: 'Rental Agreement & Policies',
-                          icon: Iconsax.document_text,
+                          icon: CupertinoIcons.doc_text_fill,
                           items: [
                             if (widget.property.agreementDuration != null)
-                              {'icon': Iconsax.document_text, 'label': 'Agreement Duration', 'value': widget.property.agreementDuration!},
+                              {'icon': CupertinoIcons.doc_text_fill, 'label': 'Agreement Duration', 'value': widget.property.agreementDuration!},
                             if (widget.property.noticePeriod != null)
-                              {'icon': Iconsax.calendar, 'label': 'Notice Period', 'value': widget.property.noticePeriod!},
+                              {'icon': CupertinoIcons.calendar, 'label': 'Notice Period', 'value': widget.property.noticePeriod!},
                             if (widget.property.tenantPreference != null)
-                              {'icon': Iconsax.profile_2user, 'label': 'Tenant Preference', 'value': widget.property.tenantPreference!},
+                              {'icon': CupertinoIcons.person_2_fill, 'label': 'Tenant Preference', 'value': widget.property.tenantPreference!},
                             if (widget.property.petPolicy != null)
-                              {'icon': Iconsax.heart, 'label': 'Pet Policy', 'value': widget.property.petPolicy!},
+                              {'icon': CupertinoIcons.heart, 'label': 'Pet Policy', 'value': widget.property.petPolicy!},
                           ],
                         ),
                       ],
@@ -1734,7 +1714,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionHeader('Features & Amenities', Iconsax.tick_circle),
+                            _buildSectionHeader('Features & Amenities', CupertinoIcons.checkmark_alt),
                             const SizedBox(height: 10),
                             Container(
                               width: double.infinity,
@@ -1762,7 +1742,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                               children: [
                                                 const Padding(
                                                   padding: EdgeInsets.only(top: 1),
-                                                  child: Icon(Iconsax.tick_circle, color: Color(0xFF10B981), size: 17),
+                                                  child: Icon(CupertinoIcons.checkmark_alt, color: Color(0xFF10B981), size: 17),
                                                 ),
                                                 const SizedBox(width: 10),
                                                 Expanded(
@@ -1795,7 +1775,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                               children: [
                                                 const Padding(
                                                   padding: EdgeInsets.only(top: 1),
-                                                  child: Icon(Iconsax.tick_circle, color: Color(0xFF10B981), size: 17),
+                                                  child: Icon(CupertinoIcons.checkmark_alt, color: Color(0xFF10B981), size: 17),
                                                 ),
                                                 const SizedBox(width: 10),
                                                 Expanded(
@@ -1826,7 +1806,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       // ==========================================
                       // 8. INTERACTIVE LOCATION MAP
                       // ==========================================
-                      _buildSectionHeader('Location Map', Iconsax.location),
+                      _buildSectionHeader('Location Map', CupertinoIcons.location_solid),
                       const SizedBox(height: 10),
                       GestureDetector(
                         onTap: () {
@@ -1894,7 +1874,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                                 ),
                                               ],
                                             ),
-                                            child: const Icon(Iconsax.location5, color: Colors.red, size: 28),
+                                            child: const Icon(CupertinoIcons.location_solid, color: Colors.red, size: 28),
                                           ),
                                         ),
                                       ],
@@ -1922,7 +1902,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Iconsax.map_1, size: 14, color: isDark ? AppTheme.primaryYellow : Colors.black),
+                                      Icon(CupertinoIcons.map_fill, size: 14, color: isDark ? AppTheme.primaryYellow : Colors.black),
                                       const SizedBox(width: 5),
                                       Text(
                                         'Open Full Map',
@@ -1969,7 +1949,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                 color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : const Color(0xFFFFEB3A).withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Icon(Iconsax.camera, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
+                              child: Icon(CupertinoIcons.camera_fill, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -2029,7 +2009,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildSectionHeader('Reviews & Ratings', Iconsax.star),
+                          _buildSectionHeader('Reviews & Ratings', CupertinoIcons.star_fill),
                           BouncingButton(
                             scaleFactor: 0.95,
                             onTap: _showAddReviewSheet,
@@ -2043,7 +2023,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Iconsax.edit_2, size: 13, color: isDark ? AppTheme.primaryYellow : Colors.black87),
+                                  Icon(CupertinoIcons.pencil, size: 13, color: isDark ? AppTheme.primaryYellow : Colors.black87),
                                   const SizedBox(width: 5),
                                   Text(
                                     _hasReviewed ? 'Edit Review' : 'Write Review',
@@ -2133,7 +2113,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Iconsax.call, color: Colors.black, size: 20),
+                          Icon(CupertinoIcons.phone_fill, color: Colors.black, size: 20),
                           SizedBox(width: 8),
                           Text(
                             'Contact Owner',
@@ -2409,7 +2389,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             children: [
               ...List.generate(5, (index) {
                 return Icon(
-                  index < (review['rating'] as num).toInt() ? Iconsax.star1 : Iconsax.star,
+                  index < (review['rating'] as num).toInt() ? CupertinoIcons.star_fill : CupertinoIcons.star_fill,
                   color: Colors.amber,
                   size: 14,
                 );
@@ -2536,7 +2516,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, size: 20),
+                        icon: const Icon(CupertinoIcons.clear, size: 20),
                         visualDensity: VisualDensity.compact,
                       ),
                     ],
@@ -2549,7 +2529,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         final isFilled = rating > 0 && index < rating;
                         return IconButton(
                           icon: Icon(
-                            isFilled ? Iconsax.star1 : Iconsax.star,
+                            isFilled ? CupertinoIcons.star_fill : CupertinoIcons.star_fill,
                             color: isFilled ? Colors.amber : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400),
                             size: 32,
                           ),
@@ -2600,7 +2580,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             });
                           }
                         },
-                        icon: Icon(Iconsax.camera, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 16),
+                        icon: Icon(CupertinoIcons.camera_fill, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 16),
                         label: Text(
                           'Add Photos',
                           style: TextStyle(
@@ -2648,7 +2628,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         shape: BoxShape.circle,
                                       ),
                                       padding: const EdgeInsets.all(2),
-                                      child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                      child: const Icon(CupertinoIcons.clear, color: Colors.white, size: 14),
                                     ),
                                   ),
                                 ),
@@ -2840,7 +2820,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, size: 20),
+                        icon: const Icon(CupertinoIcons.clear, size: 20),
                         visualDensity: VisualDensity.compact,
                       ),
                     ],
@@ -2865,7 +2845,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         });
                       }
                     },
-                    icon: Icon(Iconsax.gallery_add, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 18),
+                    icon: Icon(CupertinoIcons.photo_on_rectangle, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 18),
                     label: Text(
                       'Select Photos from Gallery',
                       style: TextStyle(
@@ -2911,7 +2891,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         shape: BoxShape.circle,
                                       ),
                                       padding: const EdgeInsets.all(3),
-                                      child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                      child: const Icon(CupertinoIcons.clear, color: Colors.white, size: 14),
                                     ),
                                   ),
                                 ),
@@ -3042,7 +3022,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               color: Colors.red.withValues(alpha: isDark ? 0.18 : 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Iconsax.flag, color: Colors.redAccent, size: 20),
+            child: const Icon(CupertinoIcons.flag_fill, color: Colors.redAccent, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -3051,7 +3031,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               children: [
                 Text(
                   'Report Incorrect Listing',
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: isDark ? Colors.white : Colors.black,
@@ -3078,7 +3058,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ),
             child: Text(
               'Report',
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
                 color: Colors.redAccent,
@@ -3119,7 +3099,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            Iconsax.info_circle,
+            CupertinoIcons.info_circle_fill,
             color: isDark ? AppTheme.primaryYellow : const Color(0xFFD97706),
             size: 17,
           ),
@@ -3127,7 +3107,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           Expanded(
             child: Text(
               'Note: Please re-verify property details, rent, deposit, and room availability directly with the $ownerRoleName before making any payment or advance agreements.',
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 12,
                 height: 1.4,
                 color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF92400E),
@@ -3180,11 +3160,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Iconsax.flag, color: Colors.redAccent, size: 20),
+                          const Icon(CupertinoIcons.flag_fill, color: Colors.redAccent, size: 20),
                           const SizedBox(width: 8),
                           Text(
                             'Report Incorrect Information',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 16.5,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : Colors.black,
@@ -3194,7 +3174,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, size: 20),
+                        icon: const Icon(CupertinoIcons.clear, size: 20),
                       ),
                     ],
                   ),
@@ -3224,7 +3204,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         side: BorderSide(
                           color: isSelected ? Colors.redAccent : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
                         ),
-                        labelStyle: GoogleFonts.inter(
+                        labelStyle: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 11.5,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected ? Colors.redAccent : (isDark ? Colors.white70 : Colors.black87),
@@ -3301,7 +3281,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               )
                             : Text(
                                 'Submit Report to Admin',
-                                style: GoogleFonts.inter(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
@@ -3319,3 +3299,5 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 }
+
+

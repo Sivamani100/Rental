@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -104,7 +105,7 @@ class InAppUpdateService with WidgetsBindingObserver {
           SnackBar(
             content: Text(
               'Unable to restart app automatically. Please restart the app manually from home screen.',
-              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: Colors.white),
             ),
             backgroundColor: Colors.redAccent,
           ),
@@ -133,7 +134,7 @@ class InAppUpdateService with WidgetsBindingObserver {
                 color: const Color(0xFF10B981).withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Iconsax.arrow_down_1, color: Color(0xFF10B981), size: 20),
+              child: const Icon(CupertinoIcons.chevron_down, color: Color(0xFF10B981), size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -143,7 +144,7 @@ class InAppUpdateService with WidgetsBindingObserver {
                 children: [
                   Text(
                     'Rental app just downloaded an update',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -152,7 +153,7 @@ class InAppUpdateService with WidgetsBindingObserver {
                   const SizedBox(height: 2),
                   Text(
                     'Restart to apply features and security updates.',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 11.5,
                       color: const Color(0xFF94A3B8),
                     ),
@@ -176,7 +177,7 @@ class InAppUpdateService with WidgetsBindingObserver {
               ),
               child: Text(
                 'Reload',
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 12.5,
                   fontWeight: FontWeight.w800,
                 ),

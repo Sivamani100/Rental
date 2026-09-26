@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -400,7 +401,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Center(
-              child: Icon(Iconsax.data, color: Colors.black, size: 22),
+              child: Icon(CupertinoIcons.chart_bar_fill, color: Colors.black, size: 22),
             ),
           ),
           const SizedBox(width: 12),
@@ -412,7 +413,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   children: [
                     Text(
                       'Supabase Database & Table Studio',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: primaryTextColor,
@@ -440,7 +441,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                           const SizedBox(width: 4),
                           Text(
                             'LIVE DB: $_projectRef',
-                            style: GoogleFonts.firaCode(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 9.5,
                               fontWeight: FontWeight.w800,
                               color: const Color(0xFF10B981),
@@ -456,7 +457,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   _lastRefreshedAt != null
                       ? 'Live real-time PostgreSQL tables, schema data types, records grid, and latency • Synced at ${_formatTime(_lastRefreshedAt!)}'
                       : 'Live storage quotas, table records, and performance metrics.',
-                  style: GoogleFonts.inter(fontSize: 12, color: mutedColor),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, color: mutedColor),
                 ),
               ],
             ),
@@ -472,10 +473,10 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                     height: 14,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                   )
-                : const Icon(Icons.bolt, size: 16, color: Colors.black),
+                : const Icon(CupertinoIcons.bolt_fill, size: 16, color: Colors.black),
             label: Text(
               _lastPingMs != null ? '${_lastPingMs}ms' : 'Ping DB',
-              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.black),
+              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.black),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryYellow,
@@ -490,7 +491,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
           // Refresh Button
           IconButton(
             tooltip: 'Refresh Real Database Telemetry',
-            icon: const Icon(Icons.refresh_rounded, size: 18),
+            icon: const Icon(CupertinoIcons.refresh_thick, size: 18),
             onPressed: () {
               _fetchLiveDatabaseMetrics();
               _fetchTableDataRows(_selectedExploreTable);
@@ -523,7 +524,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               children: [
                 Text(
                   'SUPABASE FREE TIER CAPACITY & LIMIT GAUGES',
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.1,
@@ -532,7 +533,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                 ),
                 Text(
                   'FREE TIER QUOTA: 100% HEALTHY',
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF10B981),
@@ -554,7 +555,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   usedText: _realDbSizePretty,
                   limitText: '500 MB Limit',
                   percent: dbPercent,
-                  icon: Iconsax.data,
+                  icon: CupertinoIcons.chart_bar_fill,
                   accentColor: AppTheme.primaryYellow,
                   isDark: isDark,
                   primaryTextColor: primaryTextColor,
@@ -566,7 +567,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   usedText: _realStorageSizePretty,
                   limitText: '1,000 MB (1 GB) Limit',
                   percent: storagePercent,
-                  icon: Iconsax.gallery,
+                  icon: CupertinoIcons.photo,
                   accentColor: const Color(0xFF10B981),
                   isDark: isDark,
                   primaryTextColor: primaryTextColor,
@@ -578,7 +579,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   usedText: '$_totalRealUsers Accounts',
                   limitText: '50,000 MAU Limit',
                   percent: mauPercent,
-                  icon: Iconsax.user_tag,
+                  icon: CupertinoIcons.person_fill,
                   accentColor: const Color(0xFF3B82F6),
                   isDark: isDark,
                   primaryTextColor: primaryTextColor,
@@ -590,7 +591,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   usedText: '${_cacheHitRatio.toStringAsFixed(1)}%',
                   limitText: '100% Target',
                   percent: (_cacheHitRatio / 100.0).clamp(0.0, 1.0),
-                  icon: Iconsax.flash,
+                  icon: CupertinoIcons.bolt_fill,
                   accentColor: const Color(0xFF10B981),
                   isDark: isDark,
                   primaryTextColor: primaryTextColor,
@@ -644,7 +645,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
             children: [
               Text(
                 title,
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                   color: primaryTextColor,
@@ -662,7 +663,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                 children: [
                   Text(
                     usedText,
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: primaryTextColor,
@@ -671,7 +672,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   const SizedBox(width: 6),
                   Text(
                     '/ $limitText',
-                    style: GoogleFonts.inter(fontSize: 11, color: mutedColor, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -691,7 +692,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
           ),
           Text(
             subtext,
-            style: GoogleFonts.inter(fontSize: 10.5, color: mutedColor, fontWeight: FontWeight.w500),
+            style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10.5, color: mutedColor, fontWeight: FontWeight.w500),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -705,10 +706,10 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
   // ==========================================
   Widget _buildSubNavPills(bool isDark) {
     final tabs = [
-      {'id': 'tables', 'label': 'Supabase Studio Table Editor', 'icon': Iconsax.data},
-      {'id': 'overview', 'label': 'System Health & Latency', 'icon': Iconsax.chart_21},
-      {'id': 'storage', 'label': 'Storage Buckets & Media ($_realStorageFilesCount files)', 'icon': Iconsax.gallery},
-      {'id': 'security', 'label': 'RLS Security & Encryption', 'icon': Iconsax.shield_tick},
+      {'id': 'tables', 'label': 'Supabase Studio Table Editor', 'icon': CupertinoIcons.chart_bar_fill},
+      {'id': 'overview', 'label': 'System Health & Latency', 'icon': CupertinoIcons.chart_bar_alt_fill},
+      {'id': 'storage', 'label': 'Storage Buckets & Media ($_realStorageFilesCount files)', 'icon': CupertinoIcons.photo},
+      {'id': 'security', 'label': 'RLS Security & Encryption', 'icon': CupertinoIcons.shield_fill},
     ];
 
     return SingleChildScrollView(
@@ -743,7 +744,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                     const SizedBox(width: 7),
                     Text(
                       t['label'] as String,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 12.5,
                         fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                         color: isSelected ? Colors.black : (isDark ? Colors.white : const Color(0xFF1E293B)),
@@ -840,14 +841,14 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                               child: Row(
                                 children: [
                                   Icon(
-                                    tbl['id'] == 'storage' ? Iconsax.gallery : Iconsax.data,
+                                    tbl['id'] == 'storage' ? CupertinoIcons.photo : CupertinoIcons.chart_bar_fill,
                                     size: 13,
                                     color: isSelected ? Colors.black : (isDark ? Colors.white70 : Colors.black87),
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     tbl['name'] as String,
-                                    style: GoogleFonts.firaCode(
+                                    style: TextStyle(fontFamily: 'ProximaNova', 
                                       fontSize: 12,
                                       fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                                       color: isSelected ? Colors.black : (isDark ? Colors.white : Colors.black87),
@@ -862,7 +863,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                     ),
                                     child: Text(
                                       '${tbl['count']}',
-                                      style: GoogleFonts.inter(
+                                      style: TextStyle(fontFamily: 'ProximaNova', 
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
                                         color: isSelected ? Colors.black : (isDark ? Colors.white70 : Colors.black87),
@@ -890,7 +891,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   ),
                   child: Text(
                     '${currentTableMeta['count']} ROWS • ${currentTableMeta['size']}',
-                    style: GoogleFonts.firaCode(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
                       color: const Color(0xFF10B981),
@@ -914,15 +915,15 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
             ),
             child: Row(
               children: [
-                Icon(Iconsax.search_normal_1, size: 15, color: mutedColor),
+                Icon(CupertinoIcons.search, size: 15, color: mutedColor),
                 const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     onChanged: (v) => setState(() => _tableSearchQuery = v),
-                    style: GoogleFonts.firaCode(fontSize: 12, color: primaryTextColor),
+                    style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, color: primaryTextColor),
                     decoration: InputDecoration(
                       hintText: 'Filter ${_selectedExploreTable} by any column value...',
-                      hintStyle: GoogleFonts.inter(fontSize: 12, color: mutedColor),
+                      hintStyle: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, color: mutedColor),
                       isDense: true,
                       border: InputBorder.none,
                     ),
@@ -930,7 +931,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                 ),
                 if (_tableSearchQuery.isNotEmpty)
                   IconButton(
-                    icon: const Icon(Icons.close, size: 15),
+                    icon: const Icon(CupertinoIcons.clear, size: 15),
                     onPressed: () => setState(() => _tableSearchQuery = ''),
                   ),
                 const SizedBox(width: 8),
@@ -941,10 +942,10 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                     Clipboard.setData(ClipboardData(text: const JsonEncoder.withIndent('  ').convert(_activeTableRows)));
                     AppSnackbar.success(context, '📋 Entire table JSON copied to clipboard!');
                   },
-                  icon: const Icon(Icons.copy, size: 13),
+                  icon: const Icon(CupertinoIcons.doc_on_doc, size: 13),
                   label: Text(
                     'Copy Table JSON',
-                    style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, fontWeight: FontWeight.w700),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -970,7 +971,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               alignment: Alignment.center,
               child: Text(
                 'No rows found in ${_selectedExploreTable}',
-                style: GoogleFonts.inter(fontSize: 13, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: mutedColor),
               ),
             )
           else
@@ -1003,7 +1004,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                     DataColumn(
                       label: Text(
                         'ACTIONS',
-                        style: GoogleFonts.firaCode(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 10.5,
                           fontWeight: FontWeight.w800,
                           color: AppTheme.primaryYellow,
@@ -1014,7 +1015,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                     DataColumn(
                       label: Text(
                         '#',
-                        style: GoogleFonts.firaCode(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
                           color: mutedColor,
@@ -1030,7 +1031,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                           children: [
                             Text(
                               colName,
-                              style: GoogleFonts.firaCode(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: primaryTextColor,
@@ -1045,7 +1046,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                               ),
                               child: Text(
                                 colType,
-                                style: GoogleFonts.firaCode(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   fontSize: 9.5,
                                   color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
                                   fontWeight: FontWeight.w600,
@@ -1078,13 +1079,13 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.edit_note_rounded, size: 18, color: AppTheme.primaryYellow),
+                                icon: const Icon(CupertinoIcons.pencil, size: 18, color: AppTheme.primaryYellow),
                                 tooltip: 'Edit Row in Supabase',
                                 onPressed: () => _showSupabaseStudioEditModal(row, isDark, primaryTextColor, mutedColor),
                               ),
                               if (_selectedExploreTable != 'storage')
                                 IconButton(
-                                  icon: const Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                                  icon: const Icon(CupertinoIcons.trash, size: 16, color: Colors.redAccent),
                                   tooltip: 'Delete Row',
                                   onPressed: () => _confirmDeleteRow(row, isDark),
                                 ),
@@ -1095,7 +1096,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                         DataCell(
                           Text(
                             '${index + 1}',
-                            style: GoogleFonts.firaCode(fontSize: 11, color: mutedColor, fontWeight: FontWeight.w600),
+                            style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor, fontWeight: FontWeight.w600),
                           ),
                         ),
                         // Data Cells with Type-Aware Formatting
@@ -1126,7 +1127,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
     if (val == null) {
       return Text(
         'null',
-        style: GoogleFonts.firaCode(
+        style: TextStyle(fontFamily: 'ProximaNova', 
           fontSize: 11,
           fontStyle: FontStyle.italic,
           color: mutedColor.withValues(alpha: 0.6),
@@ -1143,7 +1144,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
         ),
         child: Text(
           val ? 'true' : 'false',
-          style: GoogleFonts.firaCode(
+          style: TextStyle(fontFamily: 'ProximaNova', 
             fontSize: 10.5,
             fontWeight: FontWeight.w800,
             color: val ? const Color(0xFF10B981) : mutedColor,
@@ -1163,7 +1164,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
         ),
         child: Text(
           statusStr,
-          style: GoogleFonts.firaCode(
+          style: TextStyle(fontFamily: 'ProximaNova', 
             fontSize: 10.5,
             fontWeight: FontWeight.w800,
             color: isApproved ? const Color(0xFF10B981) : AppTheme.primaryYellow,
@@ -1181,7 +1182,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
         ),
         child: Text(
           '[${val.length} items]',
-          style: GoogleFonts.firaCode(
+          style: TextStyle(fontFamily: 'ProximaNova', 
             fontSize: 10.5,
             fontWeight: FontWeight.w700,
             color: AppTheme.primaryYellow,
@@ -1193,7 +1194,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
     if (val is Map) {
       return Text(
         '{JSON: ${val.keys.length} keys}',
-        style: GoogleFonts.firaCode(fontSize: 11, color: AppTheme.primaryYellow),
+        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: AppTheme.primaryYellow),
       );
     }
 
@@ -1202,7 +1203,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
       constraints: const BoxConstraints(maxWidth: 240),
       child: Text(
         strVal,
-        style: GoogleFonts.firaCode(
+        style: TextStyle(fontFamily: 'ProximaNova', 
           fontSize: 11.5,
           color: primaryTextColor,
         ),
@@ -1269,7 +1270,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                               color: AppTheme.primaryYellow,
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Icon(Icons.edit_document, size: 16, color: Colors.black),
+                            child: const Icon(CupertinoIcons.doc_text, size: 16, color: Colors.black),
                           ),
                           const SizedBox(width: 10),
                           Column(
@@ -1277,7 +1278,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                             children: [
                               Text(
                                 'Supabase Row Editor: ${_selectedExploreTable}',
-                                style: GoogleFonts.inter(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                   color: primaryTextColor,
@@ -1285,14 +1286,14 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                               ),
                               Text(
                                 'ID: $rowId • ${_selectedExploreTable == 'storage' ? 'Read-Only' : 'Direct Supabase UPDATE'}',
-                                style: GoogleFonts.firaCode(fontSize: 11, color: mutedColor),
+                                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor),
                               ),
                             ],
                           ),
                         ],
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close, size: 18),
+                        icon: const Icon(CupertinoIcons.clear, size: 18),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ],
@@ -1307,10 +1308,10 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                           Clipboard.setData(ClipboardData(text: const JsonEncoder.withIndent('  ').convert(row)));
                           AppSnackbar.success(context, '📋 Raw JSON copied to clipboard!');
                         },
-                        icon: const Icon(Icons.copy, size: 13, color: Colors.black),
+                        icon: const Icon(CupertinoIcons.doc_on_doc, size: 13, color: Colors.black),
                         label: Text(
                           'Copy JSON',
-                          style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.black),
+                          style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.black),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryYellow,
@@ -1337,10 +1338,10 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                               if (context.mounted) AppSnackbar.error(context, 'Update error: $e');
                             }
                           },
-                          icon: const Icon(Icons.check_circle_outline, size: 13, color: Color(0xFF10B981)),
+                          icon: const Icon(CupertinoIcons.checkmark_circle, size: 13, color: Color(0xFF10B981)),
                           label: Text(
                             'Quick Approve',
-                            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF10B981)),
+                            style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF10B981)),
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1380,7 +1381,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                     children: [
                                       Text(
                                         colName,
-                                        style: GoogleFonts.firaCode(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.primaryYellow),
+                                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.primaryYellow),
                                       ),
                                       const SizedBox(width: 6),
                                       Container(
@@ -1389,7 +1390,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                           color: isDark ? Colors.white10 : const Color(0xFFCBD5E1),
                                           borderRadius: BorderRadius.circular(3),
                                         ),
-                                        child: Text('bool', style: GoogleFonts.firaCode(fontSize: 9.5, color: mutedColor)),
+                                        child: Text('bool', style: TextStyle(fontFamily: 'ProximaNova', fontSize: 9.5, color: mutedColor)),
                                       ),
                                     ],
                                   ),
@@ -1422,7 +1423,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                     children: [
                                       Text(
                                         'status',
-                                        style: GoogleFonts.firaCode(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.primaryYellow),
+                                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.primaryYellow),
                                       ),
                                       const SizedBox(width: 6),
                                       Container(
@@ -1431,7 +1432,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                           color: isDark ? Colors.white10 : const Color(0xFFCBD5E1),
                                           borderRadius: BorderRadius.circular(3),
                                         ),
-                                        child: Text('varchar', style: GoogleFonts.firaCode(fontSize: 9.5, color: mutedColor)),
+                                        child: Text('varchar', style: TextStyle(fontFamily: 'ProximaNova', fontSize: 9.5, color: mutedColor)),
                                       ),
                                     ],
                                   ),
@@ -1444,7 +1445,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                         value: s,
                                         child: Text(
                                           s.toUpperCase(),
-                                          style: GoogleFonts.inter(
+                                          style: TextStyle(fontFamily: 'ProximaNova', 
                                             fontSize: 12,
                                             fontWeight: FontWeight.w800,
                                             color: s == 'approved' ? const Color(0xFF10B981) : (s == 'pending' ? AppTheme.primaryYellow : Colors.redAccent),
@@ -1487,7 +1488,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                       children: [
                                         Text(
                                           colName,
-                                          style: GoogleFonts.firaCode(
+                                          style: TextStyle(fontFamily: 'ProximaNova', 
                                             fontSize: 12,
                                             fontWeight: FontWeight.w800,
                                             color: isReadOnly ? mutedColor : AppTheme.primaryYellow,
@@ -1500,12 +1501,12 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                             color: isDark ? Colors.white10 : const Color(0xFFCBD5E1),
                                             borderRadius: BorderRadius.circular(3),
                                           ),
-                                          child: Text(colType, style: GoogleFonts.firaCode(fontSize: 9.5, color: mutedColor)),
+                                          child: Text(colType, style: TextStyle(fontFamily: 'ProximaNova', fontSize: 9.5, color: mutedColor)),
                                         ),
                                       ],
                                     ),
                                     if (isReadOnly)
-                                      Text('PRIMARY KEY / READ-ONLY', style: GoogleFonts.inter(fontSize: 9, color: mutedColor)),
+                                      Text('PRIMARY KEY / READ-ONLY', style: TextStyle(fontFamily: 'ProximaNova', fontSize: 9, color: mutedColor)),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
@@ -1513,7 +1514,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                   controller: controller,
                                   readOnly: isReadOnly,
                                   maxLines: isMultiline ? 3 : 1,
-                                  style: GoogleFonts.firaCode(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     fontSize: 12,
                                     color: isReadOnly ? mutedColor : primaryTextColor,
                                   ),
@@ -1521,7 +1522,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                     isDense: true,
                                     border: InputBorder.none,
                                     hintText: 'Enter $colName...',
-                                    hintStyle: GoogleFonts.inter(fontSize: 11, color: mutedColor),
+                                    hintStyle: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor),
                                   ),
                                 ),
                               ],
@@ -1540,7 +1541,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                       children: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx),
-                          child: Text('Cancel', style: GoogleFonts.inter(color: mutedColor)),
+                          child: Text('Cancel', style: TextStyle(fontFamily: 'ProximaNova', color: mutedColor)),
                         ),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
@@ -1607,10 +1608,10 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                                   height: 14,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                                 )
-                              : const Icon(Icons.save_rounded, size: 16, color: Colors.black),
+                              : const Icon(CupertinoIcons.floppy_disk, size: 16, color: Colors.black),
                           label: Text(
                             isSaving ? 'Saving...' : 'Save Changes to Supabase',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Colors.black),
+                            style: TextStyle(fontFamily: 'ProximaNova', fontWeight: FontWeight.w800, color: Colors.black),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primaryYellow,
@@ -1639,14 +1640,14 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Row(
           children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 22),
+            const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.redAccent, size: 22),
             const SizedBox(width: 8),
-            Text('Delete Row from Supabase?', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16)),
+            Text('Delete Row from Supabase?', style: TextStyle(fontFamily: 'ProximaNova', fontWeight: FontWeight.w800, fontSize: 16)),
           ],
         ),
         content: Text(
           'Are you sure you want to permanently delete row "$rowId" from public.$_selectedExploreTable? This action cannot be undone.',
-          style: GoogleFonts.inter(fontSize: 13),
+          style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13),
         ),
         actions: [
           TextButton(
@@ -1696,7 +1697,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               label: 'Total Listings in DB',
               value: '$_propertiesCount',
               subvalue: '$_approvedPropertiesCount approved & live',
-              icon: Iconsax.buildings,
+              icon: CupertinoIcons.building_2_fill,
               badgeColor: const Color(0xFF10B981),
               isDark: isDark,
               primaryTextColor: primaryTextColor,
@@ -1706,7 +1707,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               label: 'Pending Verification',
               value: '$_pendingPropertiesCount',
               subvalue: 'Awaiting admin review',
-              icon: Iconsax.clock,
+              icon: CupertinoIcons.clock_fill,
               badgeColor: AppTheme.primaryYellow,
               isDark: isDark,
               primaryTextColor: primaryTextColor,
@@ -1716,7 +1717,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               label: 'Occupied / Rented',
               value: '$_occupiedPropertiesCount',
               subvalue: 'Marked as occupied',
-              icon: Iconsax.lock,
+              icon: CupertinoIcons.lock_fill,
               badgeColor: const Color(0xFF3B82F6),
               isDark: isDark,
               primaryTextColor: primaryTextColor,
@@ -1726,7 +1727,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               label: 'Cloud Stored Images',
               value: '$_realStorageFilesCount',
               subvalue: '$_realStorageSizePretty in property_images bucket',
-              icon: Iconsax.image,
+              icon: CupertinoIcons.photo,
               badgeColor: const Color(0xFF8B5CF6),
               isDark: isDark,
               primaryTextColor: primaryTextColor,
@@ -1778,7 +1779,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               children: [
                 Text(
                   value,
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                     color: primaryTextColor,
@@ -1786,11 +1787,11 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                 ),
                 Text(
                   label,
-                  style: GoogleFonts.inter(fontSize: 11.5, color: mutedColor, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, color: mutedColor, fontWeight: FontWeight.w600),
                 ),
                 Text(
                   subvalue,
-                  style: GoogleFonts.inter(fontSize: 10, color: mutedColor.withValues(alpha: 0.8)),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10, color: mutedColor.withValues(alpha: 0.8)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1823,11 +1824,11 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.speed_rounded, size: 18, color: Color(0xFF10B981)),
+                  const Icon(CupertinoIcons.speedometer, size: 18, color: Color(0xFF10B981)),
                   const SizedBox(width: 8),
                   Text(
                     'Real-Time Cluster Health & Operational Latency',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -1837,7 +1838,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               ),
               Text(
                 'SSL / TLS 1.3 ENCRYPTED',
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   color: const Color(0xFF10B981),
@@ -1893,12 +1894,12 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
         children: [
           Text(
             label,
-            style: GoogleFonts.inter(fontSize: 11, color: mutedColor, fontWeight: FontWeight.w600),
+            style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 2),
           Text(
             value,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: isGreen ? const Color(0xFF10B981) : primaryTextColor,
@@ -1934,11 +1935,11 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Iconsax.folder_2, size: 20, color: Color(0xFF10B981)),
+                      const Icon(CupertinoIcons.folder_fill, size: 20, color: Color(0xFF10B981)),
                       const SizedBox(width: 8),
                       Text(
                         'Bucket: "property_images"',
-                        style: GoogleFonts.firaCode(fontSize: 15, fontWeight: FontWeight.w800, color: primaryTextColor),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 15, fontWeight: FontWeight.w800, color: primaryTextColor),
                       ),
                     ],
                   ),
@@ -1950,7 +1951,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                     ),
                     child: Text(
                       'PUBLIC CDN READY',
-                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
                     ),
                   ),
                 ],
@@ -1958,7 +1959,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
               const SizedBox(height: 8),
               Text(
                 'Public image uploads for property listings, room photos, hall views, floor plans, and amenities. Auto-cached via Supabase Global CDN.',
-                style: GoogleFonts.inter(fontSize: 12.5, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, color: mutedColor),
               ),
               const SizedBox(height: 14),
 
@@ -2013,7 +2014,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.tips_and_updates, size: 20, color: Color(0xFFD97706)),
+              const Icon(CupertinoIcons.lightbulb_fill, size: 20, color: Color(0xFFD97706)),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -2021,7 +2022,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   children: [
                     Text(
                       'Smart Storage Optimization Policy Active',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         color: isDark ? Colors.amber : const Color(0xFF92400E),
@@ -2030,7 +2031,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                     const SizedBox(height: 3),
                     Text(
                       'All property photos are automatically compressed on client upload down to ~350KB with optimal WebP/JPEG encoding. This keeps storage footprint small and allows you to store over 2,600+ listings before reaching the free 1 GB threshold.',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 12,
                         color: isDark ? Colors.white70 : const Color(0xFF78350F),
                         height: 1.4,
@@ -2057,9 +2058,9 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.inter(fontSize: 11, color: mutedColor, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
-          Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: primaryTextColor)),
+          Text(value, style: TextStyle(fontFamily: 'ProximaNova', fontSize: 14, fontWeight: FontWeight.w800, color: primaryTextColor)),
         ],
       ),
     );
@@ -2121,7 +2122,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Center(
-                  child: Icon(Iconsax.shield_tick, size: 18, color: Color(0xFF10B981)),
+                  child: Icon(CupertinoIcons.shield_fill, size: 18, color: Color(0xFF10B981)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -2134,7 +2135,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                       children: [
                         Text(
                           r['title'] as String,
-                          style: GoogleFonts.inter(fontSize: 13.5, fontWeight: FontWeight.w800, color: primaryTextColor),
+                          style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13.5, fontWeight: FontWeight.w800, color: primaryTextColor),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -2144,7 +2145,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                           ),
                           child: Text(
                             r['status'] as String,
-                            style: GoogleFonts.inter(fontSize: 9.5, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
+                            style: TextStyle(fontFamily: 'ProximaNova', fontSize: 9.5, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
                           ),
                         ),
                       ],
@@ -2152,7 +2153,7 @@ class _AdminDatabaseAnalyticsTabState extends State<AdminDatabaseAnalyticsTab> {
                     const SizedBox(height: 4),
                     Text(
                       r['desc'] as String,
-                      style: GoogleFonts.inter(fontSize: 12, color: mutedColor, height: 1.35),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, color: mutedColor, height: 1.35),
                     ),
                   ],
                 ),

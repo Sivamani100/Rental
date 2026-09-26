@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -65,7 +66,7 @@ class MapScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(Iconsax.arrow_left_2, color: isDark ? Colors.white : Colors.black, size: 20),
+                  child: Icon(CupertinoIcons.chevron_left, color: isDark ? Colors.white : Colors.black, size: 20),
                 ),
               ),
             ),
@@ -107,7 +108,7 @@ class MapScreen extends StatelessWidget {
                         color: isDark ? const Color(0xFF1E2330) : Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Iconsax.location5, color: Colors.red, size: 40),
+                      child: const Icon(CupertinoIcons.location_solid, color: Colors.red, size: 40),
                     ),
                   ),
                 ],
@@ -142,7 +143,7 @@ class MapScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Iconsax.routing,
+                          CupertinoIcons.arrow_swap,
                           color: isDark ? Colors.black : Colors.white,
                           size: 20,
                         ),

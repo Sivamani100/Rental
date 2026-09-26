@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -34,25 +35,25 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   final List<_PromptIdea> _promptIdeas = [
     _PromptIdea(
-      icon: Iconsax.home_hashtag,
+      icon: CupertinoIcons.house_fill,
       title: "Bachelor Stay in Diwanchervu",
       subtitle: "Single room for bachelor under ₹10,000 clean & proper",
       prompt: "Which home is best for me in Diwanchervu as a bachelor wanting a clean single room for rental under 10000?",
     ),
     _PromptIdea(
-      icon: Iconsax.cup,
+      icon: CupertinoIcons.circle_grid_hex,
       title: "PG with 3-Time Food",
       subtitle: "Hostels with daily meals and wifi included",
       prompt: "Show me best PGs with food included and good cleanliness",
     ),
     _PromptIdea(
-      icon: Iconsax.building_3,
+      icon: CupertinoIcons.building_2_fill,
       title: "Family 2 BHK Rental",
       subtitle: "Spacious apartments with car parking & water",
       prompt: "Find clean 2 BHK family flats with car parking and no water problem",
     ),
     _PromptIdea(
-      icon: Iconsax.wallet_2,
+      icon: CupertinoIcons.creditcard_fill,
       title: "Budget Stays under ₹5,000",
       subtitle: "Affordable rooms and sharing options",
       prompt: "Show me affordable budget rooms under ₹5000 per month",
@@ -282,7 +283,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ),
               alignment: Alignment.center,
               child: Icon(
-                Iconsax.arrow_left_2,
+                CupertinoIcons.chevron_left,
                 color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
                 size: 19,
               ),
@@ -292,7 +293,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           // Center Title
           Text(
             'Rental Assistant',
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -316,7 +317,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ),
               alignment: Alignment.center,
               child: Icon(
-                Iconsax.add,
+                CupertinoIcons.add,
                 color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
                 size: 20,
               ),
@@ -347,7 +348,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             ),
             alignment: Alignment.center,
             child: const Icon(
-              Icons.auto_awesome_rounded,
+              CupertinoIcons.sparkles,
               color: Colors.black,
               size: 30,
             ),
@@ -355,7 +356,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           const SizedBox(height: 20),
           Text(
             "What property are you looking for?",
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 22,
               fontWeight: FontWeight.w800,
               color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
@@ -366,7 +367,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           const SizedBox(height: 8),
           Text(
             "Tell me your budget, locality, or requirements in plain words",
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 13.5,
               color: mutedColor,
               fontWeight: FontWeight.w500,
@@ -423,7 +424,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                               children: [
                                 Text(
                                   idea.title,
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
                                     fontSize: 14.5,
                                     fontWeight: FontWeight.w700,
@@ -433,7 +434,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                                 const SizedBox(height: 3),
                                 Text(
                                   idea.subtitle,
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     color: mutedColor,
                                     fontSize: 12,
                                     height: 1.3,
@@ -446,7 +447,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                           ),
                           const SizedBox(width: 6),
                           Icon(
-                            Iconsax.arrow_right_3,
+                            CupertinoIcons.chevron_right,
                             size: 16,
                             color: mutedColor,
                           ),
@@ -533,7 +534,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Iconsax.home_2, color: Color(0xFFFFEB3A), size: 15),
+                    const Icon(CupertinoIcons.house_fill, color: AppTheme.swiggyOrange, size: 15),
                     const SizedBox(width: 6),
                     Text(
                       msg.recommendedProperties!.length == 1
@@ -601,11 +602,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
                         imageUrl: prop.imageUrls.first,
                         fit: BoxFit.cover,
                         errorWidget: (_, _, _) => const Center(
-                          child: Icon(Iconsax.gallery_slash, size: 24, color: Colors.grey),
+                          child: Icon(CupertinoIcons.photo, size: 24, color: Colors.grey),
                         ),
                       )
                     : const Center(
-                        child: Icon(Iconsax.home, size: 28, color: Colors.grey),
+                        child: Icon(CupertinoIcons.house_fill, size: 28, color: Colors.grey),
                       ),
               ),
               // Fully Rounded Type Badge
@@ -621,7 +622,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   child: Text(
                     prop.type,
                     style: const TextStyle(
-                      color: Color(0xFFFFEB3A),
+                      color: AppTheme.swiggyOrange,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -635,7 +636,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFEB3A),
+                    color: AppTheme.swiggyOrange,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -666,7 +667,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                             WidgetSpan(
                               alignment: PlaceholderAlignment.middle,
                               child: Icon(
-                                Iconsax.verify5,
+                                CupertinoIcons.check_mark_circled_solid,
                                 size: 15,
                                 color: isDark ? Colors.white : Colors.black,
                               ),
@@ -688,7 +689,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 Row(
                   children: [
                     Icon(
-                      Iconsax.location,
+                      CupertinoIcons.location_solid,
                       size: 12,
                       color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
                     ),
@@ -715,14 +716,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 7.5),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFEB3A),
+                      color: AppTheme.swiggyOrange,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     alignment: Alignment.center,
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Iconsax.eye, size: 14, color: Colors.black),
+                        Icon(CupertinoIcons.eye_solid, size: 14, color: Colors.black),
                         SizedBox(width: 5),
                         Text(
                           'View Details',
@@ -773,7 +774,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 const Text(
                   '• ',
                   style: TextStyle(
-                    color: Color(0xFFFFEB3A),
+                    color: AppTheme.swiggyOrange,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -877,7 +878,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             height: 12,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFFEB3A)),
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.swiggyOrange),
             ),
           ),
           const SizedBox(width: 8),
@@ -939,7 +940,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                             width: 1.5,
                           ),
                         ),
-                        child: const Icon(Icons.close, size: 12, color: Colors.white),
+                        child: const Icon(CupertinoIcons.clear, size: 12, color: Colors.white),
                       ),
                     ),
                   ),
@@ -948,32 +949,38 @@ class _AiChatScreenState extends State<AiChatScreen> {
             ),
           ],
 
-          // Input pill
+                              // ChatGPT iOS App Style Input Area
           Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
             decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-                width: 1,
-              ),
+              color: isDark ? AppTheme.darkCard : Colors.white,
+              borderRadius: BorderRadius.circular(30),
             ),
-            padding: const EdgeInsets.fromLTRB(8, 4, 6, 4),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Clean '+' button for images/files
-                BouncingButton(
-                  onTap: _pickImage,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    child: Icon(
-                      Iconsax.add,
-                      color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
-                      size: 22,
+                // Clean '+' button inside the pill
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: BouncingButton(
+                    onTap: _pickImage,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDark ? const Color(0xFF333338) : const Color(0xFFF2F2F7),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        CupertinoIcons.add,
+                        color: isDark ? AppTheme.darkTextPrimary : Colors.black87,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 8),
 
                 // Text field
                 Expanded(
@@ -981,56 +988,53 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     controller: _textController,
                     focusNode: _focusNode,
                     minLines: 1,
-                    maxLines: 4,
+                    maxLines: 5,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _handleSend(),
-                    style: GoogleFonts.inter(
-                      color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w500,
+                    style: TextStyle(fontFamily: 'ProximaNova', 
+                      color: isDark ? AppTheme.darkTextPrimary : Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Message Rental Assistant...',
-                      hintStyle: GoogleFonts.inter(
+                      filled: false,
+                      hintText: 'Message',
+                      hintStyle: TextStyle(fontFamily: 'ProximaNova', 
                         color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
-                        fontSize: 14,
+                        fontSize: 16,
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.only(top: 10, bottom: 10),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
 
-                // Send button
-                BouncingButton(
-                  onTap: _hasInputText ? () => _handleSend() : null,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: _hasInputText
-                          ? AppTheme.primaryYellow
-                          : (isDark ? AppTheme.darkCardElevated : const Color(0xFFE5E5EA)),
-                      shape: BoxShape.circle,
-                      boxShadow: _hasInputText
-                          ? [
-                              BoxShadow(
-                                color: AppTheme.primaryYellow.withValues(alpha: 0.4),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    alignment: Alignment.center,
-                    child: Icon(
-                      Iconsax.arrow_up_3,
-                      color: _hasInputText
-                          ? Colors.black
-                          : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
-                      size: 18,
+                // Send button inside the pill
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: BouncingButton(
+                    onTap: _hasInputText ? () => _handleSend() : null,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: _hasInputText
+                            ? (isDark ? Colors.white : Colors.black)
+                            : (isDark ? const Color(0xFF333338) : const Color(0xFFE5E5EA)),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.arrow_upward_rounded,
+                        color: _hasInputText
+                            ? (isDark ? Colors.black : Colors.white)
+                            : (isDark ? Colors.white54 : Colors.white),
+                        size: 18,
+                      ),
                     ),
                   ),
                 ),
@@ -1040,7 +1044,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           const SizedBox(height: 8),
           Text(
             'Rental AI can make mistakes. Please reverify important details.',
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 11,
               color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
               fontWeight: FontWeight.w400,

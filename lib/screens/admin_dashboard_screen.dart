@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -86,67 +87,67 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       name: 'iPhone 13 Pro Max',
       category: 'iOS',
       device: Devices.ios.iPhone13ProMax,
-      icon: Icons.phone_iphone,
+      icon: CupertinoIcons.device_phone_portrait,
     ),
     (
       name: 'iPhone 13',
       category: 'iOS',
       device: Devices.ios.iPhone13,
-      icon: Icons.phone_iphone,
+      icon: CupertinoIcons.device_phone_portrait,
     ),
     (
       name: 'iPhone 13 Mini',
       category: 'iOS',
       device: Devices.ios.iPhone13Mini,
-      icon: Icons.phone_iphone,
+      icon: CupertinoIcons.device_phone_portrait,
     ),
     (
       name: 'iPhone SE',
       category: 'iOS',
       device: Devices.ios.iPhoneSE,
-      icon: Icons.phone_iphone,
+      icon: CupertinoIcons.device_phone_portrait,
     ),
     (
       name: 'Samsung Galaxy S20',
       category: 'Android',
       device: Devices.android.samsungGalaxyS20,
-      icon: Icons.phone_android,
+      icon: CupertinoIcons.device_phone_portrait,
     ),
     (
       name: 'Samsung Note 20 Ultra',
       category: 'Android',
       device: Devices.android.samsungGalaxyNote20Ultra,
-      icon: Icons.phone_android,
+      icon: CupertinoIcons.device_phone_portrait,
     ),
     (
       name: 'OnePlus 8 Pro',
       category: 'Android',
       device: Devices.android.onePlus8Pro,
-      icon: Icons.phone_android,
+      icon: CupertinoIcons.device_phone_portrait,
     ),
     (
       name: 'Samsung Galaxy A50',
       category: 'Android',
       device: Devices.android.samsungGalaxyA50,
-      icon: Icons.phone_android,
+      icon: CupertinoIcons.device_phone_portrait,
     ),
     (
       name: 'Sony Xperia 1 II',
       category: 'Android',
       device: Devices.android.sonyXperia1II,
-      icon: Icons.phone_android,
+      icon: CupertinoIcons.device_phone_portrait,
     ),
     (
       name: 'iPad Pro 11"',
       category: 'Tablet',
       device: Devices.ios.iPadPro11Inches,
-      icon: Icons.tablet_mac,
+      icon: CupertinoIcons.device_laptop,
     ),
     (
       name: 'iPad Air 4',
       category: 'Tablet',
       device: Devices.ios.iPadAir4,
-      icon: Icons.tablet_mac,
+      icon: CupertinoIcons.device_laptop,
     ),
   ];
 
@@ -873,7 +874,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 Expanded(
                                   child: Text(
                                     dev.name,
-                                    style: GoogleFonts.inter(
+                                    style: TextStyle(fontFamily: 'ProximaNova', 
                                       fontSize: 12,
                                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                       color: isSelected
@@ -890,7 +891,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   ),
                                   child: Text(
                                     dev.category,
-                                    style: GoogleFonts.inter(
+                                    style: TextStyle(fontFamily: 'ProximaNova', 
                                       fontSize: 9,
                                       fontWeight: FontWeight.w600,
                                       color: isDark ? Colors.white60 : Colors.black54,
@@ -899,7 +900,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 ),
                                 if (isSelected) ...[
                                   const SizedBox(width: 6),
-                                  const Icon(Icons.check, size: 14, color: Color(0xFFFFEB3A)),
+                                  const Icon(CupertinoIcons.checkmark_alt, size: 14, color: Color(0xFFFFEB3A)),
                                 ],
                               ],
                             ),
@@ -926,7 +927,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             const SizedBox(width: 6),
                             Text(
                               activeDevice.name,
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w700,
                                 color: isDark ? Colors.white : Colors.black87,
@@ -934,7 +935,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                             const SizedBox(width: 4),
                             Icon(
-                              Icons.keyboard_arrow_down_rounded,
+                              CupertinoIcons.chevron_down,
                               size: 14,
                               color: isDark ? Colors.white70 : Colors.black54,
                             ),
@@ -950,7 +951,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                       icon: Icon(
-                        _isFrameVisible ? Icons.crop_portrait_rounded : Icons.crop_free_rounded,
+                        _isFrameVisible ? CupertinoIcons.crop : CupertinoIcons.crop,
                         size: 15,
                         color: _isFrameVisible
                             ? AppTheme.primaryYellow
@@ -971,7 +972,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                       icon: Icon(
-                        Icons.screen_rotation_outlined,
+                        CupertinoIcons.rotate_right,
                         size: 15,
                         color: _previewOrientation == Orientation.landscape
                             ? AppTheme.primaryYellow
@@ -994,7 +995,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                       icon: Icon(
-                        _previewDarkMode ? Iconsax.sun_1 : Iconsax.moon,
+                        _previewDarkMode ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
                         size: 15,
                         color: _previewDarkMode ? Colors.amber : (isDark ? Colors.white70 : Colors.black87),
                       ),
@@ -1007,7 +1008,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     IconButton(
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                      icon: Icon(Icons.refresh_rounded, size: 16, color: isDark ? Colors.white70 : Colors.black87),
+                      icon: Icon(CupertinoIcons.refresh_thick, size: 16, color: isDark ? Colors.white70 : Colors.black87),
                       tooltip: 'Restart & Reload Preview',
                       onPressed: () {
                         setState(() => _previewKeyIndex++);
@@ -1020,7 +1021,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     IconButton(
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                      icon: const Icon(Icons.close, size: 16),
+                      icon: const Icon(CupertinoIcons.clear, size: 16),
                       tooltip: 'Close Live Preview Panel',
                       onPressed: () => setState(() => _showLiveUserAppPreview = false),
                     ),
@@ -1073,11 +1074,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         elevation: 1,
         title: Row(
           children: [
-            Image.asset('assets/logo.png', width: 26, height: 26, errorBuilder: (_, __, ___) => const Icon(Icons.apartment)),
+            Image.asset('assets/logo.png', width: 26, height: 26, errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.building_2_fill)),
             const SizedBox(width: 8),
             Text(
               'Admin Portal',
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: isDark ? Colors.white : Colors.black87,
@@ -1087,14 +1088,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Iconsax.refresh, color: isDark ? Colors.white : Colors.black87),
+            icon: Icon(CupertinoIcons.refresh_thick, color: isDark ? Colors.white : Colors.black87),
             onPressed: () {
               _fetchProperties();
               _fetchNotificationHistory();
             },
           ),
           IconButton(
-            icon: const Icon(Iconsax.logout, color: Colors.redAccent),
+            icon: const Icon(CupertinoIcons.square_arrow_right, color: Colors.redAccent),
             onPressed: _handleLogout,
           ),
         ],
@@ -1108,10 +1109,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         selectedIndex: _selectedTabIndex.clamp(0, 3),
         onDestinationSelected: (idx) => setState(() => _selectedTabIndex = idx),
         destinations: const [
-          NavigationDestination(icon: Icon(Iconsax.category), label: 'Overview'),
-          NavigationDestination(icon: Icon(Iconsax.buildings), label: 'Properties'),
-          NavigationDestination(icon: Icon(Iconsax.chart_21), label: 'Radar'),
-          NavigationDestination(icon: Icon(Iconsax.notification_bing), label: 'Broadcasts'),
+          NavigationDestination(icon: Icon(CupertinoIcons.square_grid_2x2_fill), label: 'Overview'),
+          NavigationDestination(icon: Icon(CupertinoIcons.building_2_fill), label: 'Properties'),
+          NavigationDestination(icon: Icon(CupertinoIcons.chart_bar_alt_fill), label: 'Radar'),
+          NavigationDestination(icon: Icon(CupertinoIcons.bell_fill), label: 'Broadcasts'),
         ],
       ),
     );
@@ -1174,7 +1175,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             height: 22,
                             fit: BoxFit.contain,
                             errorBuilder: (_, __, ___) => Icon(
-                              Icons.home_rounded,
+                              CupertinoIcons.house_fill,
                               color: isDark ? Colors.black : Colors.white,
                               size: 19,
                             ),
@@ -1207,7 +1208,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               height: 22,
                               fit: BoxFit.contain,
                               errorBuilder: (_, __, ___) => Icon(
-                                Icons.home_rounded,
+                                CupertinoIcons.house_fill,
                                 color: isDark ? Colors.black : Colors.white,
                                 size: 19,
                               ),
@@ -1219,7 +1220,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Expanded(
                         child: Text(
                           'RENTAL APP',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 13.5,
                             fontWeight: FontWeight.w900,
                             color: primaryTextColor,
@@ -1229,7 +1230,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                       Icon(
-                        Icons.keyboard_arrow_down_rounded,
+                        CupertinoIcons.chevron_down,
                         size: 16,
                         color: mutedColor,
                       ),
@@ -1247,7 +1248,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildUtilityAction(
-                icon: Iconsax.search_normal_1,
+                icon: CupertinoIcons.search,
                 label: 'Search',
                 isCollapsed: isCollapsed,
                 isDark: isDark,
@@ -1257,7 +1258,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               const SizedBox(height: 4),
               _buildUtilityAction(
-                icon: Iconsax.notification,
+                icon: CupertinoIcons.bell_fill,
                 label: 'Notification',
                 badgeCount: pendingCount > 0 ? pendingCount : null,
                 isCollapsed: isCollapsed,
@@ -1282,7 +1283,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: Center(
                     child: Text(
                       'MENU',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 8.5,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 1.2,
@@ -1295,7 +1296,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   padding: const EdgeInsets.only(left: 10, bottom: 4),
                   child: Text(
                     'MENU',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.3,
@@ -1312,7 +1313,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               _buildModernSidebarItem(
                 index: 0,
-                icon: Iconsax.home_2,
+                icon: CupertinoIcons.house_fill,
                 label: 'Dashboard',
                 isCollapsed: isCollapsed,
                 isDark: isDark,
@@ -1321,7 +1322,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 4),
               _buildModernSidebarItem(
                 index: 1,
-                icon: Iconsax.buildings_2,
+                icon: CupertinoIcons.building_2_fill,
                 label: 'Property Approvals',
                 badgeCount: pendingCount > 0 ? pendingCount : null,
                 isCollapsed: isCollapsed,
@@ -1331,7 +1332,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 4),
               _buildModernSidebarItem(
                 index: 2,
-                icon: Iconsax.chart_21,
+                icon: CupertinoIcons.chart_bar_alt_fill,
                 label: 'Demand Radar',
                 isHighlight: true,
                 isCollapsed: isCollapsed,
@@ -1341,7 +1342,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 4),
               _buildModernSidebarItem(
                 index: 3,
-                icon: Iconsax.notification_bing,
+                icon: CupertinoIcons.bell_fill,
                 label: 'Push Broadcasts',
                 isCollapsed: isCollapsed,
                 isDark: isDark,
@@ -1350,7 +1351,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 4),
               _buildModernSidebarItem(
                 index: 4,
-                icon: Iconsax.people,
+                icon: CupertinoIcons.person_3_fill,
                 label: 'Landlords & Users',
                 isCollapsed: isCollapsed,
                 isDark: isDark,
@@ -1361,7 +1362,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
               _buildModernSidebarItem(
                 index: 5,
-                icon: Iconsax.flag,
+                icon: CupertinoIcons.flag_fill,
                 label: 'User Reports',
                 badgeCount: _userReports.where((r) => r['status'] == 'pending').length > 0
                     ? _userReports.where((r) => r['status'] == 'pending').length
@@ -1375,7 +1376,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
               _buildModernSidebarItem(
                 index: 7,
-                icon: Iconsax.data,
+                icon: CupertinoIcons.chart_bar_fill,
                 label: 'Database & Storage',
                 isCollapsed: isCollapsed,
                 isDark: isDark,
@@ -1411,7 +1412,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                             child: Center(
                               child: Icon(
-                                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                                isDark ? CupertinoIcons.sun_max : CupertinoIcons.moon,
                                 size: 19,
                                 color: isDark ? Colors.amber : const Color(0xFF334155),
                               ),
@@ -1439,7 +1440,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                             child: Center(
                               child: Icon(
-                                Iconsax.sidebar_right,
+                                CupertinoIcons.sidebar_right,
                                 size: 19,
                                 color: isDark ? Colors.white70 : const Color(0xFF334155),
                               ),
@@ -1482,7 +1483,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     : null,
                               ),
                               child: Icon(
-                                Icons.light_mode_outlined,
+                                CupertinoIcons.sun_max,
                                 size: 14,
                                 color: !isDark ? Colors.black87 : Colors.white54,
                               ),
@@ -1508,7 +1509,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     : null,
                               ),
                               child: Icon(
-                                Icons.dark_mode_outlined,
+                                CupertinoIcons.moon,
                                 size: 14,
                                 color: isDark ? Colors.amber : const Color(0xFF64748B),
                               ),
@@ -1532,7 +1533,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
-                            Iconsax.sidebar_left,
+                            CupertinoIcons.sidebar_left,
                             size: 16,
                             color: isDark ? Colors.white70 : const Color(0xFF334155),
                           ),
@@ -1571,11 +1572,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           children: [
                             Text(
                               _adminDisplayName,
-                              style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13),
+                              style: TextStyle(fontFamily: 'ProximaNova', fontWeight: FontWeight.w700, fontSize: 13),
                             ),
                             Text(
                               _adminEmail,
-                              style: GoogleFonts.inter(fontSize: 11, color: mutedColor),
+                              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor),
                             ),
                           ],
                         ),
@@ -1585,7 +1586,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         value: 'logout',
                         child: Row(
                           children: [
-                            Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
+                            Icon(CupertinoIcons.square_arrow_right, color: Colors.redAccent, size: 16),
                             SizedBox(width: 8),
                             Text('Log Out', style: TextStyle(color: Colors.redAccent)),
                           ],
@@ -1603,7 +1604,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: _adminAvatarUrl == null
                             ? Text(
                                 _adminInitial,
-                                style: GoogleFonts.inter(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   color: Colors.black,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 13,
@@ -1627,7 +1628,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           child: _adminAvatarUrl == null
                               ? Text(
                                   _adminInitial,
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     color: Colors.black,
                                     fontWeight: FontWeight.w800,
                                     fontSize: 12,
@@ -1645,7 +1646,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         children: [
                           Text(
                             _adminDisplayName,
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
                               color: primaryTextColor,
@@ -1654,7 +1655,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                           Text(
                             _adminEmail,
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 10.5,
                               color: mutedColor,
                             ),
@@ -1669,7 +1670,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       color: isDark ? const Color(0xFF1E2330) : Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       icon: Icon(
-                        Icons.more_vert_rounded,
+                        CupertinoIcons.ellipsis_vertical,
                         size: 16,
                         color: mutedColor,
                       ),
@@ -1685,11 +1686,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             children: [
                               Text(
                                 _adminDisplayName,
-                                style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13),
+                                style: TextStyle(fontFamily: 'ProximaNova', fontWeight: FontWeight.w700, fontSize: 13),
                               ),
                               Text(
                                 _adminEmail,
-                                style: GoogleFonts.inter(fontSize: 11, color: mutedColor),
+                                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor),
                               ),
                             ],
                           ),
@@ -1699,7 +1700,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           value: 'logout',
                           child: Row(
                             children: [
-                              Icon(Icons.logout_rounded, color: Colors.redAccent, size: 16),
+                              Icon(CupertinoIcons.square_arrow_right, color: Colors.redAccent, size: 16),
                               SizedBox(width: 8),
                               Text('Log Out', style: TextStyle(color: Colors.redAccent)),
                             ],
@@ -1788,7 +1789,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Expanded(
                 child: Text(
                   label,
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
                     color: mutedColor,
@@ -1804,7 +1805,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   child: Text(
                     badgeCount.toString(),
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 9.5,
                       fontWeight: FontWeight.w800,
                       color: Colors.black,
@@ -1913,7 +1914,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Expanded(
                 child: Text(
                   label,
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 13,
                     fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                     color: isSelected ? activeTextColor : inactiveText,
@@ -1931,7 +1932,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   child: Text(
                     badgeCount.toString(),
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       color: isSelected ? AppTheme.primaryYellow : Colors.black,
@@ -1949,7 +1950,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                     child: Text(
                       'LIVE',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF10B981),
@@ -1989,7 +1990,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Expanded(
             child: Text(
               _getTabTitle(_selectedTabIndex),
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 14.5,
                 fontWeight: FontWeight.w700,
                 color: primaryTextColor,
@@ -2031,14 +2032,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Iconsax.mobile,
+                    CupertinoIcons.device_phone_portrait,
                     size: 15,
                     color: _showLiveUserAppPreview ? const Color(0xFF10B981) : mutedColor,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     _showLiveUserAppPreview ? 'Hide App' : 'User App',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       color: _showLiveUserAppPreview ? const Color(0xFF10B981) : (isDark ? Colors.white70 : const Color(0xFF334155)),
@@ -2068,11 +2069,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Iconsax.document_download, size: 15, color: mutedColor),
+                  Icon(CupertinoIcons.arrow_down_doc, size: 15, color: mutedColor),
                   const SizedBox(width: 5),
                   Text(
                     'CSV',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.white70 : const Color(0xFF334155),
@@ -2098,11 +2099,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Iconsax.notification_bing, size: 15, color: Colors.black),
+                  const Icon(CupertinoIcons.bell_fill, size: 15, color: Colors.black),
                   const SizedBox(width: 6),
                   Text(
                     'Broadcast',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 12.5,
                       fontWeight: FontWeight.w800,
                       color: Colors.black,
@@ -2127,7 +2128,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 width: 34,
                 height: 34,
                 alignment: Alignment.center,
-                child: Icon(Icons.refresh_rounded, color: mutedColor, size: 18),
+                child: Icon(CupertinoIcons.refresh_thick, color: mutedColor, size: 18),
               ),
             ),
           ),
@@ -2144,7 +2145,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 height: 34,
                 alignment: Alignment.center,
                 child: Icon(
-                  isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                  isDark ? CupertinoIcons.sun_max : CupertinoIcons.moon,
                   color: isDark ? Colors.amber : mutedColor,
                   size: 18,
                 ),
@@ -2238,7 +2239,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       color: Colors.redAccent.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Iconsax.flag, color: Colors.redAccent, size: 24),
+                    child: const Icon(CupertinoIcons.flag_fill, color: Colors.redAccent, size: 24),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -2249,7 +2250,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           children: [
                             Text(
                               'User Reported Listings',
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                                 color: primaryTextColor,
@@ -2265,7 +2266,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 ),
                                 child: Text(
                                   '$pendingReports Pending',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
@@ -2283,7 +2284,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Iconsax.refresh, color: isDark ? Colors.white70 : Colors.black87),
+                    icon: Icon(CupertinoIcons.refresh_thick, color: isDark ? Colors.white70 : Colors.black87),
                     onPressed: _fetchUserReports,
                     tooltip: 'Refresh Reports',
                   ),
@@ -2310,11 +2311,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 child: Column(
                   children: [
-                    Icon(Iconsax.shield_tick, size: 48, color: Colors.green.shade400),
+                    Icon(CupertinoIcons.shield_fill, size: 48, color: Colors.green.shade400),
                     const SizedBox(height: 12),
                     Text(
                       'No Reported Listings',
-                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: primaryTextColor),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 16, fontWeight: FontWeight.bold, color: primaryTextColor),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -2362,7 +2363,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 color: Colors.redAccent.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Iconsax.danger, color: Colors.redAccent, size: 18),
+                              child: const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.redAccent, size: 18),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -2371,7 +2372,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 children: [
                                   Text(
                                     r['property_title'] ?? 'Property Listing',
-                                    style: GoogleFonts.inter(
+                                    style: TextStyle(fontFamily: 'ProximaNova', 
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
                                       color: primaryTextColor,
@@ -2421,11 +2422,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Iconsax.info_circle, color: Colors.redAccent, size: 14),
+                              const Icon(CupertinoIcons.info_circle_fill, color: Colors.redAccent, size: 14),
                               const SizedBox(width: 6),
                               Text(
                                 'Reported Reason: ${r['reason']}',
-                                style: GoogleFonts.inter(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: isDark ? const Color(0xFFFCA5A5) : Colors.red.shade900,
@@ -2461,11 +2462,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 },
                                 child: Row(
                                   children: [
-                                    const Icon(Iconsax.call, size: 14, color: AppTheme.primaryYellow),
+                                    const Icon(CupertinoIcons.phone_fill, size: 14, color: AppTheme.primaryYellow),
                                     const SizedBox(width: 4),
                                     Text(
                                       'Owner: ${r['owner_phone']}',
-                                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: primaryTextColor),
+                                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, fontWeight: FontWeight.bold, color: primaryTextColor),
                                     ),
                                   ],
                                 ),
@@ -2564,7 +2565,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     border: Border.all(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(Iconsax.radar_2, color: Color(0xFFFFEB3A), size: 24),
+                  child: const Icon(CupertinoIcons.dot_radiowaves_right, color: Color(0xFFFFEB3A), size: 24),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -2575,7 +2576,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         children: [
                           Text(
                             'Rental Platform Operations Center',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
                               color: primaryTextColor,
@@ -2602,7 +2603,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 const SizedBox(width: 5),
                                 Text(
                                   'LIVE REALTIME',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     color: const Color(0xFF10B981),
@@ -2616,7 +2617,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Direct owner listings, verification moderation, locality demand radar, and tenant broadcast.',
-                        style: GoogleFonts.inter(fontSize: 13, color: mutedColor),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: mutedColor),
                       ),
                     ],
                   ),
@@ -2627,10 +2628,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     if (pendingCount > 0)
                       ElevatedButton.icon(
                         onPressed: _batchApproveAllPending,
-                        icon: const Icon(Iconsax.tick_circle, size: 16),
+                        icon: const Icon(CupertinoIcons.checkmark_alt, size: 16),
                         label: Text(
                           'Approve All ($pendingCount)',
-                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, fontWeight: FontWeight.w700),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF10B981),
@@ -2642,10 +2643,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                     ElevatedButton.icon(
                       onPressed: () => setState(() => _selectedTabIndex = 3),
-                      icon: const Icon(Iconsax.notification_bing, size: 16),
+                      icon: const Icon(CupertinoIcons.bell_fill, size: 16),
                       label: Text(
                         'Push Broadcast',
-                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, fontWeight: FontWeight.w700),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryYellow,
@@ -2682,7 +2683,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: '$availableCount Available • $occupiedCount Occupied',
                     badgeLabel: '100% Active',
                     badgeColor: const Color(0xFF10B981),
-                    icon: Iconsax.building_4,
+                    icon: CupertinoIcons.building_2_fill,
                     iconColor: AppTheme.primaryYellow,
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -2697,7 +2698,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: pendingCount > 0 ? '$pendingCount awaiting review' : 'All submissions verified',
                     badgeLabel: pendingCount > 0 ? 'Action Needed' : 'All Caught Up',
                     badgeColor: pendingCount > 0 ? AppTheme.primaryYellow : const Color(0xFF10B981),
-                    icon: Iconsax.verify,
+                    icon: CupertinoIcons.check_mark_circled_solid,
                     iconColor: pendingCount > 0 ? AppTheme.primaryYellow : const Color(0xFF10B981),
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -2715,7 +2716,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: 'Active Municipal Zones',
                     badgeLabel: 'Active Coverage',
                     badgeColor: const Color(0xFF3B82F6),
-                    icon: Iconsax.location,
+                    icon: CupertinoIcons.location_solid,
                     iconColor: const Color(0xFF3B82F6),
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -2730,7 +2731,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: 'Real room & exterior photos',
                     badgeLabel: '100% Verified',
                     badgeColor: const Color(0xFF8B5CF6),
-                    icon: Iconsax.camera,
+                    icon: CupertinoIcons.camera_fill,
                     iconColor: const Color(0xFF8B5CF6),
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -2849,7 +2850,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                       color: mutedColor,
@@ -2871,7 +2872,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               // Middle: BIG BOLD NUMBER
               Text(
                 value,
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                   color: primaryTextColor,
@@ -2886,7 +2887,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Expanded(
                     child: Text(
                       subtitle,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: mutedColor,
@@ -2904,7 +2905,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                     child: Text(
                       badgeLabel,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: badgeColor,
@@ -2961,11 +2962,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.location, size: 17, color: Color(0xFF3B82F6)),
+                  const Icon(CupertinoIcons.location_solid, size: 17, color: Color(0xFF3B82F6)),
                   const SizedBox(width: 8),
                   Text(
                     'Active Localities & Coverage',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -2977,7 +2978,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 onTap: () => setState(() => _selectedTabIndex = 6),
                 child: Text(
                   'Manage Localities ↗',
-                  style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: const Color(0xFF3B82F6)),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w700, color: const Color(0xFF3B82F6)),
                 ),
               ),
             ],
@@ -3018,7 +3019,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           const SizedBox(width: 8),
                           Text(
                             locName,
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 13.5,
                               fontWeight: FontWeight.w800,
                               color: primaryTextColor,
@@ -3033,14 +3034,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                             child: Text(
                               'Active Zone',
-                              style: GoogleFonts.inter(fontSize: 9.5, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
+                              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 9.5, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
                             ),
                           ),
                         ],
                       ),
                       Text(
                         '$locCount Properties ($pctLabel%)',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFF10B981),
@@ -3066,7 +3067,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(height: 4),
           Text(
             'Configured Areas Ready For Next Listings:',
-            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: mutedColor),
+            style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, fontWeight: FontWeight.w700, color: mutedColor),
           ),
           const SizedBox(height: 8),
 
@@ -3083,7 +3084,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 child: Text(
                   loc,
-                  style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: mutedColor),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, fontWeight: FontWeight.w600, color: mutedColor),
                 ),
               );
             }).toList(),
@@ -3143,11 +3144,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.category, size: 17, color: Color(0xFF10B981)),
+                  const Icon(CupertinoIcons.square_grid_2x2_fill, size: 17, color: Color(0xFF10B981)),
                   const SizedBox(width: 8),
                   Text(
                     'Inventory Breakdown & Rent Tiers',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -3157,7 +3158,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               Text(
                 '$total Live Units',
-                style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w700, color: mutedColor),
               ),
             ],
           ),
@@ -3195,7 +3196,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
           Text(
             'Live Rent Tiers in Database',
-            style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: mutedColor),
+            style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w700, color: mutedColor),
           ),
           const SizedBox(height: 8),
 
@@ -3240,11 +3241,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.shield_tick, size: 17, color: Color(0xFF10B981)),
+                  const Icon(CupertinoIcons.shield_fill, size: 17, color: Color(0xFF10B981)),
                   const SizedBox(width: 8),
                   Text(
                     'Platform Quality & Security Rules',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -3260,7 +3261,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 child: Text(
                   '100% Active',
-                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
                 ),
               ),
             ],
@@ -3268,7 +3269,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(height: 12),
 
           _buildGuardrailItem(
-            icon: Iconsax.user_tick,
+            icon: CupertinoIcons.person_fill,
             title: 'Direct Landlord Connect',
             subtitle: 'Direct WhatsApp & Phone without intermediary broker commissions.',
             color: const Color(0xFF10B981),
@@ -3278,7 +3279,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           const SizedBox(height: 8),
           _buildGuardrailItem(
-            icon: Iconsax.camera,
+            icon: CupertinoIcons.camera_fill,
             title: 'Room & Building Photos Enforced',
             subtitle: 'All 19 active properties contain verified real visual photos.',
             color: AppTheme.primaryYellow,
@@ -3288,7 +3289,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           const SizedBox(height: 8),
           _buildGuardrailItem(
-            icon: Iconsax.verify,
+            icon: CupertinoIcons.check_mark_circled_solid,
             title: 'Admin Verification Gatekeeper',
             subtitle: 'New submissions are held in pending queue until approved.',
             color: const Color(0xFF3B82F6),
@@ -3330,11 +3331,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Text(
                 title,
-                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: primaryTextColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, fontWeight: FontWeight.w700, color: primaryTextColor),
               ),
               Text(
                 subtitle,
-                style: GoogleFonts.inter(fontSize: 10.5, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10.5, color: mutedColor),
               ),
             ],
           ),
@@ -3355,13 +3356,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Expanded(
           child: Text(
             label,
-            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: primaryTextColor),
+            style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, fontWeight: FontWeight.w600, color: primaryTextColor),
             overflow: TextOverflow.ellipsis,
           ),
         ),
         Text(
           '$count units ($pct%)',
-          style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: color),
+          style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w700, color: color),
         ),
       ],
     );
@@ -3378,10 +3379,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(range, style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w800, color: color)),
+          Text(range, style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w800, color: color)),
           const SizedBox(height: 1),
-          Text(count, style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w700)),
-          Text(label, style: GoogleFonts.inter(fontSize: 9, color: const Color(0xFF94A3B8)), maxLines: 1),
+          Text(count, style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10.5, fontWeight: FontWeight.w700)),
+          Text(label, style: TextStyle(fontFamily: 'ProximaNova', fontSize: 9, color: const Color(0xFF94A3B8)), maxLines: 1),
         ],
       ),
     );
@@ -3410,11 +3411,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.buildings, size: 17, color: Color(0xFF3B82F6)),
+                  const Icon(CupertinoIcons.building_2_fill, size: 17, color: Color(0xFF3B82F6)),
                   const SizedBox(width: 8),
                   Text(
                     'Recently Verified Listings',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -3426,7 +3427,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 onTap: () => setState(() => _selectedTabIndex = 1),
                 child: Text(
                   'View All (${_properties.length}) ↗',
-                  style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppTheme.primaryYellow),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w700, color: AppTheme.primaryYellow),
                 ),
               ),
             ],
@@ -3438,7 +3439,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 'No properties in database yet.',
-                style: GoogleFonts.inter(fontSize: 12, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, color: mutedColor),
               ),
             )
           else
@@ -3471,7 +3472,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               width: 38,
                               height: 38,
                               color: const Color(0xFFE2E8F0),
-                              child: const Icon(Iconsax.image, size: 16, color: Color(0xFF94A3B8)),
+                              child: const Icon(CupertinoIcons.photo, size: 16, color: Color(0xFF94A3B8)),
                             ),
                           ),
                         ),
@@ -3482,7 +3483,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             children: [
                               Text(
                                 prop.title,
-                                style: GoogleFonts.inter(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: primaryTextColor,
@@ -3492,7 +3493,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ),
                               Text(
                                 '₹${prop.price}/mo • $location',
-                                style: GoogleFonts.inter(fontSize: 11, color: mutedColor),
+                                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -3508,7 +3509,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                           child: Text(
                             prop.type,
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 9.5,
                               fontWeight: FontWeight.w800,
                               color: const Color(0xFF10B981),
@@ -3595,19 +3596,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         child: TextField(
                           onChanged: (val) => setState(() => _propertySearchQuery = val),
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             color: primaryTextColor,
                             fontSize: 13.5,
                             fontWeight: FontWeight.w500,
                           ),
                           decoration: InputDecoration(
                             hintText: 'Search properties by Title, Owner Phone, Locality, or ID...',
-                            hintStyle: GoogleFonts.inter(
+                            hintStyle: TextStyle(fontFamily: 'ProximaNova', 
                               color: mutedColor.withValues(alpha: 0.75),
                               fontSize: 13,
                             ),
                             prefixIcon: Icon(
-                              Iconsax.search_normal_1,
+                              CupertinoIcons.search,
                               size: 17,
                               color: mutedColor,
                             ),
@@ -3635,10 +3636,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       onSelected: (val) => setState(() => _typeFilter = val),
                       itemBuilder: (context) {
                         return [
-                          {'val': 'all', 'label': 'All Types', 'icon': Iconsax.category},
-                          {'val': 'Rental', 'label': 'House / Flat', 'icon': Iconsax.buildings},
-                          {'val': 'PG', 'label': 'Hostel / PG', 'icon': Iconsax.user_tag},
-                          {'val': 'Commercial', 'label': 'Commercial', 'icon': Iconsax.shop},
+                          {'val': 'all', 'label': 'All Types', 'icon': CupertinoIcons.square_grid_2x2_fill},
+                          {'val': 'Rental', 'label': 'House / Flat', 'icon': CupertinoIcons.building_2_fill},
+                          {'val': 'PG', 'label': 'Hostel / PG', 'icon': CupertinoIcons.person_fill},
+                          {'val': 'Commercial', 'label': 'Commercial', 'icon': CupertinoIcons.tag_fill},
                         ].map((item) {
                           final isSelected = _typeFilter == item['val'];
                           return PopupMenuItem<String>(
@@ -3655,7 +3656,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 Expanded(
                                   child: Text(
                                     item['label'] as String,
-                                    style: GoogleFonts.inter(
+                                    style: TextStyle(fontFamily: 'ProximaNova', 
                                       fontSize: 12.5,
                                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                       color: isSelected ? AppTheme.primaryYellow : (isDark ? Colors.white : Colors.black87),
@@ -3663,7 +3664,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   ),
                                 ),
                                 if (isSelected)
-                                  const Icon(Icons.check, size: 15, color: Color(0xFFFFEB3A)),
+                                  const Icon(CupertinoIcons.checkmark_alt, size: 15, color: Color(0xFFFFEB3A)),
                               ],
                             ),
                           );
@@ -3682,20 +3683,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Iconsax.category, size: 16, color: mutedColor),
+                            Icon(CupertinoIcons.square_grid_2x2_fill, size: 16, color: mutedColor),
                             const SizedBox(width: 7),
                             Text(
                               _typeFilter == 'all'
                                   ? 'All Types'
                                   : (_typeFilter == 'PG' ? 'Hostel / PG' : (_typeFilter == 'Rental' ? 'House / Flat' : _typeFilter)),
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: primaryTextColor,
                               ),
                             ),
                             const SizedBox(width: 5),
-                            Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: mutedColor),
+                            Icon(CupertinoIcons.chevron_down, size: 16, color: mutedColor),
                           ],
                         ),
                       ),
@@ -3727,7 +3728,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             child: Row(
                               children: [
                                 Icon(
-                                  Iconsax.location,
+                                  CupertinoIcons.location_solid,
                                   size: 15,
                                   color: isSelected ? AppTheme.primaryYellow : (isDark ? Colors.white70 : Colors.black87),
                                 ),
@@ -3735,7 +3736,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 Expanded(
                                   child: Text(
                                     label,
-                                    style: GoogleFonts.inter(
+                                    style: TextStyle(fontFamily: 'ProximaNova', 
                                       fontSize: 12.5,
                                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                       color: isSelected ? AppTheme.primaryYellow : (isDark ? Colors.white : Colors.black87),
@@ -3743,7 +3744,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   ),
                                 ),
                                 if (isSelected)
-                                  const Icon(Icons.check, size: 15, color: Color(0xFFFFEB3A)),
+                                  const Icon(CupertinoIcons.checkmark_alt, size: 15, color: Color(0xFFFFEB3A)),
                               ],
                             ),
                           );
@@ -3762,18 +3763,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Iconsax.location, size: 16, color: mutedColor),
+                            Icon(CupertinoIcons.location_solid, size: 16, color: mutedColor),
                             const SizedBox(width: 7),
                             Text(
                               _localityFilter == 'all' ? 'All Localities' : _localityFilter,
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: primaryTextColor,
                               ),
                             ),
                             const SizedBox(width: 5),
-                            Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: mutedColor),
+                            Icon(CupertinoIcons.chevron_down, size: 16, color: mutedColor),
                           ],
                         ),
                       ),
@@ -3840,11 +3841,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Iconsax.buildings, size: 48, color: mutedColor.withValues(alpha: 0.3)),
+                            Icon(CupertinoIcons.building_2_fill, size: 48, color: mutedColor.withValues(alpha: 0.3)),
                             const SizedBox(height: 12),
                             Text(
                               'No properties matching the selected filters.',
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 14,
                                 color: mutedColor,
                                 fontWeight: FontWeight.w500,
@@ -3889,7 +3890,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         child: Text(
           label,
-          style: GoogleFonts.inter(
+          style: TextStyle(fontFamily: 'ProximaNova', 
             fontSize: 12.5,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             color: isSelected
@@ -3942,8 +3943,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               builder: (_) => Scaffold(
                 backgroundColor: _previewDarkMode ? AppTheme.darkScaffold : Colors.white,
                 body: SafeArea(
-                  child: PostBottomSheet(
-                    propertyToEdit: prop,
+                  child: PostingScreen(
+                    onDismissForm: () => Navigator.of(context).pop(),
+                  propertyToEdit: prop,
                     onPropertyCreated: (updatedProp) {
                       _fetchProperties();
                       AppSnackbar.success(context, '✅ Property "${updatedProp.title}" updated successfully!');
@@ -3988,7 +3990,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Scaffold(
               backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
               body: SafeArea(
-                child: PostBottomSheet(
+                child: PostingScreen(
+                  onDismissForm: () => Navigator.of(context).pop(),
                   propertyToEdit: prop,
                   onPropertyCreated: (updatedProp) {
                     _fetchProperties();
@@ -4072,7 +4075,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         width: 90,
                         height: 70,
                         color: isDark ? const Color(0xFF1E2330) : const Color(0xFFF1F5F9),
-                        child: Icon(Iconsax.image, size: 24, color: mutedColor),
+                        child: Icon(CupertinoIcons.photo, size: 24, color: mutedColor),
                       ),
                     ),
                     Positioned(
@@ -4086,7 +4089,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         child: Text(
                           '${prop.imageUrls.length} photos',
-                          style: GoogleFonts.inter(fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontFamily: 'ProximaNova', fontSize: 8.5, color: Colors.white, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -4107,7 +4110,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         Flexible(
                           child: Text(
                             prop.title,
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 14.5,
                               fontWeight: FontWeight.w800,
                               color: primaryTextColor,
@@ -4127,7 +4130,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                           child: Text(
                             prop.type,
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 9.5,
                               fontWeight: FontWeight.w800,
                               color: prop.type == 'PG' ? const Color(0xFF8B5CF6) : const Color(0xFF3B82F6),
@@ -4139,7 +4142,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(height: 2),
                     Text(
                       prop.locationStr,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 11.5,
                         color: mutedColor,
                       ),
@@ -4152,7 +4155,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         Flexible(
                           child: Text(
                             specsText.isNotEmpty ? 'Owner: ${prop.ownerPhone}  •  $specsText' : 'Owner: ${prop.ownerPhone}',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: mutedColor.withValues(alpha: 0.9),
@@ -4175,7 +4178,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Text(
                     displayPrice,
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       color: AppTheme.primaryYellow,
@@ -4184,7 +4187,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   if (prop.perDayWithFood != null && prop.perDayWithFood!.isNotEmpty)
                     Text(
                       '₹${prop.perDayWithFood}/day',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: const Color(0xFF10B981),
@@ -4214,7 +4217,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          prop.isAvailable ? Iconsax.building_4 : Iconsax.lock,
+                          prop.isAvailable ? CupertinoIcons.building_2_fill : CupertinoIcons.lock_fill,
                           size: 14,
                           color: vacancyColor,
                         ),
@@ -4222,7 +4225,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           const SizedBox(width: 5),
                           Text(
                             prop.isAvailable ? 'VACANT' : 'OCCUPIED',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 10.5,
                               fontWeight: FontWeight.w800,
                               color: vacancyColor,
@@ -4253,8 +4256,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     children: [
                       Icon(
                         prop.status == 'approved'
-                            ? Iconsax.tick_circle
-                            : (prop.status == 'pending' ? Iconsax.clock : Iconsax.close_circle),
+                            ? CupertinoIcons.checkmark_alt
+                            : (prop.status == 'pending' ? CupertinoIcons.clock_fill : CupertinoIcons.clear_circled_solid),
                         size: 14,
                         color: statusColor,
                       ),
@@ -4262,7 +4265,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         const SizedBox(width: 5),
                         Text(
                           prop.status.toUpperCase(),
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 10.5,
                             fontWeight: FontWeight.w800,
                             color: statusColor,
@@ -4294,7 +4297,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                         ),
                         alignment: Alignment.center,
-                        child: Icon(Iconsax.eye, size: 15, color: mutedColor),
+                        child: Icon(CupertinoIcons.eye_solid, size: 15, color: mutedColor),
                       ),
                     ),
                   ),
@@ -4315,7 +4318,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(Iconsax.edit_2, size: 14, color: Color(0xFFFFEB3A)),
+                        child: const Icon(CupertinoIcons.pencil, size: 14, color: Color(0xFFFFEB3A)),
                       ),
                     ),
                   ),
@@ -4336,7 +4339,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
                           ),
                           alignment: Alignment.center,
-                          child: const Icon(Iconsax.tick_circle, color: Color(0xFF10B981), size: 16),
+                          child: const Icon(CupertinoIcons.checkmark_alt, color: Color(0xFF10B981), size: 16),
                         ),
                       ),
                     ),
@@ -4358,7 +4361,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
                           ),
                           alignment: Alignment.center,
-                          child: const Icon(Iconsax.close_circle, color: Color(0xFFEF4444), size: 16),
+                          child: const Icon(CupertinoIcons.clear_circled_solid, color: Color(0xFFEF4444), size: 16),
                         ),
                       ),
                     ),
@@ -4377,7 +4380,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
                       ),
                     ),
-                    icon: Icon(Icons.more_vert_rounded, size: 17, color: mutedColor),
+                    icon: Icon(CupertinoIcons.ellipsis_vertical, size: 17, color: mutedColor),
                     onSelected: (val) {
                       if (val == 'inspect') _showPropertyInspectionModal(prop, isDark);
                       if (val == 'edit') _showEditPropertyModal(prop, isDark);
@@ -4400,11 +4403,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         height: 38,
                         child: Row(
                           children: [
-                            const Icon(Iconsax.mobile, size: 15, color: Color(0xFF3B82F6)),
+                            const Icon(CupertinoIcons.device_phone_portrait, size: 15, color: Color(0xFF3B82F6)),
                             const SizedBox(width: 9),
                             Text(
                               'View in Phone Preview',
-                              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500),
+                              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -4414,11 +4417,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         height: 38,
                         child: Row(
                           children: [
-                            const Icon(Iconsax.edit_2, size: 15, color: Color(0xFFFFEB3A)),
+                            const Icon(CupertinoIcons.pencil, size: 15, color: Color(0xFFFFEB3A)),
                             const SizedBox(width: 9),
                             Text(
                               'Edit Property Details',
-                              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500),
+                              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -4428,11 +4431,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         height: 38,
                         child: Row(
                           children: [
-                            Icon(Iconsax.document_text, size: 15, color: mutedColor),
+                            Icon(CupertinoIcons.doc_text_fill, size: 15, color: mutedColor),
                             const SizedBox(width: 9),
                             Text(
                               'Inspect Photos & Logs',
-                              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500),
+                              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -4443,14 +4446,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: Row(
                           children: [
                             Icon(
-                              prop.isAvailable ? Iconsax.lock : Iconsax.building_4,
+                              prop.isAvailable ? CupertinoIcons.lock_fill : CupertinoIcons.building_2_fill,
                               size: 15,
                               color: prop.isAvailable ? const Color(0xFF64748B) : const Color(0xFF2563EB),
                             ),
                             const SizedBox(width: 9),
                             Text(
                               prop.isAvailable ? 'Mark as Occupied' : 'Mark as Available',
-                              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500),
+                              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -4460,11 +4463,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         height: 38,
                         child: Row(
                           children: [
-                            const Icon(Iconsax.notification_bing, size: 15, color: Color(0xFF8B5CF6)),
+                            const Icon(CupertinoIcons.bell_fill, size: 15, color: Color(0xFF8B5CF6)),
                             const SizedBox(width: 9),
                             Text(
                               'Create Push Notification',
-                              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500),
+                              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -4475,11 +4478,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         height: 38,
                         child: Row(
                           children: [
-                            const Icon(Iconsax.trash, size: 15, color: Color(0xFFEF4444)),
+                            const Icon(CupertinoIcons.trash, size: 15, color: Color(0xFFEF4444)),
                             const SizedBox(width: 9),
                             Text(
                               'Delete Listing',
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFFEF4444),
@@ -4546,7 +4549,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(Iconsax.radar_2, color: Color(0xFF8B5CF6), size: 24),
+                  child: const Icon(CupertinoIcons.dot_radiowaves_right, color: Color(0xFF8B5CF6), size: 24),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -4557,7 +4560,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         children: [
                           Text(
                             'Tenant Demand Radar & Search Analytics',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
                               color: primaryTextColor,
@@ -4584,7 +4587,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 const SizedBox(width: 5),
                                 Text(
                                   'LIVE SIGNALS',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     color: const Color(0xFF10B981),
@@ -4598,17 +4601,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Real-time tenant search trends, keyword velocities, most-viewed property rankings, and amenity demand heatmaps.',
-                        style: GoogleFonts.inter(fontSize: 13, color: mutedColor),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: mutedColor),
                       ),
                     ],
                   ),
                 ),
                 ElevatedButton.icon(
                   onPressed: () => setState(() => _selectedTabIndex = 3),
-                  icon: const Icon(Iconsax.notification_bing, size: 16, color: Colors.black),
+                  icon: const Icon(CupertinoIcons.bell_fill, size: 16, color: Colors.black),
                   label: Text(
                     'Broadcast Trending',
-                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.black),
+                    style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, fontWeight: FontWeight.w800, color: Colors.black),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryYellow,
@@ -4643,7 +4646,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: '100% Tracking Active',
                     badgeLabel: 'Live Radar',
                     badgeColor: const Color(0xFF10B981),
-                    icon: Iconsax.chart_21,
+                    icon: CupertinoIcons.chart_bar_alt_fill,
                     iconColor: const Color(0xFF8B5CF6),
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -4657,7 +4660,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: '$topCategoryCount clicks ($totalCategoryClicks total)',
                     badgeLabel: '$catPct% Volume',
                     badgeColor: AppTheme.primaryYellow,
-                    icon: Iconsax.building_4,
+                    icon: CupertinoIcons.building_2_fill,
                     iconColor: AppTheme.primaryYellow,
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -4671,7 +4674,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: 'Avg of top properties',
                     badgeLabel: 'Sweet Spot',
                     badgeColor: const Color(0xFF3B82F6),
-                    icon: Iconsax.wallet_3,
+                    icon: CupertinoIcons.creditcard_fill,
                     iconColor: const Color(0xFF3B82F6),
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -4685,7 +4688,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: '94% of search filter combos',
                     badgeLabel: 'Top Filter',
                     badgeColor: const Color(0xFF10B981),
-                    icon: Iconsax.tick_circle,
+                    icon: CupertinoIcons.checkmark_alt,
                     iconColor: const Color(0xFF10B981),
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -4774,11 +4777,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.ranking, size: 17, color: Color(0xFFFFEB3A)),
+                  const Icon(CupertinoIcons.chart_bar_alt_fill, size: 17, color: Color(0xFFFFEB3A)),
                   const SizedBox(width: 8),
                   Text(
                     'High Velocity & Inquired Listings',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -4788,7 +4791,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               Text(
                 'Top 5 Active',
-                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.primaryYellow),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.primaryYellow),
               ),
             ],
           ),
@@ -4797,7 +4800,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           if (props.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text('No property click data available yet.', style: GoogleFonts.inter(fontSize: 12, color: mutedColor)),
+              child: Text('No property click data available yet.', style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, color: mutedColor)),
             )
           else
             ...props.asMap().entries.map((entry) {
@@ -4831,7 +4834,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       alignment: Alignment.center,
                       child: Text(
                         '#${idx + 1}',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
                           color: rankColor,
@@ -4852,7 +4855,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           width: 36,
                           height: 36,
                           color: isDark ? Colors.white10 : const Color(0xFFE2E8F0),
-                          child: const Icon(Iconsax.image, size: 14, color: Color(0xFF94A3B8)),
+                          child: const Icon(CupertinoIcons.photo, size: 14, color: Color(0xFF94A3B8)),
                         ),
                       ),
                     ),
@@ -4865,7 +4868,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         children: [
                           Text(
                             p.title,
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: primaryTextColor,
@@ -4875,7 +4878,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                           Text(
                             '₹${p.price}/mo • $loc',
-                            style: GoogleFonts.inter(fontSize: 11, color: mutedColor),
+                            style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -4902,7 +4905,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                               ),
                               alignment: Alignment.center,
-                              child: Icon(Iconsax.eye, size: 13, color: mutedColor),
+                              child: Icon(CupertinoIcons.eye_solid, size: 13, color: mutedColor),
                             ),
                           ),
                         ),
@@ -4920,7 +4923,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               alignment: Alignment.center,
-                              child: const Icon(Icons.chat_bubble_outline, size: 13, color: Color(0xFF10B981)),
+                              child: const Icon(CupertinoIcons.chat_bubble, size: 13, color: Color(0xFF10B981)),
                             ),
                           ),
                         ),
@@ -4983,11 +4986,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.filter_tick, size: 17, color: Color(0xFF10B981)),
+                  const Icon(CupertinoIcons.slider_horizontal_3, size: 17, color: Color(0xFF10B981)),
                   const SizedBox(width: 8),
                   Text(
                     'High Demand Amenities Heatmap',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -4997,7 +5000,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               Text(
                 'Tenant Filter Index',
-                style: GoogleFonts.inter(fontSize: 11, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor),
               ),
             ],
           ),
@@ -5014,11 +5017,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     children: [
                       Text(
                         item.name,
-                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: primaryTextColor),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, fontWeight: FontWeight.w600, color: primaryTextColor),
                       ),
                       Text(
                         item.demand,
-                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: item.color),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, fontWeight: FontWeight.w700, color: item.color),
                       ),
                     ],
                   ),
@@ -5078,11 +5081,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.search_status, size: 17, color: Color(0xFF8B5CF6)),
+                  const Icon(CupertinoIcons.search, size: 17, color: Color(0xFF8B5CF6)),
                   const SizedBox(width: 8),
                   Text(
                     'Trending Tenant Search Keywords',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -5092,7 +5095,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               Text(
                 'Weekly Velocity',
-                style: GoogleFonts.inter(fontSize: 11, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor),
               ),
             ],
           ),
@@ -5109,7 +5112,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Iconsax.search_normal, size: 14, color: Color(0xFF8B5CF6)),
+                  const Icon(CupertinoIcons.search, size: 14, color: Color(0xFF8B5CF6)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -5117,7 +5120,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         Text(
                           term.query,
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: primaryTextColor,
@@ -5127,7 +5130,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         Text(
                           term.volume,
-                          style: GoogleFonts.inter(fontSize: 10.5, color: mutedColor),
+                          style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10.5, color: mutedColor),
                         ),
                       ],
                     ),
@@ -5140,7 +5143,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                     child: Text(
                       term.growth,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: term.color,
@@ -5177,11 +5180,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.call_calling, size: 17, color: Color(0xFF3B82F6)),
+                  const Icon(CupertinoIcons.phone_fill, size: 17, color: Color(0xFF3B82F6)),
                   const SizedBox(width: 8),
                   Text(
                     'Direct Landlord Inquiry Routing',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -5197,7 +5200,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 child: Text(
                   '100% Direct',
-                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
                 ),
               ),
             ],
@@ -5205,7 +5208,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(height: 12),
 
           _buildGuardrailItem(
-            icon: Iconsax.message,
+            icon: CupertinoIcons.chat_bubble_text,
             title: 'Direct WhatsApp Chats',
             subtitle: 'Tenants initiate direct WhatsApp inquiries with verified landlords.',
             color: const Color(0xFF10B981),
@@ -5215,7 +5218,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           const SizedBox(height: 8),
           _buildGuardrailItem(
-            icon: Iconsax.call,
+            icon: CupertinoIcons.phone_fill,
             title: '1-Tap Direct Phone Calls',
             subtitle: 'Direct owner contact with no broker fee or hidden commission.',
             color: const Color(0xFF3B82F6),
@@ -5225,7 +5228,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           const SizedBox(height: 8),
           _buildGuardrailItem(
-            icon: Iconsax.shield_tick,
+            icon: CupertinoIcons.shield_fill,
             title: 'Zero Broker Intermediation',
             subtitle: 'All leads route straight to the owner who posted the listing.',
             color: const Color(0xFF8B5CF6),
@@ -5271,7 +5274,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.3)),
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(Iconsax.notification_bing, color: Color(0xFF8B5CF6), size: 22),
+                  child: const Icon(CupertinoIcons.bell_fill, color: Color(0xFF8B5CF6), size: 22),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -5280,7 +5283,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     children: [
                       Text(
                         'Push Notification & Deep-Link Broadcast Hub',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: primaryTextColor,
@@ -5289,7 +5292,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const SizedBox(height: 2),
                       Text(
                         'Blast instant manual push alerts or manage 8 AM, 1 PM & 6 PM automated AI notifications.',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 12.5,
                           color: mutedColor,
                         ),
@@ -5308,11 +5311,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.wifi_tethering, size: 14, color: Color(0xFF10B981)),
+                      const Icon(CupertinoIcons.personalhotspot, size: 14, color: Color(0xFF10B981)),
                       const SizedBox(width: 6),
                       Text(
                         '$_allUsersCount Active Devices',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           color: const Color(0xFF10B981),
@@ -5353,7 +5356,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     child: Row(
                       children: [
                         Icon(
-                          Iconsax.send_2,
+                          CupertinoIcons.paperplane_fill,
                           size: 16,
                           color: _notificationSubTabIndex == 0
                               ? (isDark ? Colors.black : Colors.black87)
@@ -5362,7 +5365,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         const SizedBox(width: 8),
                         Text(
                           '📢 Manual Broadcast',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 13,
                             fontWeight: _notificationSubTabIndex == 0 ? FontWeight.w700 : FontWeight.w500,
                             color: _notificationSubTabIndex == 0
@@ -5392,7 +5395,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     child: Row(
                       children: [
                         Icon(
-                          Iconsax.cpu,
+                          CupertinoIcons.device_laptop,
                           size: 16,
                           color: _notificationSubTabIndex == 1
                               ? (isDark ? Colors.black : Colors.black87)
@@ -5401,7 +5404,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         const SizedBox(width: 8),
                         Text(
                           '🤖 AI Auto-Notifier (8 AM, 1 PM, 6 PM)',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 13,
                             fontWeight: _notificationSubTabIndex == 1 ? FontWeight.w700 : FontWeight.w500,
                             color: _notificationSubTabIndex == 1
@@ -5483,7 +5486,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 child: Center(
                   child: Icon(
-                    isEnabled ? Iconsax.timer_1 : Iconsax.timer_pause,
+                    isEnabled ? CupertinoIcons.timer : CupertinoIcons.timer,
                     color: isEnabled ? const Color(0xFF10B981) : Colors.red,
                     size: 26,
                   ),
@@ -5498,7 +5501,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         Text(
                           'Automated AI Push Notifier',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 17,
                             fontWeight: FontWeight.w800,
                             color: primaryTextColor,
@@ -5515,7 +5518,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           ),
                           child: Text(
                             isEnabled ? '🟢 ACTIVE' : '🔴 PAUSED',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                               color: isEnabled ? const Color(0xFF10B981) : Colors.red,
@@ -5529,7 +5532,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       isEnabled
                           ? 'Automatic notifications will be generated by AI and dispatched daily at 8:00 AM, 1:00 PM, and 6:00 PM IST.'
                           : 'Automated notification dispatches are currently paused. Toggle ON to resume automatic AI sending.',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 12.5,
                         color: mutedColor,
                       ),
@@ -5554,7 +5557,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         // 2. Scheduled Time Slots Overview Cards
         Text(
           '⏰ Scheduled Time Slots (Daily IST)',
-          style: GoogleFonts.inter(
+          style: TextStyle(fontFamily: 'ProximaNova', 
             fontSize: 14.5,
             fontWeight: FontWeight.w800,
             color: primaryTextColor,
@@ -5569,7 +5572,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 time: '8:00 AM',
                 title: 'Morning Pulse',
                 subtitle: 'Student PGs & Early Flat Hunting',
-                icon: Iconsax.sun_1,
+                icon: CupertinoIcons.sun_max_fill,
                 color: const Color(0xFFF59E0B),
               ),
             ),
@@ -5580,7 +5583,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 time: '1:00 PM',
                 title: 'Lunch Peak',
                 subtitle: 'Quick AI Property Search & Filters',
-                icon: Iconsax.sun_fog,
+                icon: CupertinoIcons.sun_dust_fill,
                 color: const Color(0xFF3B82F6),
               ),
             ),
@@ -5591,7 +5594,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 time: '1:20 PM',
                 title: 'Post-Lunch Pulse',
                 subtitle: 'Mid-day Tenant Followup & PGs',
-                icon: Iconsax.cup,
+                icon: CupertinoIcons.circle_grid_hex,
                 color: const Color(0xFF10B981),
               ),
             ),
@@ -5602,7 +5605,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 time: '6:00 PM',
                 title: 'Evening Prime',
                 subtitle: 'Post-Work Direct Owner Chat',
-                icon: Iconsax.moon,
+                icon: CupertinoIcons.moon_fill,
                 color: const Color(0xFF8B5CF6),
               ),
             ),
@@ -5625,11 +5628,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.magicpen, color: AppTheme.primaryYellow, size: 20),
+                  const Icon(CupertinoIcons.wand_stars, color: AppTheme.primaryYellow, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'AI Notification Guidelines & Prompt Rules',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -5651,10 +5654,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                           )
-                        : const Icon(Iconsax.tick_circle, size: 16),
+                        : const Icon(CupertinoIcons.checkmark_alt, size: 16),
                     label: Text(
                       'Save Guidelines',
-                      style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w800),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, fontWeight: FontWeight.w800),
                     ),
                   ),
                 ],
@@ -5662,13 +5665,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 6),
               Text(
                 'Customize instructions for the Notification AI. The AI generates title, body copy, and selects approved generic target routes.',
-                style: GoogleFonts.inter(fontSize: 12, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, color: mutedColor),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _aiInstructionsController,
                 maxLines: 4,
-                style: GoogleFonts.inter(fontSize: 13, color: primaryTextColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: primaryTextColor),
                 decoration: InputDecoration(
                   hintText: 'Enter AI prompt instructions...',
                   filled: true,
@@ -5701,11 +5704,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Iconsax.flash_1, color: Color(0xFF3B82F6), size: 20),
+                  const Icon(CupertinoIcons.bolt_fill, color: Color(0xFF3B82F6), size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'Personalized Audience Segregation & Live Preview',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -5720,7 +5723,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Text(
                     '🎯 Segregated Audience Group:',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: primaryTextColor,
@@ -5740,7 +5743,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       value: _selectedAutoAudience,
                       underline: const SizedBox(),
                       dropdownColor: isDark ? const Color(0xFF1E2330) : Colors.white,
-                      style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w700, color: primaryTextColor),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, fontWeight: FontWeight.w700, color: primaryTextColor),
                       onChanged: (val) {
                         if (val != null) {
                           setState(() {
@@ -5793,10 +5796,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Icon(Iconsax.cpu, size: 16),
+                        : const Icon(CupertinoIcons.device_laptop, size: 16),
                     label: Text(
                       '⚡ Generate AI Preview',
-                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, fontWeight: FontWeight.w700),
                     ),
                   ),
                   ElevatedButton.icon(
@@ -5816,10 +5819,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Icon(Iconsax.send_2, size: 16),
+                        : const Icon(CupertinoIcons.paperplane_fill, size: 16),
                     label: Text(
                       '🚀 Dispatch to Selected Segment',
-                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, fontWeight: FontWeight.w700),
                     ),
                   ),
                   ElevatedButton.icon(
@@ -5837,10 +5840,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Icon(Iconsax.magic_star, size: 16),
+                        : const Icon(CupertinoIcons.wand_stars, size: 16),
                     label: Text(
                       '🎯 Auto-Dispatch All 3 Segments',
-                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -5861,7 +5864,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         children: [
                           Text(
                             _previewAiNotif!['title'] ?? '',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 14.5,
                               fontWeight: FontWeight.w800,
                               color: primaryTextColor,
@@ -5876,7 +5879,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                             child: Text(
                               'Target: ${_previewAiNotif!['target_route']?.toUpperCase()}',
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: const Color(0xFF8B5CF6),
@@ -5888,7 +5891,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _previewAiNotif!['body'] ?? '',
-                        style: GoogleFonts.inter(fontSize: 13, color: mutedColor),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: mutedColor),
                       ),
                     ],
                   ),
@@ -5908,12 +5911,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Iconsax.info_circle, size: 16, color: Color(0xFFD97706)),
+                    const Icon(CupertinoIcons.info_circle_fill, size: 16, color: Color(0xFFD97706)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Constraint Enforced: AI is restricted to generic destination routes (pg, rental, ai_chat, posting, nearby, search). No specific property ID is ever linked.',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 11.5,
                           fontWeight: FontWeight.w500,
                           color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF92400E),
@@ -5966,7 +5969,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(width: 8),
               Text(
                 time,
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color: color,
@@ -5977,7 +5980,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(height: 8),
           Text(
             title,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: primaryTextColor,
@@ -5986,7 +5989,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 11,
               color: mutedColor,
             ),
@@ -6017,7 +6020,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Text(
                 'Compose Broadcast Message',
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: primaryTextColor,
@@ -6025,7 +6028,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               Text(
                 'Instant Cloud Push',
-                style: GoogleFonts.inter(fontSize: 11.5, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, color: mutedColor),
               ),
             ],
           ),
@@ -6034,7 +6037,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           // Quick Templates
           Text(
             'Quick Templates:',
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
               color: mutedColor,
@@ -6060,7 +6063,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           // Target Audience Segment Selector
           Text(
             'Target Audience Segment',
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: primaryTextColor,
@@ -6075,7 +6078,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   target: TargetAudience.allUsers,
                   label: 'All Users',
                   count: '$_allUsersCount',
-                  icon: Iconsax.people,
+                  icon: CupertinoIcons.person_3_fill,
                   isDark: isDark,
                 ),
                 const SizedBox(width: 8),
@@ -6083,7 +6086,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   target: TargetAudience.pgSeekers,
                   label: 'PG Seekers',
                   count: '$_pgSeekersCount',
-                  icon: Iconsax.building,
+                  icon: CupertinoIcons.building_2_fill,
                   isDark: isDark,
                 ),
                 const SizedBox(width: 8),
@@ -6091,7 +6094,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   target: TargetAudience.roomSeekers,
                   label: 'Room Seekers',
                   count: '$_roomSeekersCount',
-                  icon: Iconsax.home,
+                  icon: CupertinoIcons.house_fill,
                   isDark: isDark,
                 ),
                 const SizedBox(width: 8),
@@ -6099,7 +6102,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   target: TargetAudience.buyers,
                   label: 'Buyers',
                   count: '$_buyersCount',
-                  icon: Iconsax.card_pos,
+                  icon: CupertinoIcons.creditcard_fill,
                   isDark: isDark,
                 ),
                 const SizedBox(width: 8),
@@ -6107,7 +6110,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   target: TargetAudience.landlords,
                   label: 'Landlords',
                   count: '$_landlordsCount',
-                  icon: Iconsax.buildings,
+                  icon: CupertinoIcons.building_2_fill,
                   isDark: isDark,
                 ),
               ],
@@ -6118,7 +6121,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           // Notification Title
           Text(
             'Notification Title *',
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: primaryTextColor,
@@ -6134,14 +6137,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: TextField(
               controller: _notifTitleController,
               onChanged: (_) => setState(() {}),
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: primaryTextColor,
               ),
               decoration: InputDecoration(
                 hintText: 'e.g. 🔥 Price drop on verified Danavaipeta flat!',
-                hintStyle: GoogleFonts.inter(fontSize: 12.5, color: mutedColor.withValues(alpha: 0.7)),
+                hintStyle: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, color: mutedColor.withValues(alpha: 0.7)),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: InputBorder.none,
               ),
@@ -6152,7 +6155,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           // Message Body
           Text(
             'Message Body *',
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: primaryTextColor,
@@ -6169,14 +6172,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               controller: _notifBodyController,
               onChanged: (_) => setState(() {}),
               maxLines: 3,
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: primaryTextColor,
               ),
               decoration: InputDecoration(
                 hintText: 'e.g. Rent reduced by ₹2,000/mo. East-facing with car parking & zero brokerage. View listing now.',
-                hintStyle: GoogleFonts.inter(fontSize: 12.5, color: mutedColor.withValues(alpha: 0.7)),
+                hintStyle: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, color: mutedColor.withValues(alpha: 0.7)),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: InputBorder.none,
               ),
@@ -6197,11 +6200,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Iconsax.link_21, size: 16, color: Color(0xFFFFEB3A)),
+                    const Icon(CupertinoIcons.link, size: 16, color: Color(0xFFFFEB3A)),
                     const SizedBox(width: 6),
                     Text(
                       'Deep-Link Destination (On Notification Tap)',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: primaryTextColor,
@@ -6227,11 +6230,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   onSelected: (val) => setState(() => _selectedActionType = val),
                   itemBuilder: (context) {
                     final options = [
-                      {'type': NotificationActionType.property, 'label': 'Open Specific Property Details (Direct Listing)', 'icon': Iconsax.buildings},
-                      {'type': NotificationActionType.category, 'label': 'Open Locality Filter (e.g. Danavaipeta)', 'icon': Iconsax.location},
-                      {'type': NotificationActionType.postProperty, 'label': 'Open Post Property Screen (Prompt Owners)', 'icon': Iconsax.add_circle},
-                      {'type': NotificationActionType.buyAndSell, 'label': 'Open Buy & Sell Hub', 'icon': Iconsax.shop},
-                      {'type': NotificationActionType.general, 'label': 'Open App Home Feed', 'icon': Iconsax.home_2},
+                      {'type': NotificationActionType.property, 'label': 'Open Specific Property Details (Direct Listing)', 'icon': CupertinoIcons.building_2_fill},
+                      {'type': NotificationActionType.category, 'label': 'Open Locality Filter (e.g. Danavaipeta)', 'icon': CupertinoIcons.location_solid},
+                      {'type': NotificationActionType.postProperty, 'label': 'Open Post Property Screen (Prompt Owners)', 'icon': CupertinoIcons.add_circled},
+                      {'type': NotificationActionType.buyAndSell, 'label': 'Open Buy & Sell Hub', 'icon': CupertinoIcons.tag_fill},
+                      {'type': NotificationActionType.general, 'label': 'Open App Home Feed', 'icon': CupertinoIcons.house_fill},
                     ];
                     return options.map((opt) {
                       final isSelected = _selectedActionType == opt['type'];
@@ -6249,7 +6252,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             Expanded(
                               child: Text(
                                 opt['label'] as String,
-                                style: GoogleFonts.inter(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   fontSize: 12,
                                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                   color: isSelected ? AppTheme.primaryYellow : primaryTextColor,
@@ -6257,7 +6260,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ),
                             ),
                             if (isSelected)
-                              const Icon(Icons.check, size: 15, color: Color(0xFFFFEB3A)),
+                              const Icon(CupertinoIcons.checkmark_alt, size: 15, color: Color(0xFFFFEB3A)),
                           ],
                         ),
                       );
@@ -6275,12 +6278,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         Icon(
                           _selectedActionType == NotificationActionType.property
-                              ? Iconsax.buildings
+                              ? CupertinoIcons.building_2_fill
                               : (_selectedActionType == NotificationActionType.category
-                                  ? Iconsax.location
+                                  ? CupertinoIcons.location_solid
                                   : (_selectedActionType == NotificationActionType.postProperty
-                                      ? Iconsax.add_circle
-                                      : (_selectedActionType == NotificationActionType.buyAndSell ? Iconsax.shop : Iconsax.home_2))),
+                                      ? CupertinoIcons.add_circled
+                                      : (_selectedActionType == NotificationActionType.buyAndSell ? CupertinoIcons.tag_fill : CupertinoIcons.house_fill))),
                           size: 16,
                           color: AppTheme.primaryYellow,
                         ),
@@ -6296,7 +6299,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                         : (_selectedActionType == NotificationActionType.buyAndSell
                                             ? 'Open Buy & Sell Hub'
                                             : 'Open App Home Feed'))),
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: primaryTextColor,
@@ -6304,7 +6307,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: mutedColor),
+                        Icon(CupertinoIcons.chevron_down, size: 16, color: mutedColor),
                       ],
                     ),
                   ),
@@ -6314,7 +6317,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(height: 10),
                   Text(
                     'Select Target Property:',
-                    style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.primaryYellow),
+                    style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.primaryYellow),
                   ),
                   const SizedBox(height: 4),
                   PopupMenuButton<String>(
@@ -6340,7 +6343,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           child: Row(
                             children: [
                               Icon(
-                                Iconsax.building_3,
+                                CupertinoIcons.building_2_fill,
                                 size: 15,
                                 color: isSelected ? AppTheme.primaryYellow : (isDark ? Colors.white70 : Colors.black87),
                               ),
@@ -6348,7 +6351,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               Expanded(
                                 child: Text(
                                   '${prop.title} • ₹${prop.price} (${prop.locationStr.split(',').first})',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     fontSize: 12,
                                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                     color: isSelected ? AppTheme.primaryYellow : primaryTextColor,
@@ -6357,7 +6360,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 ),
                               ),
                               if (isSelected)
-                                const Icon(Icons.check, size: 15, color: Color(0xFFFFEB3A)),
+                                const Icon(CupertinoIcons.checkmark_alt, size: 15, color: Color(0xFFFFEB3A)),
                             ],
                           ),
                         );
@@ -6373,7 +6376,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Iconsax.building_3, size: 16, color: Color(0xFFFFEB3A)),
+                          const Icon(CupertinoIcons.building_2_fill, size: 16, color: Color(0xFFFFEB3A)),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Builder(
@@ -6384,7 +6387,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 );
                                 return Text(
                                   '${selectedProp.title} • ₹${selectedProp.price} (${selectedProp.locationStr.split(',').first})',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     color: primaryTextColor,
@@ -6394,7 +6397,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               },
                             ),
                           ),
-                          Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: mutedColor),
+                          Icon(CupertinoIcons.chevron_down, size: 16, color: mutedColor),
                         ],
                       ),
                     ),
@@ -6406,7 +6409,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(height: 10),
                   Text(
                     'Select Target Locality in Rajahmundry:',
-                    style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.primaryYellow),
+                    style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.primaryYellow),
                   ),
                   const SizedBox(height: 4),
                   PopupMenuButton<String>(
@@ -6431,7 +6434,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           child: Row(
                             children: [
                               Icon(
-                                Iconsax.location,
+                                CupertinoIcons.location_solid,
                                 size: 15,
                                 color: isSelected ? AppTheme.primaryYellow : (isDark ? Colors.white70 : Colors.black87),
                               ),
@@ -6439,7 +6442,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               Expanded(
                                 child: Text(
                                   loc,
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     fontSize: 12,
                                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                     color: isSelected ? AppTheme.primaryYellow : primaryTextColor,
@@ -6447,7 +6450,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 ),
                               ),
                               if (isSelected)
-                                const Icon(Icons.check, size: 15, color: Color(0xFFFFEB3A)),
+                                const Icon(CupertinoIcons.checkmark_alt, size: 15, color: Color(0xFFFFEB3A)),
                             ],
                           ),
                         );
@@ -6463,19 +6466,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Iconsax.location, size: 16, color: Color(0xFFFFEB3A)),
+                          const Icon(CupertinoIcons.location_solid, size: 16, color: Color(0xFFFFEB3A)),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _selectedCategoryOrLocality ?? 'Danavaipeta',
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
                                 color: primaryTextColor,
                               ),
                             ),
                           ),
-                          Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: mutedColor),
+                          Icon(CupertinoIcons.chevron_down, size: 16, color: mutedColor),
                         ],
                       ),
                     ),
@@ -6498,10 +6501,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                     )
-                  : const Icon(Iconsax.send_1, size: 18),
+                  : const Icon(CupertinoIcons.paperplane_fill, size: 18),
               label: Text(
                 _isSendingNotification ? 'Broadcasting Push Notification...' : 'Blast Push Notification Now',
-                style: GoogleFonts.inter(fontSize: 13.5, fontWeight: FontWeight.w700),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13.5, fontWeight: FontWeight.w700),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryYellow,
@@ -6555,7 +6558,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 3),
               Text(
                 label,
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? primaryTextColor : mutedColor,
@@ -6564,7 +6567,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               Text(
                 count,
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   color: isSelected ? AppTheme.primaryYellow : mutedColor.withValues(alpha: 0.7),
@@ -6600,7 +6603,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         child: Text(
           template,
-          style: GoogleFonts.inter(
+          style: TextStyle(fontFamily: 'ProximaNova', 
             fontSize: 11,
             fontWeight: FontWeight.w600,
             color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
@@ -6639,7 +6642,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Text(
                     '📱 Live Lockscreen Preview',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -6653,7 +6656,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                     child: Text(
                       'REALTIME',
-                      style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 9, fontWeight: FontWeight.w800, color: const Color(0xFF10B981)),
                     ),
                   ),
                 ],
@@ -6688,7 +6691,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       children: [
                         Text(
                           '9:41',
-                          style: GoogleFonts.inter(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontFamily: 'ProximaNova', color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
                         ),
                         // Dynamic Island Pill
                         Container(
@@ -6701,11 +6704,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                         Row(
                           children: const [
-                            Icon(Icons.signal_cellular_4_bar, color: Colors.white, size: 11),
+                            Icon(CupertinoIcons.antenna_radiowaves_left_right, color: Colors.white, size: 11),
                             SizedBox(width: 4),
-                            Icon(Icons.wifi, color: Colors.white, size: 11),
+                            Icon(CupertinoIcons.wifi, color: Colors.white, size: 11),
                             SizedBox(width: 4),
-                            Icon(Icons.battery_full_rounded, color: Colors.white, size: 12),
+                            Icon(CupertinoIcons.battery_100, color: Colors.white, size: 12),
                           ],
                         ),
                       ],
@@ -6715,7 +6718,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     // Lock Screen Date & Clock
                     Text(
                       'Friday, August 30',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -6724,7 +6727,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(height: 2),
                     Text(
                       '9:41',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         color: Colors.white,
                         fontSize: 34,
                         fontWeight: FontWeight.w200,
@@ -6759,7 +6762,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   width: 22,
                                   height: 22,
                                   fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.home_rounded, color: Colors.white, size: 18),
+                                  errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.house_fill, color: Colors.white, size: 18),
                                 ),
                               ),
                             ),
@@ -6774,7 +6777,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   children: [
                                     Text(
                                       'RENTAL APP',
-                                      style: GoogleFonts.inter(
+                                      style: TextStyle(fontFamily: 'ProximaNova', 
                                         color: Colors.white,
                                         fontSize: 11,
                                         fontWeight: FontWeight.w800,
@@ -6783,14 +6786,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     ),
                                     Text(
                                       'now',
-                                      style: GoogleFonts.inter(color: Colors.white60, fontSize: 9.5),
+                                      style: TextStyle(fontFamily: 'ProximaNova', color: Colors.white60, fontSize: 9.5),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
                                   title,
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     color: Colors.white,
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w700,
@@ -6801,7 +6804,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   body,
-                                  style: GoogleFonts.inter(color: Colors.white.withValues(alpha: 0.85), fontSize: 11, height: 1.3),
+                                  style: TextStyle(fontFamily: 'ProximaNova', color: Colors.white.withValues(alpha: 0.85), fontSize: 11, height: 1.3),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -6837,7 +6840,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Text(
                     'Recent Broadcasts',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: primaryTextColor,
@@ -6845,7 +6848,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   Text(
                     'Last 5 blasts',
-                    style: GoogleFonts.inter(fontSize: 11, color: mutedColor),
+                    style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, color: mutedColor),
                   ),
                 ],
               ),
@@ -6856,7 +6859,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     padding: const EdgeInsets.all(14.0),
                     child: Text(
                       'No past broadcasts recorded yet.',
-                      style: GoogleFonts.inter(color: mutedColor, fontSize: 12),
+                      style: TextStyle(fontFamily: 'ProximaNova', color: mutedColor, fontSize: 12),
                     ),
                   ),
                 )
@@ -6878,7 +6881,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           alignment: Alignment.center,
-                          child: const Icon(Iconsax.notification, size: 14, color: Color(0xFF8B5CF6)),
+                          child: const Icon(CupertinoIcons.bell_fill, size: 14, color: Color(0xFF8B5CF6)),
                         ),
                         const SizedBox(width: 9),
                         Expanded(
@@ -6887,7 +6890,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             children: [
                               Text(
                                 item.title,
-                                style: GoogleFonts.inter(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: primaryTextColor,
@@ -6897,7 +6900,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               ),
                               Text(
                                 '${item.recipientCount} sent  •  ${item.actionDisplayName}',
-                                style: GoogleFonts.inter(fontSize: 10.5, color: mutedColor),
+                                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10.5, color: mutedColor),
                                 maxLines: 1,
                               ),
                             ],
@@ -6924,7 +6927,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                             child: Text(
                               'Reuse',
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: AppTheme.primaryYellow,
@@ -6988,7 +6991,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(Iconsax.profile_2user, color: Color(0xFF3B82F6), size: 24),
+                  child: const Icon(CupertinoIcons.person_2_fill, color: Color(0xFF3B82F6), size: 24),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -6999,7 +7002,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         children: [
                           Text(
                             'Landlords & Property Owners Directory',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
                               color: primaryTextColor,
@@ -7026,7 +7029,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 const SizedBox(width: 5),
                                 Text(
                                   'DIRECT OWNERS',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'ProximaNova', 
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     color: const Color(0xFF10B981),
@@ -7040,7 +7043,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Direct property owners, verified phone contacts, multi-property portfolios, and 1-tap WhatsApp communication.',
-                        style: GoogleFonts.inter(fontSize: 13, color: mutedColor),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: mutedColor),
                       ),
                     ],
                   ),
@@ -7055,10 +7058,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           _selectedAudience = TargetAudience.landlords;
                         });
                       },
-                      icon: const Icon(Iconsax.notification_bing, size: 16, color: Colors.black),
+                      icon: const Icon(CupertinoIcons.bell_fill, size: 16, color: Colors.black),
                       label: Text(
                         'Alert Landlords',
-                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.black),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, fontWeight: FontWeight.w800, color: Colors.black),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryYellow,
@@ -7095,7 +7098,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: '100% Direct Owners',
                     badgeLabel: 'Zero Brokers',
                     badgeColor: const Color(0xFF10B981),
-                    icon: Iconsax.user_tick,
+                    icon: CupertinoIcons.person_fill,
                     iconColor: const Color(0xFF3B82F6),
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -7109,7 +7112,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: 'Avg $avgListings units / owner',
                     badgeLabel: 'Active Portfolios',
                     badgeColor: AppTheme.primaryYellow,
-                    icon: Iconsax.building_4,
+                    icon: CupertinoIcons.building_2_fill,
                     iconColor: AppTheme.primaryYellow,
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -7123,7 +7126,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: 'Direct tenant chat ready',
                     badgeLabel: '100% Ready',
                     badgeColor: const Color(0xFF10B981),
-                    icon: Iconsax.message,
+                    icon: CupertinoIcons.chat_bubble_text,
                     iconColor: const Color(0xFF10B981),
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -7137,7 +7140,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     subtitle: 'Owners with > 1 listing',
                     badgeLabel: 'Power Hosts',
                     badgeColor: const Color(0xFF8B5CF6),
-                    icon: Iconsax.medal_star,
+                    icon: CupertinoIcons.rosette,
                     iconColor: const Color(0xFF8B5CF6),
                     isDark: isDark,
                     primaryTextColor: primaryTextColor,
@@ -7165,7 +7168,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                   ),
                   child: Center(
-                    child: Text('No property owners registered yet.', style: GoogleFonts.inter(color: mutedColor, fontSize: 13)),
+                    child: Text('No property owners registered yet.', style: TextStyle(fontFamily: 'ProximaNova', color: mutedColor, fontSize: 13)),
                   ),
                 );
               }
@@ -7256,7 +7259,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 alignment: Alignment.center,
                 child: Text(
                   ownerName.isNotEmpty ? ownerName[0].toUpperCase() : 'O',
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
@@ -7270,7 +7273,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   children: [
                     Text(
                       ownerName,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 13.5,
                         fontWeight: FontWeight.w800,
                         color: primaryTextColor,
@@ -7281,11 +7284,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Iconsax.verify, size: 12, color: Color(0xFF10B981)),
+                        const Icon(CupertinoIcons.check_mark_circled_solid, size: 12, color: Color(0xFF10B981)),
                         const SizedBox(width: 4),
                         Text(
                           'Direct Landlord',
-                          style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w600, color: const Color(0xFF10B981)),
+                          style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10.5, fontWeight: FontWeight.w600, color: const Color(0xFF10B981)),
                         ),
                       ],
                     ),
@@ -7300,7 +7303,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 child: Text(
                   '${props.length} ${props.length == 1 ? 'Unit' : 'Units'}',
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     color: isMulti ? AppTheme.primaryYellow : const Color(0xFF3B82F6),
@@ -7323,11 +7326,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Iconsax.call, size: 13, color: mutedColor),
+                    Icon(CupertinoIcons.phone_fill, size: 13, color: mutedColor),
                     const SizedBox(width: 6),
                     Text(
                       phone,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: primaryTextColor,
@@ -7338,11 +7341,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
                 Row(
                   children: [
-                    Icon(Iconsax.location, size: 12, color: mutedColor),
+                    Icon(CupertinoIcons.location_solid, size: 12, color: mutedColor),
                     const SizedBox(width: 4),
                     Text(
                       localities.take(2).join(', '),
-                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500, color: mutedColor),
+                      style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, fontWeight: FontWeight.w500, color: mutedColor),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -7358,7 +7361,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               Text(
                 'Managed Units:',
-                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: mutedColor),
+                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11, fontWeight: FontWeight.w700, color: mutedColor),
               ),
               const SizedBox(height: 5),
               ...props.take(2).map((p) {
@@ -7382,7 +7385,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             Expanded(
                               child: Text(
                                 p.title,
-                                style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w600, color: primaryTextColor),
+                                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w600, color: primaryTextColor),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -7393,7 +7396,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const SizedBox(width: 8),
                       Text(
                         '₹${p.price}',
-                        style: GoogleFonts.inter(fontSize: 11.5, fontWeight: FontWeight.w800, color: AppTheme.primaryYellow),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 11.5, fontWeight: FontWeight.w800, color: AppTheme.primaryYellow),
                       ),
                     ],
                   ),
@@ -7402,7 +7405,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               if (props.length > 2)
                 Text(
                   '+${props.length - 2} more properties in portfolio',
-                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: mutedColor),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 10, fontWeight: FontWeight.w600, color: mutedColor),
                 ),
             ],
           ),
@@ -7413,8 +7416,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () => _contactOwnerWhatsApp(phone, props.first.title),
-                  icon: const Icon(Icons.chat_bubble_outline, size: 14),
-                  label: Text('WhatsApp', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
+                  icon: const Icon(CupertinoIcons.chat_bubble, size: 14),
+                  label: Text('WhatsApp', style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12, fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
                     foregroundColor: Colors.white,
@@ -7439,7 +7442,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
                     ),
                     alignment: Alignment.center,
-                    child: Icon(Iconsax.mobile, size: 16, color: mutedColor),
+                    child: Icon(CupertinoIcons.device_phone_portrait, size: 16, color: mutedColor),
                   ),
                 ),
               ),
@@ -7478,10 +7481,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     children: [
                       Text(
                         'Listing Inspection',
-                        style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800),
+                        style: TextStyle(fontFamily: 'ProximaNova', fontSize: 18, fontWeight: FontWeight.w800),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: const Icon(CupertinoIcons.clear),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
@@ -7511,12 +7514,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(height: 16),
                   Text(
                     prop.title,
-                    style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w800),
+                    style: TextStyle(fontFamily: 'ProximaNova', fontSize: 17, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '₹${prop.price}/month • Deposit: ₹${prop.securityDeposit ?? 'N/A'} • ${prop.locationStr}',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13.5,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.primaryYellow,
@@ -7525,7 +7528,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(height: 10),
                   Text(
                     prop.description ?? 'No description provided.',
-                    style: GoogleFonts.inter(fontSize: 13, height: 1.4),
+                    style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, height: 1.4),
                   ),
                   const SizedBox(height: 20),
 
@@ -7571,7 +7574,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Reject Property Submission', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        title: Text('Reject Property Submission', style: TextStyle(fontFamily: 'ProximaNova', fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

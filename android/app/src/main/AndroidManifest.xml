@@ -60,6 +60,72 @@
                 <data android:scheme="rental" android:host="property" />
             </intent-filter>
         </activity>
+        <activity-alias
+            android:name=".MainActivityColor0"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/launcher_icon_0"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityColor1"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/launcher_icon_1"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityColor2"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/launcher_icon_2"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityColor3"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/launcher_icon_3"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityColor4"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/launcher_icon_4"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".MainActivityColor5"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/launcher_icon_5"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
 
         <!-- uCrop Image Cropper Activity -->
         <activity

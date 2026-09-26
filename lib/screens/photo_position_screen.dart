@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -149,14 +150,14 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
         elevation: 0.5,
         leading: IconButton(
           icon: Icon(
-            Iconsax.arrow_left_2,
+            CupertinoIcons.chevron_left,
             color: isDark ? Colors.white : Colors.black87,
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Position & Reorder Photos',
-          style: GoogleFonts.inter(
+          style: TextStyle(fontFamily: 'ProximaNova', 
             fontSize: 16.5,
             fontWeight: FontWeight.w700,
             color: isDark ? Colors.white : Colors.black87,
@@ -180,7 +181,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
               ),
               child: Text(
                 'Done',
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 13.5,
                   fontWeight: FontWeight.w800,
                   color: Colors.black,
@@ -196,14 +197,14 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Iconsax.gallery_slash,
+                    CupertinoIcons.photo,
                     size: 56,
                     color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No Photos Selected',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: isDark ? Colors.white : Colors.black87,
@@ -212,7 +213,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Add photos to position and set your cover',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 13,
                       color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
                     ),
@@ -220,7 +221,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                   const SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: _addMorePhotos,
-                    icon: const Icon(Iconsax.add, size: 18),
+                    icon: const Icon(CupertinoIcons.add, size: 18),
                     label: const Text('Add Photos'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryYellow,
@@ -240,12 +241,12 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                   color: isDark ? AppTheme.darkCardElevated : const Color(0xFFFFFDE7),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.info_circle, size: 16, color: Color(0xFFF59E0B)),
+                      const Icon(CupertinoIcons.info_circle_fill, size: 16, color: Color(0xFFF59E0B)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Drag or tap arrows to reposition. #1 is your primary cover photo.',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 11.5,
                             fontWeight: FontWeight.w500,
                             color: isDark ? Colors.white70 : const Color(0xFF78350F),
@@ -290,7 +291,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    _selectedIndex == 0 ? Icons.star_rounded : Iconsax.image,
+                                    _selectedIndex == 0 ? CupertinoIcons.star_fill : CupertinoIcons.photo,
                                     size: 15,
                                     color: _selectedIndex == 0 ? Colors.black : Colors.white,
                                   ),
@@ -299,7 +300,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                     _selectedIndex == 0
                                         ? 'MAIN COVER PHOTO'
                                         : 'PHOTO ${_selectedIndex + 1} OF ${_photos.length}',
-                                    style: GoogleFonts.inter(
+                                    style: TextStyle(fontFamily: 'ProximaNova', 
                                       fontSize: 11,
                                       fontWeight: FontWeight.w800,
                                       color: _selectedIndex == 0 ? Colors.black : Colors.white,
@@ -335,7 +336,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                     tooltip: 'Move Left',
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(Iconsax.arrow_left_2, size: 18),
+                                    icon: const Icon(CupertinoIcons.chevron_left, size: 18),
                                     onPressed: _selectedIndex > 0
                                         ? () => _movePhoto(_selectedIndex, _selectedIndex - 1)
                                         : null,
@@ -354,7 +355,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                         ),
                                         child: Text(
                                           'Set as Cover',
-                                          style: GoogleFonts.inter(
+                                          style: TextStyle(fontFamily: 'ProximaNova', 
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,
                                             color: Colors.black,
@@ -367,14 +368,14 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Icon(
-                                          Iconsax.tick_circle,
+                                          CupertinoIcons.checkmark_alt,
                                           size: 14,
                                           color: Color(0xFF10B981),
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
                                           'Cover Photo',
-                                          style: GoogleFonts.inter(
+                                          style: TextStyle(fontFamily: 'ProximaNova', 
                                             fontSize: 11,
                                             fontWeight: FontWeight.w700,
                                             color: const Color(0xFF10B981),
@@ -386,7 +387,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                     tooltip: 'Move Right',
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(Iconsax.arrow_right_3, size: 18),
+                                    icon: const Icon(CupertinoIcons.chevron_right, size: 18),
                                     onPressed: _selectedIndex < _photos.length - 1
                                         ? () => _movePhoto(_selectedIndex, _selectedIndex + 1)
                                         : null,
@@ -395,14 +396,14 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                     tooltip: 'Crop Photo',
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(Iconsax.crop, size: 18),
+                                    icon: const Icon(CupertinoIcons.crop, size: 18),
                                     onPressed: () => _cropPhoto(_selectedIndex),
                                   ),
                                   IconButton(
                                     tooltip: 'Delete',
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(Iconsax.trash, size: 18, color: Colors.redAccent),
+                                    icon: const Icon(CupertinoIcons.trash, size: 18, color: Colors.redAccent),
                                     onPressed: () => _deletePhoto(_selectedIndex),
                                   ),
                                 ],
@@ -432,7 +433,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                         children: [
                           Text(
                             'Reorder Photos (${_photos.length})',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 13.5,
                               fontWeight: FontWeight.w700,
                               color: isDark ? Colors.white : Colors.black87,
@@ -441,13 +442,13 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                           TextButton.icon(
                             onPressed: _addMorePhotos,
                             icon: Icon(
-                              Iconsax.gallery_add,
+                              CupertinoIcons.photo_on_rectangle,
                               size: 16,
                               color: isDark ? AppTheme.primaryYellow : Colors.black,
                             ),
                             label: Text(
                               'Add More',
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'ProximaNova', 
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
                                 color: isDark ? AppTheme.primaryYellow : Colors.black,
@@ -529,7 +530,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                           ),
                                           child: Text(
                                             isCover ? 'Cover' : '#${index + 1}',
-                                            style: GoogleFonts.inter(
+                                            style: TextStyle(fontFamily: 'ProximaNova', 
                                               fontSize: 9.5,
                                               fontWeight: FontWeight.w800,
                                               color: isCover ? Colors.black : Colors.white,
@@ -551,7 +552,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Icon(
-                                              Icons.close,
+                                              CupertinoIcons.clear,
                                               color: Colors.white,
                                               size: 11,
                                             ),

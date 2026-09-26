@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -214,7 +215,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                                   );
                                 },
                                 child: Icon(
-                                  Icons.location_on, // Standard Google Maps style filled icon
+                                  CupertinoIcons.location_solid, // Standard Google Maps style filled icon
                                   color: markerColor,
                                   size: 32,
                                 ),
@@ -237,7 +238,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                     scale: _isDragging ? 1.2 : 1.0,
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
-                      Icons.location_on, // Swapped from Iconsax to normal pin
+                      CupertinoIcons.location_solid, // Swapped from Iconsax to normal pin
                       size: 40,
                       color: isDark ? Colors.white : Colors.black, // Distinct from property pins
                     ),
@@ -275,7 +276,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.close, color: isDark ? Colors.white54 : Colors.black54),
+                              icon: Icon(CupertinoIcons.clear, color: isDark ? Colors.white54 : Colors.black54),
                               onPressed: () => Navigator.pop(context),
                             ),
                           ],
@@ -293,7 +294,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                             hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38, fontSize: 14),
                             filled: true,
                             fillColor: isDark ? AppTheme.darkCardElevated : Colors.white,
-                            prefixIcon: Icon(Iconsax.search_normal, color: isDark ? Colors.white54 : Colors.black54, size: 20),
+                            prefixIcon: Icon(CupertinoIcons.search, color: isDark ? Colors.white54 : Colors.black54, size: 20),
                             suffixIcon: _isSearching
                                 ? const Padding(
                                     padding: EdgeInsets.all(12),
@@ -303,7 +304,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                                     ),
                                   )
                                 : IconButton(
-                                    icon: Icon(Iconsax.arrow_right_3, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 20),
+                                    icon: Icon(CupertinoIcons.chevron_right, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 20),
                                     onPressed: () => _performSearch(_searchController.text),
                                   ),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
@@ -340,7 +341,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                                 color: isDark ? Colors.black26 : Colors.grey.shade100,
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Iconsax.map_1, color: isDark ? Colors.white70 : Colors.black87),
+                              child: Icon(CupertinoIcons.map_fill, color: isDark ? Colors.white70 : Colors.black87),
                             ),
                             const SizedBox(width: 16),
                             Expanded(

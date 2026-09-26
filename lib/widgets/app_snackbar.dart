@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
@@ -19,14 +20,18 @@ class AppSnackbar {
   static const _logoTextGap = 14.0;
 
   static void success(BuildContext context, String message, {Duration duration = _successDuration}) {
-    _display(context, message, duration, true);
+    _display(context, message, duration, true, isInfo: false);
   }
 
   static void error(BuildContext context, String message) {
-    _display(context, message, _errorDuration, false);
+    _display(context, message, _errorDuration, false, isInfo: false);
   }
 
-  static void _display(BuildContext context, String message, Duration duration, bool isSuccess) {
+  static void info(BuildContext context, String message, {Duration duration = _successDuration}) {
+    _display(context, message, duration, false, isInfo: true);
+  }
+
+  static void _display(BuildContext context, String message, Duration duration, bool isSuccess, {bool isInfo = false}) {
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (messenger == null) return;
 
@@ -34,7 +39,7 @@ class AppSnackbar {
 
     messenger.showSnackBar(
       SnackBar(
-        content: _PremiumSnackbarContent(message: message, isSuccess: isSuccess),
+        content: _PremiumSnackbarContent(message: message, isSuccess: isSuccess, isInfo: isInfo),
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -57,8 +62,9 @@ class AppSnackbar {
 class _PremiumSnackbarContent extends StatelessWidget {
   final String message;
   final bool isSuccess;
+  final bool isInfo;
 
-  const _PremiumSnackbarContent({required this.message, required this.isSuccess});
+  const _PremiumSnackbarContent({required this.message, required this.isSuccess, required this.isInfo});
 
   @override
   Widget build(BuildContext context) {
@@ -93,11 +99,11 @@ class _PremiumSnackbarContent extends StatelessWidget {
                 width: AppSnackbar._logoSize,
                 height: AppSnackbar._logoSize,
                 decoration: BoxDecoration(
-                  color: isSuccess ? Colors.green : Colors.redAccent,
+                  color: isInfo ? Colors.blueAccent : (isSuccess ? Colors.green : Colors.redAccent),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  isSuccess ? Iconsax.tick_circle : Iconsax.warning_2,
+                  isInfo ? CupertinoIcons.info_circle_fill : (isSuccess ? CupertinoIcons.checkmark_alt : CupertinoIcons.exclamationmark_triangle_fill),
                   color: Colors.white,
                   size: 14,
                 ),

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -17,6 +18,7 @@ class SearchScreen extends StatefulWidget {
   final Position? currentPosition;
   final String initialCategory;
   final String initialQuery;
+  final bool autoOpenFilters;
 
   const SearchScreen({
     super.key,
@@ -24,6 +26,7 @@ class SearchScreen extends StatefulWidget {
     this.currentPosition,
     this.initialCategory = 'All',
     this.initialQuery = '',
+    this.autoOpenFilters = false,
   });
 
   @override
@@ -59,6 +62,11 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     _selectedCategory = widget.initialCategory;
     _searchController = TextEditingController(text: widget.initialQuery);
+    if (widget.autoOpenFilters) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openAdvancedFiltersSheet();
+      });
+    }
   }
 
   @override
@@ -420,7 +428,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 children: [
                   Text(
                     '${results.length} ${results.length == 1 ? 'property' : 'properties'} found',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                       color: mutedColor,
@@ -500,7 +508,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             alignment: Alignment.center,
             child: const Icon(
-              Icons.auto_awesome_rounded,
+              CupertinoIcons.sparkles,
               size: 24,
               color: Colors.black,
             ),
@@ -540,7 +548,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             alignment: Alignment.center,
             child: Icon(
-              Iconsax.arrow_left_2,
+              CupertinoIcons.chevron_left,
               color: primaryTextColor,
               size: 18,
             ),
@@ -550,7 +558,7 @@ class _SearchScreenState extends State<SearchScreen> {
         // Title: Search Properties
         Text(
           'Search Properties',
-          style: GoogleFonts.inter(
+          style: TextStyle(fontFamily: 'ProximaNova', 
             fontSize: 16.5,
             fontWeight: FontWeight.w800,
             color: primaryTextColor,
@@ -585,7 +593,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 alignment: Alignment.center,
                 child: Icon(
-                  Iconsax.setting_4,
+                  CupertinoIcons.settings,
                   size: 18,
                   color: hasFilters ? Colors.black : primaryTextColor,
                 ),
@@ -607,7 +615,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     alignment: Alignment.center,
                     child: Text(
                       '$_activeFilterCount',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         color: Colors.white,
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
@@ -641,7 +649,7 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Row(
         children: [
           const Icon(
-            Iconsax.search_normal_1,
+            CupertinoIcons.search,
             size: 18,
             color: AppTheme.primaryYellow,
           ),
@@ -650,14 +658,14 @@ class _SearchScreenState extends State<SearchScreen> {
             child: TextField(
               controller: _searchController,
               focusNode: _focusNode,
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 13.5,
                 fontWeight: FontWeight.w500,
                 color: primaryTextColor,
               ),
               decoration: InputDecoration(
                 hintText: 'Search city, area, 2 BHK, hostel, buy...',
-                hintStyle: GoogleFonts.inter(
+                hintStyle: TextStyle(fontFamily: 'ProximaNova', 
                   fontSize: 13,
                   color: mutedColor.withValues(alpha: 0.75),
                   fontWeight: FontWeight.normal,
@@ -685,7 +693,7 @@ class _SearchScreenState extends State<SearchScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(4.0),
                 child: Icon(
-                  Iconsax.close_circle5,
+                  CupertinoIcons.clear_circled_solid,
                   size: 18,
                   color: mutedColor,
                 ),
@@ -699,13 +707,13 @@ class _SearchScreenState extends State<SearchScreen> {
   /// Quick Category Pills (Horizontal Scroll)
   Widget _buildCategoryPills(bool isDark) {
     final categories = const [
-      {'name': 'All', 'icon': Iconsax.category},
-      {'name': 'Flat', 'icon': Iconsax.buildings},
-      {'name': 'House', 'icon': Iconsax.home_2},
-      {'name': 'PG', 'icon': Iconsax.user_tag},
-      {'name': 'Office', 'icon': Iconsax.shop},
-      {'name': 'Land', 'icon': Iconsax.map_1},
-      {'name': 'Buy', 'icon': Iconsax.key},
+      {'name': 'All', 'icon': CupertinoIcons.square_grid_2x2_fill},
+      {'name': 'Flat', 'icon': CupertinoIcons.building_2_fill},
+      {'name': 'House', 'icon': CupertinoIcons.house_fill},
+      {'name': 'PG', 'icon': CupertinoIcons.person_fill},
+      {'name': 'Office', 'icon': CupertinoIcons.tag_fill},
+      {'name': 'Land', 'icon': CupertinoIcons.map_fill},
+      {'name': 'Buy', 'icon': CupertinoIcons.lock_fill},
     ];
 
     return SizedBox(
@@ -756,7 +764,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   const SizedBox(width: 6),
                   Text(
                     name == 'PG' ? 'PG / Hostel' : (name == 'Office' ? 'Commercial' : name),
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 12,
                       fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                       color: isSelected
@@ -861,7 +869,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   children: [
                     Text(
                       c['label'] as String,
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: isDark ? AppTheme.primaryYellow : Colors.black87,
@@ -871,7 +879,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     GestureDetector(
                       onTap: c['onRemove'] as VoidCallback,
                       child: Icon(
-                        Icons.close,
+                        CupertinoIcons.clear,
                         size: 13,
                         color: isDark ? AppTheme.primaryYellow : Colors.black87,
                       ),
@@ -907,7 +915,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 alignment: Alignment.center,
                 child: Text(
                   'Clear all',
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFFEF4444),
@@ -948,14 +956,14 @@ class _SearchScreenState extends State<SearchScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Iconsax.sort,
+              CupertinoIcons.sort_down,
               size: 14,
               color: AppTheme.primaryYellow,
             ),
             const SizedBox(width: 5),
             Text(
               label,
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,
                 color: primaryTextColor,
@@ -963,7 +971,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SizedBox(width: 2),
             Icon(
-              Icons.keyboard_arrow_down_rounded,
+              CupertinoIcons.chevron_down,
               size: 16,
               color: mutedColor,
             ),
@@ -993,7 +1001,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Text(
                     'Sort Results By',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 16.5,
                       fontWeight: FontWeight.w800,
                       color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
@@ -1001,11 +1009,11 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildSortOption('Relevance (Default)', 'relevance', Iconsax.magic_star, isDark),
+                _buildSortOption('Relevance (Default)', 'relevance', CupertinoIcons.wand_stars, isDark),
                 if (widget.currentPosition != null)
-                  _buildSortOption('Distance (Closest First)', 'distance', Iconsax.location, isDark),
-                _buildSortOption('Price: Low to High', 'price_asc', Iconsax.arrow_up_3, isDark),
-                _buildSortOption('Price: High to Low', 'price_desc', Iconsax.arrow_down_1, isDark),
+                  _buildSortOption('Distance (Closest First)', 'distance', CupertinoIcons.location_solid, isDark),
+                _buildSortOption('Price: Low to High', 'price_asc', CupertinoIcons.chevron_up, isDark),
+                _buildSortOption('Price: High to Low', 'price_desc', CupertinoIcons.chevron_down, isDark),
               ],
             ),
           ),
@@ -1031,7 +1039,7 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       title: Text(
         title,
-        style: GoogleFonts.inter(
+        style: TextStyle(fontFamily: 'ProximaNova', 
           fontSize: 13.5,
           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           color: isSelected
@@ -1040,7 +1048,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       ),
       trailing: isSelected
-          ? const Icon(Icons.check_rounded, color: AppTheme.primaryYellow, size: 18)
+          ? const Icon(CupertinoIcons.checkmark_alt, color: AppTheme.primaryYellow, size: 18)
           : null,
       onTap: () {
         setState(() => _sortBy = key);
@@ -1113,7 +1121,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(4.0),
                             child: Icon(
-                              Iconsax.arrow_left_2,
+                              CupertinoIcons.chevron_left,
                               size: 22,
                               color: isDark ? Colors.white : Colors.black87,
                             ),
@@ -1123,7 +1131,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         // Title
                         Text(
                           'Filters',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 19,
                             fontWeight: FontWeight.w800,
                             color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
@@ -1156,7 +1164,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           },
                           child: Text(
                             'Reset',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 14.5,
                               fontWeight: FontWeight.w700,
                               color: const Color(0xFFEF4444),
@@ -1203,7 +1211,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                   ),
                                 ),
                                 Icon(
-                                  Icons.keyboard_arrow_down,
+                                  CupertinoIcons.chevron_down,
                                   color: isDark ? Colors.white54 : Colors.grey.shade600,
                                 ),
                               ],
@@ -1598,7 +1606,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               alignment: Alignment.center,
                               child: Text(
                                 'Cancel',
-                                style: GoogleFonts.inter(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                   color: isDark ? Colors.white70 : Colors.black87,
@@ -1651,7 +1659,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               alignment: Alignment.center,
                               child: Text(
                                 'Apply',
-                                style: GoogleFonts.inter(
+                                style: TextStyle(fontFamily: 'ProximaNova', 
                                   fontSize: 15.5,
                                   fontWeight: FontWeight.w900,
                                   color: Colors.black,
@@ -1724,14 +1732,14 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: TextField(
                   controller: locController,
                   autofocus: true,
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Type location (e.g. Visakhapatnam)',
-                    hintStyle: GoogleFonts.inter(color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
+                    hintStyle: TextStyle(fontFamily: 'ProximaNova', color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500),
                     border: InputBorder.none,
                   ),
                   onSubmitted: (val) {
@@ -1747,8 +1755,8 @@ class _SearchScreenState extends State<SearchScreen> {
               // Action Options: Use Current Location
               if (widget.currentPosition != null)
                 ListTile(
-                  leading: const Icon(Iconsax.gps, color: AppTheme.primaryYellow),
-                  title: Text('Use current location', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                  leading: const Icon(CupertinoIcons.location_fill, color: AppTheme.primaryYellow),
+                  title: Text('Use current location', style: TextStyle(fontFamily: 'ProximaNova', fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                   onTap: () {
                     onSelected('Near My Location');
                     Navigator.pop(ctx);
@@ -1760,7 +1768,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Popular Locations',
-                  style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600),
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 12.5, fontWeight: FontWeight.bold, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600),
                 ),
               ),
               const SizedBox(height: 8),
@@ -1784,7 +1792,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                       child: Text(
                         city,
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                           color: isDark ? Colors.white : Colors.black87,
@@ -1804,7 +1812,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
-      style: GoogleFonts.inter(
+      style: TextStyle(fontFamily: 'ProximaNova', 
         fontSize: 15.5,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.2,
@@ -1815,7 +1823,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSubHeader(String title) {
     return Text(
       title,
-      style: GoogleFonts.inter(
+      style: TextStyle(fontFamily: 'ProximaNova', 
         fontSize: 14,
         fontWeight: FontWeight.w700,
       ),
@@ -1865,8 +1873,8 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             Icon(
               isSelected
-                  ? Iconsax.tick_circle
-                  : (isMulti ? Iconsax.add_circle : Icons.radio_button_unchecked),
+                  ? CupertinoIcons.checkmark_alt
+                  : (isMulti ? CupertinoIcons.add_circled : CupertinoIcons.circle),
               size: 15,
               color: isSelected
                   ? (isDark ? Colors.black : AppTheme.primaryYellow)
@@ -1875,7 +1883,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const SizedBox(width: 6),
             Text(
               label,
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 color: isSelected
                     ? (isDark ? Colors.black : Colors.white)
                     : (isDark ? Colors.white70 : const Color(0xFF2D2D2D)),
@@ -1913,7 +1921,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 height: 220,
                 fit: BoxFit.contain,
                 errorBuilder: (_, _, _) => Icon(
-                  Iconsax.search_status,
+                  CupertinoIcons.search,
                   size: 80,
                   color: mutedColor.withValues(alpha: 0.4),
                 ),
@@ -1922,7 +1930,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const SizedBox(height: 12),
             Text(
               'No properties found',
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 color: primaryTextColor,
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
@@ -1933,7 +1941,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const SizedBox(height: 6),
             Text(
               'Try adjusting your search query or removing filters to discover more properties.',
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 13,
                 color: mutedColor,
                 height: 1.4,
@@ -1980,7 +1988,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 child: Text(
                   'Reset All Filters',
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: Colors.black,

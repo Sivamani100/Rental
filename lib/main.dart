@@ -1,14 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/admin_login_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/ai_chat_screen.dart';
-import 'screens/onboarding_screen.dart';
 import 'services/ai_assistant_service.dart';
 import 'services/analytics_service.dart';
 import 'theme/app_theme.dart';
@@ -18,6 +19,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'services/push_notification_service.dart';
 import 'services/in_app_update_service.dart';
 import 'services/review_trigger_service.dart';
+import 'services/saved_properties_service.dart';
+import 'package:device_preview/device_preview.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -40,6 +43,7 @@ Future<void> main() async {
   PaintingBinding.instance.imageCache.maximumSizeBytes = 250 << 20; // 250 MB
 
   await ThemeController.instance.init();
+  await SavedPropertiesService.instance.init();
 
   await Supabase.initialize(
     url: Env.supabaseUrl,
@@ -47,7 +51,6 @@ Future<void> main() async {
   );
 
   final prefs = await SharedPreferences.getInstance();
-  final bool hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ?? false;
 
   // Pre-load AI Assistant local chat history and settings instantly
   AiAssistantService.instance.init();
@@ -58,7 +61,12 @@ Future<void> main() async {
   }
 
   // Launch UI INSTANTLY — 0ms blank screen delay
-  runApp(RentalApp(hasCompletedOnboarding: hasCompletedOnboarding));
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => const RentalApp(),
+    ),
+  );
 
   // Initialize Analytics and Push Notification Service asynchronously in background
   _initAsyncServices();
@@ -70,16 +78,14 @@ void _initAsyncServices() async {
 }
 
 class RentalApp extends StatelessWidget {
-  final bool hasCompletedOnboarding;
-
-  const RentalApp({super.key, this.hasCompletedOnboarding = false});
+  const RentalApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: ThemeController.instance,
       builder: (context, _) {
-        final isDark = ThemeController.instance.isDarkMode;
+        final isDark = false;
 
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
@@ -99,21 +105,17 @@ class RentalApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            themeMode: ThemeController.instance.themeMode,
-            builder: (context, child) => ReviewTriggerWrapper(
-              child: InAppUpdateWrapper(child: child ?? const SizedBox.shrink()),
-            ),
+            themeMode: ThemeMode.light,
+            builder: (context, child) {
+              final appContent = ReviewTriggerWrapper(
+                child: InAppUpdateWrapper(child: child ?? const SizedBox.shrink()),
+              );
+              return DevicePreview.appBuilder(context, appContent);
+            },
             onGenerateRoute: (settings) {
               final rawName = settings.name ?? '/';
               final uri = Uri.parse(rawName);
               final path = uri.path.toLowerCase();
-
-              if (path == '/onboarding') {
-                return MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => const OnboardingScreen(),
-                );
-              }
 
               if (path == '/ai' || path == '/ai-chat' || path == '/assistant') {
                 return MaterialPageRoute(
@@ -166,7 +168,6 @@ class RentalApp extends StatelessWidget {
                 propertyId = path.replaceFirst('/property/', '').trim();
               }
 
-              // Direct property deep links open the property directly
               if (propertyId != null && propertyId.isNotEmpty) {
                 return MaterialPageRoute(
                   settings: settings,
@@ -174,17 +175,9 @@ class RentalApp extends StatelessWidget {
                 );
               }
 
-              // First-time users see OnboardingScreen
-              if (!hasCompletedOnboarding) {
-                return MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => const OnboardingScreen(),
-                );
-              }
-
               return MaterialPageRoute(
                 settings: settings,
-                builder: (_) => HomeScreen(initialPropertyId: propertyId),
+                builder: (_) => const OnboardingScreen(),
               );
             },
           ),

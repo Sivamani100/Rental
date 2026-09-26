@@ -1,7 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'settings_screen.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -20,23 +22,25 @@ import '../models/property_model.dart';
 import '../widgets/image_cropper_sheet.dart';
 import 'photo_position_screen.dart';
 
-class PostBottomSheet extends StatefulWidget {
+class PostingScreen extends StatefulWidget {
   final Position? currentLocation;
   final Function(PropertyModel)? onPropertyCreated;
+  final VoidCallback? onDismissForm;
   final PropertyModel? propertyToEdit;
 
-  const PostBottomSheet({
+  const PostingScreen({
     super.key,
     this.currentLocation,
     this.onPropertyCreated,
+    this.onDismissForm,
     this.propertyToEdit,
   });
 
   @override
-  State<PostBottomSheet> createState() => _PostBottomSheetState();
+  State<PostingScreen> createState() => _PostingScreenState();
 }
 
-class _PostBottomSheetState extends State<PostBottomSheet> {
+class _PostingScreenState extends State<PostingScreen> {
   int _currentStep = 1;
   static const int _totalSteps = 6;
   String _selectedType = 'Rental'; // 'Rental' or 'PG'
@@ -773,7 +777,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         },
         onDismissForm: () {
           if (mounted) {
-            Navigator.of(context).pop(); // dismiss post form after 5s success timer
+            widget.onDismissForm?.call();
           }
         },
       ),
@@ -783,85 +787,78 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final double maxDialogHeight = MediaQuery.of(context).size.height * 0.88;
 
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(maxHeight: maxDialogHeight),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkScaffold : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(
-          top: BorderSide(
-            color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
-            width: 1.5,
+    return Scaffold(
+      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0067FF),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(36),
+              bottomRight: Radius.circular(36),
+            ),
           ),
-        ),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        left: 16,
-        right: 16,
-        top: 24,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with Step indicator
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 16, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        _isEditing
-                            ? 'Edit ${_selectedType == "Buy" ? "Property for Sale" : (_selectedType == "PG" ? "PG / Hostel" : "Rental Property")}'
-                            : 'Post ${_selectedType == "Buy" ? "Property for Sale" : (_selectedType == "PG" ? "PG / Hostel" : "Rental Property")}',
+                      const Text(
+                        'Sell Property',
                         style: TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Step $_currentStep of $_totalSteps: ${_getStepTitle()}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                          fontWeight: FontWeight.w500,
+                          fontFamily: 'DMSans',
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    
-                    IconButton(
-                      onPressed: _isSubmitting
-                          ? null
-                          : () {
-                              _saveDraft();
-                              Navigator.pop(context);
-                            },
-                      icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54),
-                      visualDensity: VisualDensity.compact,
+                  BouncingButton(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                      );
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(
+                        Iconsax.setting_2,
+                        color: Colors.white,
+                        size: 26,
+                      ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom, // Removed manual offset so buttons stick to bottom nav bar
+            left: 16,
+            right: 16,
+            top: 24,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header removed (now handled by AppBar)
           if (_sheetErrorMessage != null)
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
-              margin: const EdgeInsets.only(top: 10, bottom: 4, left: 10, right: 10),
+              margin: const EdgeInsets.only(top: 10, bottom: 12, left: 10, right: 10),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFECEC),
@@ -870,7 +867,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               ),
               child: Row(
                 children: [
-                  const Icon(Iconsax.warning_2, color: Colors.red, size: 18),
+                  const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.red, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -880,12 +877,11 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   ),
                   GestureDetector(
                     onTap: () => setState(() => _sheetErrorMessage = null),
-                    child: const Icon(Icons.close, color: Colors.red, size: 16),
+                    child: const Icon(CupertinoIcons.clear, color: Colors.red, size: 16),
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: 20),
           // Step Progress Indicator Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -922,10 +918,12 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           ),
           const SizedBox(height: 16),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: const EdgeInsets.only(left: 10, right: 10, bottom: 16),
             child: _buildActionButtons(),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
@@ -985,6 +983,8 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
   // ==========================================
   Widget _buildActionButtons() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_currentStep == 1) return const SizedBox.shrink();
 
     return Row(
       children: [
@@ -1115,7 +1115,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 subtitle: 'Flats, villas & apartments',
                 typeKey: 'Rental',
                 lottiePath: 'assets/rental.json',
-                icon: Iconsax.home_2,
+                icon: CupertinoIcons.house_fill,
                 lottieHeight: 110,
                 lottieScale: 1.55,
               ),
@@ -1128,7 +1128,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 subtitle: 'Rooms with food & Wi-Fi',
                 typeKey: 'PG',
                 lottiePath: 'assets/hostel.json',
-                icon: Iconsax.building_3,
+                icon: CupertinoIcons.building_2_fill,
                 lottieHeight: 85,
                 lottieScale: 1.05,
               ),
@@ -1144,7 +1144,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           subtitle: 'List independent houses, villas, flats, commercial spaces or plots.',
           typeKey: 'Buy',
           lottiePath: 'assets/buyorsell.json',
-          icon: Iconsax.shop,
+          icon: CupertinoIcons.tag_fill,
         ),
         const SizedBox(height: 12),
 
@@ -1170,6 +1170,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       onTap: () {
         setState(() {
           _selectedType = typeKey;
+          _currentStep = 2; // Auto-advance to next step
         });
         _saveDraft();
       },
@@ -1258,7 +1259,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                   ),
                   child: isSelected
                       ? Icon(
-                          Icons.check,
+                          CupertinoIcons.checkmark_alt,
                           size: 14,
                           color: isDark ? Colors.black : Colors.white,
                         )
@@ -1495,7 +1496,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 ),
                 child: isSelected
                     ? Icon(
-                        Icons.check,
+                        CupertinoIcons.checkmark_alt,
                         size: 15,
                         color: isDark ? Colors.black : Colors.white,
                       )
@@ -1518,7 +1519,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       key: const ValueKey(2),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Upload Photos', Iconsax.camera),
+        _buildSectionHeader('Upload Photos', CupertinoIcons.camera_fill),
         const SizedBox(height: 8),
         _selectedImages.isEmpty && _existingImages.isEmpty
             ? GestureDetector(
@@ -1538,7 +1539,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Iconsax.camera,
+                        CupertinoIcons.camera_fill,
                         size: 36,
                         color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
                       ),
@@ -1591,7 +1592,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             icon: Icon(
-                              Iconsax.arrange_circle,
+                              CupertinoIcons.arrow_2_circlepath_circle,
                               size: 15,
                               color: isDark ? AppTheme.primaryYellow : Colors.black,
                             ),
@@ -1613,7 +1614,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             icon: Icon(
-                              Iconsax.gallery_add,
+                              CupertinoIcons.photo_on_rectangle,
                               size: 15,
                               color: isDark ? AppTheme.primaryYellow : Colors.black,
                             ),
@@ -1703,7 +1704,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
-                                      Icons.close_rounded,
+                                      CupertinoIcons.clear,
                                       color: Colors.white,
                                       size: 13,
                                     ),
@@ -1733,7 +1734,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                                         border: Border.all(color: AppTheme.primaryYellow, width: 1.2),
                                       ),
                                       child: const Icon(
-                                        Iconsax.crop,
+                                        CupertinoIcons.crop,
                                         color: AppTheme.primaryYellow,
                                         size: 12,
                                       ),
@@ -1749,7 +1750,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 ],
               ),
         const SizedBox(height: 20),
-        _buildSectionHeader(_selectedType == 'Buy' ? 'Selling Price & Location' : 'Basic Pricing & Location', Iconsax.wallet_3),
+        _buildSectionHeader(_selectedType == 'Buy' ? 'Selling Price & Location' : 'Basic Pricing & Location', CupertinoIcons.creditcard_fill),
         const SizedBox(height: 12),
         _buildCustomInput(
           controller: _titleController,
@@ -1822,7 +1823,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 20),
-        _buildSectionHeader('Location & Address', Iconsax.location5),
+        _buildSectionHeader('Location & Address', CupertinoIcons.location_solid),
         const SizedBox(height: 10),
         _locationAddress.isEmpty
             ? SizedBox(
@@ -1839,7 +1840,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                           ),
                         )
                       : Icon(
-                          Iconsax.location5,
+                          CupertinoIcons.location_solid,
                           color: isDark ? AppTheme.primaryYellow : Colors.black,
                           size: 18,
                         ),
@@ -1872,7 +1873,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                 child: Row(
                   children: [
                     Icon(
-                      Iconsax.location5,
+                      CupertinoIcons.location_solid,
                       color: isDark ? AppTheme.primaryYellow : Colors.green,
                       size: 20,
                     ),
@@ -1892,7 +1893,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
                         _locationAddress = '';
                         _addressController.clear();
                       }),
-                      child: const Icon(Iconsax.close_circle, color: Colors.redAccent, size: 18),
+                      child: const Icon(CupertinoIcons.clear_circled_solid, color: Colors.redAccent, size: 18),
                     ),
                   ],
                 ),
@@ -1941,7 +1942,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Occupancy & Gender Preference',
           subtitle: 'Select who can stay in this PG / Hostel',
-          icon: Iconsax.profile_2user,
+          icon: CupertinoIcons.person_2_fill,
           child: _buildSingleSelectGroup(
             options: ['Boys Only', 'Girls Only', 'Co-Living (Unisex)'],
             selected: _pgGender,
@@ -1951,7 +1952,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Room Sharing Type',
           subtitle: 'Number of beds / occupants sharing per room',
-          icon: Iconsax.category,
+          icon: CupertinoIcons.square_grid_2x2_fill,
           child: _buildSingleSelectGroup(
             options: ['Single Room', '2 Sharing', '3 Sharing', '4+ Sharing'],
             selected: _pgSharing,
@@ -1961,7 +1962,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Air Conditioning / Climate',
           subtitle: 'Cooling provision provided in rooms',
-          icon: Iconsax.wind_2,
+          icon: CupertinoIcons.wind,
           child: _buildSingleSelectGroup(
             options: ['AC Room', 'Non-AC Room', 'Air Cooler Provided'],
             selected: _pgAcType,
@@ -1971,7 +1972,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Bathroom Setup',
           subtitle: 'Washroom attachment and privacy level',
-          icon: Iconsax.drop,
+          icon: CupertinoIcons.drop_fill,
           child: _buildSingleSelectGroup(
             options: ['Attached Bathroom', 'Common Bathroom (Cleaned Daily)'],
             selected: _pgBathroom,
@@ -1981,7 +1982,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Toilet Fixture Type',
           subtitle: 'Commode or pan type installed in washrooms',
-          icon: Iconsax.setting_2,
+          icon: CupertinoIcons.settings,
           child: _buildSingleSelectGroup(
             options: ['Western Toilet', 'Indian Toilet', 'Both Available'],
             selected: _pgToiletType,
@@ -1991,7 +1992,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'In-Room Furnishings & Essentials',
           subtitle: 'Tap all items available inside the room',
-          icon: Iconsax.lamp_on,
+          icon: CupertinoIcons.lightbulb_fill,
           child: _buildMultiSelectChips(
             options: [
               'Bed & Mattress',
@@ -2021,7 +2022,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'BHK Configuration',
           subtitle: 'Select house or apartment layout type',
-          icon: Iconsax.home,
+          icon: CupertinoIcons.house_fill,
           child: _buildSingleSelectGroup(
             options: ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4+ BHK / Villa'],
             selected: _rentalBhk,
@@ -2043,7 +2044,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Furnishing Status',
           subtitle: 'Degree of furniture & fixtures included',
-          icon: Iconsax.box,
+          icon: CupertinoIcons.cube_box_fill,
           child: _buildSingleSelectGroup(
             options: ['Unfurnished', 'Semi-Furnished', 'Fully-Furnished'],
             selected: _rentalFurnishing,
@@ -2053,7 +2054,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Carpet Area & Built-up Space',
           subtitle: 'Total usable floor area in square feet',
-          icon: Iconsax.maximize_4,
+          icon: CupertinoIcons.fullscreen,
           child: _buildCustomInput(
             initialValue: _rentalArea,
             label: 'Carpet Area (sqft)',
@@ -2065,7 +2066,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Bedrooms & Bathrooms Count',
           subtitle: 'Total count of private bedrooms and washrooms',
-          icon: Iconsax.building_3,
+          icon: CupertinoIcons.building_2_fill,
           child: Row(
             children: [
               Expanded(
@@ -2091,7 +2092,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Floor & Building Level',
           subtitle: 'Specific floor number and total building floors',
-          icon: Iconsax.layer,
+          icon: CupertinoIcons.square_stack_3d_up_fill,
           child: Row(
             children: [
               Expanded(
@@ -2117,7 +2118,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Physical Inspection Checklist',
           subtitle: 'Highlight confirmed verified features',
-          icon: Iconsax.shield_tick,
+          icon: CupertinoIcons.shield_fill,
           child: _buildMultiSelectChips(
             options: [
               'All Taps & Showers Tested',
@@ -2149,7 +2150,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Property Type / Category',
           subtitle: 'Select the exact nature of property for sale',
-          icon: Iconsax.building_3,
+          icon: CupertinoIcons.building_2_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Independent House / Villa',
@@ -2165,7 +2166,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'BHK Configuration',
           subtitle: 'Select number of bedrooms / layout setup',
-          icon: Iconsax.home,
+          icon: CupertinoIcons.house_fill,
           child: _buildSingleSelectGroup(
             options: ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5+ BHK', 'Plot / Non-BHK', 'Commercial Space'],
             selected: _buyBhk,
@@ -2192,7 +2193,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Property Entrance Facing',
           subtitle: 'Main entrance or gate facing direction',
-          icon: Iconsax.routing_2,
+          icon: CupertinoIcons.arrow_swap,
           child: _buildSingleSelectGroup(
             options: [
               'East Facing',
@@ -2209,7 +2210,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Plot & Built-up Dimensions',
           subtitle: 'Total land area and constructed usable carpet area',
-          icon: Iconsax.maximize_4,
+          icon: CupertinoIcons.fullscreen,
           child: Row(
             children: [
               Expanded(
@@ -2236,7 +2237,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Construction Age & Status',
           subtitle: 'Current physical development status of property',
-          icon: Iconsax.timer_1,
+          icon: CupertinoIcons.timer,
           child: _buildSingleSelectGroup(
             options: [
               'Ready to Move (Brand New 0-1 yr)',
@@ -2253,7 +2254,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Furnishing & Interior Level',
           subtitle: 'Interior work and woodworking done on property',
-          icon: Iconsax.box,
+          icon: CupertinoIcons.cube_box_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Unfurnished / Raw Shell',
@@ -2279,7 +2280,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Meal Plan Included',
           subtitle: 'Select daily meal schedule provided to residents',
-          icon: Iconsax.coffee,
+          icon: CupertinoIcons.circle_grid_hex,
           child: _buildSingleSelectGroup(
             options: [
               '3 Meals Included (Breakfast, Lunch, Dinner)',
@@ -2294,7 +2295,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Food Quality & Dietary Type',
           subtitle: 'Dietary preferences and preparation style',
-          icon: Iconsax.heart,
+          icon: CupertinoIcons.heart,
           child: _buildSingleSelectGroup(
             options: ['Pure Veg Food', 'Veg & Non-Veg (Weekly)', 'Home-Style Cook'],
             selected: _pgFoodType,
@@ -2304,7 +2305,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Drinking Water Facility',
           subtitle: 'Water purification and dispensing setup',
-          icon: Iconsax.drop,
+          icon: CupertinoIcons.drop_fill,
           child: _buildSingleSelectGroup(
             options: [
               'RO Purified + Cool Water Dispenser',
@@ -2318,7 +2319,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'General Water Supply',
           subtitle: 'Availability schedule for daily utility use',
-          icon: Iconsax.bucket,
+          icon: CupertinoIcons.drop_fill,
           child: _buildSingleSelectGroup(
             options: ['24/7 Continuous Water Supply', 'Timed Water Supply (Morning & Evening)'],
             selected: _pgWaterSupply,
@@ -2328,7 +2329,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Power Supply & Backup',
           subtitle: 'Electricity reliability and inverter/generator support',
-          icon: Iconsax.flash_1,
+          icon: CupertinoIcons.bolt_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Full Inverter Power Backup',
@@ -2342,7 +2343,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Shared Appliances & Common Amenities',
           subtitle: 'Check all appliances available for common use',
-          icon: Iconsax.computing,
+          icon: CupertinoIcons.desktopcomputer,
           child: _buildMultiSelectChips(
             options: [
               'High-Speed Wi-Fi',
@@ -2372,7 +2373,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Electricity Meter & Power',
           subtitle: 'Billing method for tenant electrical consumption',
-          icon: Iconsax.flash_1,
+          icon: CupertinoIcons.bolt_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Dedicated EB Digital Meter',
@@ -2386,7 +2387,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Water Supply & Charges',
           subtitle: 'Water connection and billing arrangement',
-          icon: Iconsax.drop,
+          icon: CupertinoIcons.drop_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Included in Maintenance',
@@ -2400,7 +2401,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Parking Facility',
           subtitle: 'Vehicle parking space inside the premises',
-          icon: Iconsax.car,
+          icon: CupertinoIcons.car_detailed,
           child: _buildSingleSelectGroup(
             options: [
               'Covered Car & Bike Parking',
@@ -2415,7 +2416,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Utilities & Maintenance Checklist',
           subtitle: 'Select all features verified for this unit',
-          icon: Iconsax.tick_circle,
+          icon: CupertinoIcons.checkmark_alt,
           child: _buildMultiSelectChips(
             options: [
               '24/7 Municipal & Borewell Water',
@@ -2445,7 +2446,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Legal Clearances & Approvals',
           subtitle: 'Title legitimacy, sanction plans and approved authority',
-          icon: Iconsax.document_text,
+          icon: CupertinoIcons.doc_text_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Freehold 100% Clear Title',
@@ -2461,7 +2462,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Front Road Width & Access',
           subtitle: 'Connecting approach road width in front of property',
-          icon: Iconsax.routing,
+          icon: CupertinoIcons.arrow_swap,
           child: _buildSingleSelectGroup(
             options: [
               '30 Feet Blacktop Road',
@@ -2477,7 +2478,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Water Supply & Underground Drainage',
           subtitle: 'Borewell yield, municipal connection and drainage status',
-          icon: Iconsax.drop,
+          icon: CupertinoIcons.drop_fill,
           child: _buildSingleSelectGroup(
             options: [
               '24/7 Deep Borewell + Municipal Water Connection',
@@ -2492,7 +2493,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Floors & Structure Level',
           subtitle: 'Total number of floors built on site',
-          icon: Iconsax.layer,
+          icon: CupertinoIcons.square_stack_3d_up_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Ground Floor Only',
@@ -2520,7 +2521,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Cleanliness & Housekeeping',
           subtitle: 'Frequency of room and washroom sanitization',
-          icon: Iconsax.brush_1,
+          icon: CupertinoIcons.paintbrush_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Daily Room & Bathroom Cleaning',
@@ -2534,7 +2535,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Owner & Warden Presence',
           subtitle: 'Management and supervision available on premises',
-          icon: Iconsax.user_tag,
+          icon: CupertinoIcons.person_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Owner on site & Resident Warden',
@@ -2548,7 +2549,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Gate Timings & Curfew Rules',
           subtitle: 'Night entry deadline or 24/7 access',
-          icon: Iconsax.clock,
+          icon: CupertinoIcons.clock_fill,
           child: _buildSingleSelectGroup(
             options: [
               '10:30 PM Gate Close',
@@ -2563,7 +2564,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Notice Period for Vacating',
           subtitle: 'Prior notice required before leaving the accommodation',
-          icon: Iconsax.calendar,
+          icon: CupertinoIcons.calendar,
           child: _buildSingleSelectGroup(
             options: ['15 Days', '1 Month', 'No Lock-in'],
             selected: _pgNotice,
@@ -2573,7 +2574,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Security & Verification Norms',
           subtitle: 'Safety rules and guest policies enforced',
-          icon: Iconsax.security_user,
+          icon: CupertinoIcons.shield_fill,
           child: _buildMultiSelectChips(
             options: [
               '24/7 CCTV & Security',
@@ -2601,7 +2602,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Rental Agreement Duration',
           subtitle: 'Standard tenure for the rent agreement',
-          icon: Iconsax.document_text,
+          icon: CupertinoIcons.doc_text_fill,
           child: _buildSingleSelectGroup(
             options: [
               '11 Months Standard',
@@ -2615,7 +2616,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Notice Period for Vacating',
           subtitle: 'Advance notice required before moving out',
-          icon: Iconsax.calendar,
+          icon: CupertinoIcons.calendar,
           child: _buildSingleSelectGroup(
             options: ['1 Month', '2 Months', '15 Days'],
             selected: _rentalNotice,
@@ -2625,7 +2626,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Tenant Preference',
           subtitle: 'Eligible resident profiles accepted by owner',
-          icon: Iconsax.profile_2user,
+          icon: CupertinoIcons.person_2_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Family & Working Professionals',
@@ -2640,7 +2641,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Pet Policy',
           subtitle: 'Are household pets permitted on the property?',
-          icon: Iconsax.heart,
+          icon: CupertinoIcons.heart,
           child: _buildSingleSelectGroup(
             options: ['Pets Allowed', 'No Pets Allowed'],
             selected: _rentalPetPolicy,
@@ -2650,7 +2651,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'House Rules & Society Norms',
           subtitle: 'Guidelines for tenants regarding noise, diet & visitors',
-          icon: Iconsax.info_circle,
+          icon: CupertinoIcons.info_circle_fill,
           child: _buildMultiSelectChips(
             options: [
               'Non-Veg Allowed',
@@ -2677,7 +2678,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Ownership & Seller Profile',
           subtitle: 'Who is selling this property?',
-          icon: Iconsax.user_tag,
+          icon: CupertinoIcons.person_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Direct Owner (Zero Brokerage)',
@@ -2692,7 +2693,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Price Negotiability',
           subtitle: 'Flexibility on the quoted asking price',
-          icon: Iconsax.tag,
+          icon: CupertinoIcons.tag_fill,
           child: _buildSingleSelectGroup(
             options: [
               'Price Negotiable for Serious Buyers',
@@ -2706,7 +2707,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Parking Infrastructure',
           subtitle: 'Parking space allocated inside boundaries',
-          icon: Iconsax.car,
+          icon: CupertinoIcons.car_detailed,
           child: _buildSingleSelectGroup(
             options: [
               'Covered Car + 2-Wheeler Parking',
@@ -2721,7 +2722,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
         _buildQuestionSection(
           title: 'Key Highlights & Property Features',
           subtitle: 'Select confirmed features to highlight for buyers',
-          icon: Iconsax.tick_circle,
+          icon: CupertinoIcons.checkmark_alt,
           child: _buildMultiSelectChips(
             options: [
               'Good Ventilation & Natural Sunlight',
@@ -2755,7 +2756,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
       key: const ValueKey(6),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Owner / Caretaker Contact', Iconsax.call),
+        _buildSectionHeader('Owner / Caretaker Contact', CupertinoIcons.phone_fill),
         const SizedBox(height: 12),
         _buildCustomInput(
           controller: _phoneController,
@@ -2778,7 +2779,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
           maxLines: 3,
         ),
         const SizedBox(height: 20),
-        _buildSectionHeader('Listing Summary Preview', Iconsax.eye),
+        _buildSectionHeader('Listing Summary Preview', CupertinoIcons.eye_solid),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(16),
@@ -3101,7 +3102,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  isSelected ? Iconsax.tick_circle : Icons.radio_button_unchecked,
+                  isSelected ? CupertinoIcons.checkmark_alt : CupertinoIcons.circle,
                   size: 15,
                   color: isSelected
                       ? (isDark ? AppTheme.primaryYellow : Colors.black)
@@ -3179,7 +3180,7 @@ class _PostBottomSheetState extends State<PostBottomSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  isSelected ? Iconsax.tick_circle : Iconsax.add_circle,
+                  isSelected ? CupertinoIcons.checkmark_alt : CupertinoIcons.add_circled,
                   color: isSelected
                       ? (isDark ? AppTheme.primaryYellow : Colors.black)
                       : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400),
@@ -3448,7 +3449,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                       height: 22,
                       fit: BoxFit.contain,
                       errorBuilder: (_, _, _) => const Icon(
-                        Iconsax.home_hashtag,
+                        CupertinoIcons.house_fill,
                         color: Colors.black,
                         size: 17,
                       ),
@@ -3462,7 +3463,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                 children: [
                   Text(
                     widget.isEditing ? 'Updating' : 'Uploading',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
@@ -3473,7 +3474,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                     _statusState == _UploadStatusState.uploading
                         ? (widget.isEditing ? 'Updating Property...' : 'Uploading Property...')
                         : (_statusState == _UploadStatusState.success ? (widget.isEditing ? 'Update Complete' : 'Upload Complete') : (widget.isEditing ? 'Update Failed' : 'Upload Failed')),
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 11.5,
                       color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
                       fontWeight: FontWeight.w400,
@@ -3534,7 +3535,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                         ),
                         Text(
                           '$displayPercent%',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
                             color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
@@ -3569,7 +3570,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
           Text(
             _statusMessage,
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
@@ -3581,7 +3582,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                 ? 'Please keep the app open while we update your listing.'
                 : 'Please keep the app open while we upload your listing.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 11.5,
               color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
               fontWeight: FontWeight.w400,
@@ -3609,7 +3610,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
             ),
             child: const Center(
               child: Icon(
-                Icons.check_rounded,
+                CupertinoIcons.checkmark_alt,
                 color: Colors.white,
                 size: 44,
               ),
@@ -3621,7 +3622,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
           Text(
             widget.isEditing ? 'Property Updated Successfully!' : 'Property Posted Successfully!',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 17.5,
               fontWeight: FontWeight.w700,
               color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
@@ -3644,12 +3645,12 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Iconsax.info_circle, color: Color(0xFFD97706), size: 18),
+                const Icon(CupertinoIcons.info_circle_fill, color: Color(0xFFD97706), size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Your post has been sent to admin for review. Once approved, it will go live in the app (usually takes within 3 hours).',
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 12.5,
                       fontWeight: FontWeight.w500,
                       color: isDark ? AppTheme.darkTextPrimary : const Color(0xFF92400E),
@@ -3687,7 +3688,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                 const SizedBox(width: 8),
                 Text(
                   'Redirecting to home page in $_countdownSeconds $secondLabel...',
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 12,
                     color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade800,
                     fontWeight: FontWeight.w600,
@@ -3716,7 +3717,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
             ),
             child: const Center(
               child: Icon(
-                Icons.close_rounded,
+                CupertinoIcons.clear,
                 color: Colors.white,
                 size: 44,
               ),
@@ -3727,7 +3728,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
           Text(
             widget.isEditing ? 'Update Failed' : 'Posting Failed',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 17.5,
               fontWeight: FontWeight.w700,
               color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
@@ -3748,7 +3749,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
             child: Text(
               _errorMessage.isNotEmpty ? _errorMessage : (widget.isEditing ? 'Unable to update property. Check connection.' : 'Unable to upload property. Check connection.'),
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 12.5,
                 color: isDark ? Colors.red.shade300 : const Color(0xFF991B1B),
                 fontWeight: FontWeight.w500,
@@ -3774,7 +3775,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                     alignment: Alignment.center,
                     child: Text(
                       'Back to Form',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: isDark ? Colors.white : Colors.black87,
@@ -3796,7 +3797,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                     alignment: Alignment.center,
                     child: Text(
                       'Retry Upload',
-                      style: GoogleFonts.inter(
+                      style: TextStyle(fontFamily: 'ProximaNova', 
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: Colors.black,
@@ -3812,3 +3813,6 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
     );
   }
 }
+
+
+

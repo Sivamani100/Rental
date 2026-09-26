@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'settings_screen.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -14,6 +17,8 @@ import 'property_details_screen.dart';
 import '../widgets/location_picker_sheet.dart';
 import 'search_screen.dart';
 import 'ai_chat_screen.dart';
+import 'saved_properties_screen.dart';
+import '../services/saved_properties_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -30,7 +35,15 @@ import '../models/property_model.dart';
 class HomeScreen extends StatefulWidget {
   final String? initialPropertyId;
 
-  const HomeScreen({super.key, this.initialPropertyId});
+  final String? initialLocationCity;
+  final String? initialLocationSubtext;
+
+  const HomeScreen({
+    super.key, 
+    this.initialPropertyId,
+    this.initialLocationCity,
+    this.initialLocationSubtext,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -44,18 +57,31 @@ List<PropertyModel> _parsePropertiesIsolate(String jsonStr) {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedTypeIndex = 0; // 0 for PG / Hostel, 1 for Rental
+  int _bottomNavIndex = 0; // 0 for Home, 1 for Saved, etc.
   late final PageController _pageController;
+  
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _sortBy = 'distance';
 
   // Scroll position memory: one controller per tab
+  final ScrollController _homeScrollController = ScrollController();
   final ScrollController _pgScrollController = ScrollController();
   final ScrollController _rentalScrollController = ScrollController();
   final ScrollController _buyScrollController = ScrollController();
 
   Position? _currentPosition;
-  String _currentCity = 'Finding location...';
-  String _currentArea = 'Detecting your area...';
+  late String _currentCity = widget.initialLocationCity ?? 'Finding location...';
+  late String _currentArea = widget.initialLocationSubtext ?? 'Detecting your area...';
   bool _hasLocationPermission = true;
   bool _isInitialLoading = true;
+  bool _showSplash = false;
+  bool _isSplashLocating = true;
+
+  final List<String> _searchHints = ['Hostels', 'Rental Rooms', 'Buy Houses'];
+  int _hintIndex = 0;
+  Timer? _hintTimer;
+  bool _isScrollUIVisible = true;
 
   // Custom location overrides
   Position? _manualLocationOverride;
@@ -88,6 +114,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     _pageController = PageController(initialPage: _selectedTypeIndex);
     WidgetsBinding.instance.addObserver(this);
+    SavedPropertiesService.instance.addListener(_onSavedChanged);
+    
+    _hintTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (mounted) {
+        setState(() {
+          _hintIndex = (_hintIndex + 1) % _searchHints.length;
+        });
+      }
+    });
+
     _initAppAndLocation();
   }
 
@@ -273,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Iconsax.location_tick, size: 48, color: isDark ? AppTheme.primaryYellow : Colors.black),
+              Icon(CupertinoIcons.location_solid, size: 48, color: isDark ? AppTheme.primaryYellow : Colors.black),
               const SizedBox(height: 16),
               Text(
                 'Use Current Location?',
@@ -399,7 +435,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    SavedPropertiesService.instance.removeListener(_onSavedChanged);
+    _hintTimer?.cancel();
+    _searchController.dispose();
     _pageController.dispose();
+    _homeScrollController.dispose();
     _pgScrollController.dispose();
     _rentalScrollController.dispose();
     _buyScrollController.dispose();
@@ -409,6 +449,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onSavedChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -601,6 +645,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   List<PropertyModel> _getSortedPropertiesForType(String selectedTypeStr) {
     bool matchesType(PropertyModel property) {
+      if (selectedTypeStr == 'Home') return true;
       if (selectedTypeStr == 'Rental') {
         return property.type == 'Rental' || property.type == 'House';
       } else if (selectedTypeStr == 'Buy') {
@@ -610,9 +655,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     }
 
+    bool matchesSearch(PropertyModel p) {
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      return p.title.toLowerCase().contains(q) || 
+             p.locationStr.toLowerCase().contains(q);
+    }
+
     final currentPos = _effectivePosition;
     if (currentPos == null) {
-      return _allProperties.where(matchesType).toList();
+      return _allProperties.where((p) => matchesType(p) && matchesSearch(p)).toList();
     }
 
     int searchRadiusKm = 5;
@@ -621,7 +673,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Increment radius by 5km until we find properties or hit 50km limit
     while (searchRadiusKm <= 50) {
       tempFiltered = _allProperties.where((property) {
-        if (!matchesType(property)) return false;
+        if (!matchesType(property) || !matchesSearch(property)) return false;
 
         double distanceInMeters = Geolocator.distanceBetween(
           currentPos.latitude,
@@ -644,21 +696,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       tempFiltered = [];
     }
 
-    // Sort strictly in ascending order by distance (closest first: 20m, 30m, 1.2km, etc.)
     tempFiltered.sort((a, b) {
-      double distA = Geolocator.distanceBetween(
-        currentPos.latitude,
-        currentPos.longitude,
-        a.latitude,
-        a.longitude,
-      );
-      double distB = Geolocator.distanceBetween(
-        currentPos.latitude,
-        currentPos.longitude,
-        b.latitude,
-        b.longitude,
-      );
-      return distA.compareTo(distB);
+      if (_sortBy == 'distance') {
+        double distA = Geolocator.distanceBetween(
+          currentPos.latitude,
+          currentPos.longitude,
+          a.latitude,
+          a.longitude,
+        );
+        double distB = Geolocator.distanceBetween(
+          currentPos.latitude,
+          currentPos.longitude,
+          b.latitude,
+          b.longitude,
+        );
+        return distA.compareTo(distB);
+      } else if (_sortBy == 'price_asc') {
+        return a.price.compareTo(b.price);
+      } else if (_sortBy == 'price_desc') {
+        return b.price.compareTo(a.price);
+      }
+      return 0; // relevance or fallback
     });
 
     _currentSearchRadiusKm = searchRadiusKm > 50 ? 50 : searchRadiusKm;
@@ -668,6 +726,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   /// Get the scroll controller for the active tab
   ScrollController _controllerForType(String typeStr) {
     switch (typeStr) {
+      case 'Home': return _homeScrollController;
       case 'PG': return _pgScrollController;
       case 'Buy': return _buyScrollController;
       default: return _rentalScrollController;
@@ -678,52 +737,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Show loading only when truly no data AND no permission issue
-    if (_isInitialLoading && _allProperties.isEmpty && _hasLocationPermission) {
+    // Yellow loading splash with centered location text
+    if (_showSplash && _allProperties.isEmpty) {
       return Scaffold(
-        backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
-        body: SizedBox.expand(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 190,
-                    width: 260,
-                    child: OverflowBox(
-                      maxHeight: 500,
-                      maxWidth: 500,
-                      child: ColorFiltered(
-                        colorFilter: isDark
-                            ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
-                            : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
-                        child: Lottie.asset(
-                          'assets/loadingg.json',
-                          width: 500,
-                          height: 500,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Finding location...',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
+        body: _YellowSplashScreen(
+          isLocating: _isSplashLocating,
+          city: _currentCity,
+          subtext: _currentArea,
+          isDenied: !_hasLocationPermission,
         ),
       );
     }
@@ -784,7 +805,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Iconsax.setting_2,
+                            CupertinoIcons.settings,
                             color: isDark ? Colors.black : Colors.white,
                             size: 20,
                           ),
@@ -823,75 +844,406 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         AppSnackbar.error(context, 'Press back again to exit');
       },
       child: Scaffold(
-        backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
-        body: SafeArea(
-          bottom: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 650),
-              child: Stack(
+        backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF2F2F7),
+        extendBody: true,
+        bottomNavigationBar: AnimatedSlide(
+          duration: const Duration(milliseconds: 300),
+          offset: _isScrollUIVisible ? Offset.zero : const Offset(0, 1),
+          child: _buildSwiggyBottomNav(isDark),
+        ),
+        body: _bottomNavIndex == 1 
+            ? _buildSavedPropertiesView(context, isDark)
+            : _bottomNavIndex == 2
+                ? _buildExploreMarketplaceView(context, isDark)
+                : _bottomNavIndex == 3
+                    ? PostingScreen(
+                        currentLocation: _currentPosition,
+                        onPropertyCreated: (newProp) {
+                          _fetchProperties();
+                          setState(() {
+                            _bottomNavIndex = 0; // Go back to Home tab after posting
+                          });
+                        },
+                      )
+                    : Column(
                 children: [
-                  Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: 16.0,
-                          right: 16.0,
-                          top: 16.0, // Added 10px top margin
-                          bottom: 8.0,
-                        ),
-                        child: _buildHeader(context),
+                  // ── Swiggy-style dark navy header ──
+                  _buildSwiggyHeader(context),
+            // ── Content ──
+            Expanded(
+              child: NotificationListener<UserScrollNotification>(
+                onNotification: (notification) {
+                  // Only listen to vertical scrolling (ignore PageView horizontal swipes)
+                  if (notification.metrics.axis != Axis.vertical) return false;
+
+                  if (notification.direction == ScrollDirection.reverse) {
+                    // scrolling down
+                    if (_isScrollUIVisible) setState(() => _isScrollUIVisible = false);
+                  } else if (notification.direction == ScrollDirection.forward) {
+                    // scrolling up
+                    if (!_isScrollUIVisible) setState(() => _isScrollUIVisible = true);
+                  }
+                  return false;
+                },
+                child: PageView(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  if (_selectedTypeIndex != index) {
+                    setState(() { _selectedTypeIndex = index; });
+                    AnalyticsService.instance.logCategoryClick(index == 0 ? 'Home' : index == 1 ? 'Hostel' : (index == 3 ? 'Buy' : 'Rental'));
+                    HapticFeedback.selectionClick();
+                  }
+                },
+                children: [
+                  _buildTabContent('Home'),
+                  _buildTabContent('PG'),
+                  _buildTabContent('Rental'),
+                  _buildTabContent('Buy'),
+                ],
+              ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExploreMarketplaceView(BuildContext context, bool isDark) {
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          backgroundColor: const Color(0xFF0067FF),
+          floating: true,
+          pinned: true,
+          elevation: 0,
+          centerTitle: false,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(36),
+            ),
+          ),
+          titleSpacing: 16,
+          title: const Text(
+            'Explore',
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: BouncingButton(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Settings page coming soon!')),
+                  );
+                },
+                child: const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Icon(
+                    Iconsax.setting_2,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(74),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: Row(
+                children: [
+                  // Search bar
+                  Expanded(
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      Expanded(
-                        child: PageView(
-                          controller: _pageController,
-                          onPageChanged: (index) {
-                            if (_selectedTypeIndex != index) {
-                              setState(() {
-                                _selectedTypeIndex = index;
-                              });
-                              AnalyticsService.instance.logCategoryClick(index == 0 ? 'Hostel' : (index == 2 ? 'Buy' : 'Rental'));
-                              HapticFeedback.selectionClick();
-                            }
-                          },
-                          children: [
-                            _buildTabContent('PG'),
-                            _buildTabContent('Rental'),
-                            _buildTabContent('Buy'),
-                          ],
+                      clipBehavior: Clip.antiAlias,
+                      child: TextField(
+                        controller: _searchController,
+                        style: TextStyle(fontFamily: 'ProximaNova', 
+                          fontSize: 14.5,
+                          color: Colors.grey.shade900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: "Search for '${_searchHints[_hintIndex]}'",
+                          hintStyle: TextStyle(fontFamily: 'ProximaNova', 
+                            fontSize: 16.5,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.only(left: 8, right: 4),
+                            child: Icon(
+                              CupertinoIcons.search,
+                              color: Colors.grey.shade600,
+                              size: 24,
+                            ),
+                          ),
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                height: 32,
+                                width: 1.2,
+                                color: Colors.grey.shade300,
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: IconButton(
+                                  icon: const Icon(
+                                    CupertinoIcons.mic_fill,
+                                    color: AppTheme.swiggyOrange,
+                                    size: 26,
+                                  ),
+                                  onPressed: () {
+                                    HapticFeedback.selectionClick();
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  // ── SORT button ──────────────────────────────
+                  BouncingButton(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _showSortBottomSheet();
+                    },
+                    child: Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'SORT',
+                            style: TextStyle(fontFamily: 'ProximaNova', 
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.swiggyOrange,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Icon(
+                            CupertinoIcons.sort_down,
+                            size: 14,
+                            color: AppTheme.swiggyGreen,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+
+                ],
+              ),
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 100),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                Padding(
+                  padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 4),
+                  child: Text(
+                    'All Properties',
+                    style: TextStyle(
+                      fontFamily: 'DMSans',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildPropertyList(_allProperties, 'Explore'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSavedPropertiesView(BuildContext context, bool isDark) {
+    final savedProps = _allProperties.where(
+      (p) => SavedPropertiesService.instance.isSaved(p.id ?? '')
+    ).toList();
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            color: Color(0xFF0067FF),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(36),
+              bottomRight: Radius.circular(36),
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 16, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Saved Properties',
+                        style: TextStyle(
+                          fontFamily: 'DMSans',
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
-                  // Pinned floating bottom toggle, always sitting 20px above
-                  // the system navigation bar (works for gesture, 2-btn & 3-btn nav)
-                  Builder(
-                    builder: (ctx) {
-                      final navBarHeight = MediaQuery.of(ctx).padding.bottom;
-                      return Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: navBarHeight + 20,
-                        child: Align(
-                          alignment: Alignment.bottomCenter,
-                          child: _buildBottomToggle(),
-                        ),
+                  BouncingButton(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Settings page coming soon!')),
                       );
                     },
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(
+                        Iconsax.setting_2,
+                        color: Colors.white,
+                        size: 26,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
         ),
-      ),
+        Expanded(
+          child: savedProps.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: AppTheme.swiggyOrange.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(CupertinoIcons.heart, size: 50, color: AppTheme.swiggyOrange),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'No saved properties yet',
+                        style: TextStyle(
+                          fontFamily: 'ProximaNova',
+                          color: isDark ? Colors.white : Colors.black87,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap the heart icon on properties\nto save them for later.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'ProximaNova',
+                          color: isDark ? Colors.white54 : Colors.black54,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 100),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.8,
+                  ),
+                  itemCount: savedProps.length,
+                  itemBuilder: (context, index) {
+                    final prop = savedProps[index];
+                    return GridPropertyCard(
+                      property: prop,
+                      distanceInMeters: null,
+                      onTap: () {
+                        final transportFuture = TransportService.getNearby(
+                          prop.latitude,
+                          prop.longitude,
+                        );
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PropertyDetailsScreen(
+                              property: prop,
+                              preloadedTransportFuture: transportFuture,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
   Widget _buildTabContent(String typeStr) {
     final properties = _getSortedPropertiesForType(typeStr);
     String emptyLabel;
-    if (typeStr == 'PG') {
+    if (typeStr == 'Home') {
+      emptyLabel = 'Properties';
+    } else if (typeStr == 'PG') {
       emptyLabel = 'Hostels / PGs';
     } else if (typeStr == 'Buy') {
       emptyLabel = 'Buy properties';
@@ -902,21 +1254,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final scrollCtrl = _controllerForType(typeStr);
 
     return RefreshIndicator(
-      color: Colors.black,
-      backgroundColor: const Color(0xFFFFEB3A),
+      color: AppTheme.swiggyOrange,
+      backgroundColor: Colors.white,
       displacement: 32,
       edgeOffset: 8,
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
       onRefresh: () async {
         HapticFeedback.mediumImpact();
-        // Force-clear cache freshness so full refresh happens
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('cached_properties_ts');
         final refreshFuture = Future.wait([
           _refreshLocationFast(updateFeed: true),
           _fetchProperties(),
         ]);
-        // Keep the pull-to-refresh spinner spinning for 2 seconds
         await Future.wait([
           refreshFuture,
           Future.delayed(const Duration(seconds: 2)),
@@ -925,23 +1275,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
-            controller: scrollCtrl, // Scroll position memory per tab
+            controller: scrollCtrl,
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             padding: const EdgeInsets.only(
               left: 16.0,
               right: 16.0,
-              top: 16.0,
-              bottom: 120.0, // Space to float above bottom toggle
+              top: 0.0,
+              bottom: 24.0,
             ),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: constraints.maxHeight > 140 ? constraints.maxHeight - 140 : 300,
               ),
               child: properties.isEmpty
-                  ? Center(
-                      child: _buildEmptyState(emptyLabel),
-                    )
-                  : _buildPropertyList(properties),
+                  ? Center(child: _buildEmptyState(emptyLabel))
+                  : _buildPropertyList(properties, typeStr),
             ),
           );
         },
@@ -949,279 +1297,449 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Row(
-      children: [
-        _TopLocationLogoSwitcher(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            setState(() {
-              _currentCity = 'Finding location...';
-              _currentArea = 'Detecting your area...';
-              _manualLocationOverride = null;
-              _manualLocationName = null;
-            });
-            _refreshLocationFast(updateFeed: true);
-          },
-          // Double-tap scrolls active tab back to top
-          onDoubleTap: () {
-            HapticFeedback.mediumImpact();
-            final typeStr = _selectedTypeIndex == 0 ? 'PG' : (_selectedTypeIndex == 2 ? 'Buy' : 'Rental');
-            final ctrl = _controllerForType(typeStr);
-            if (ctrl.hasClients) {
-              ctrl.animateTo(0, duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic);
-            }
-          },
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SWIGGY-STYLE DARK NAVY HEADER
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildSwiggyHeader(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF0067FF),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(36),
+          bottomRight: Radius.circular(36),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: GestureDetector(
-            onTap: _showLocationOptionsSheet,
-            behavior: HitTestBehavior.opaque,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        _currentCity,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? Colors.white : Colors.black,
-                          height: 1.15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10), // 10px gap after status bar
+            
+            // ── Top row: location + settings button ─────────────────────────────
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: !_isScrollUIVisible ? const SizedBox(width: double.infinity, height: 0) : Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Location area (tappable)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _showLocationOptionsSheet,
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/Vector (1).png',
+                            width: 24,
+                            height: 24,
+                            color: AppTheme.swiggyOrange,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        _currentCity,
+                                        style: TextStyle(fontFamily: 'ProximaNova', 
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                          height: 1.1,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      CupertinoIcons.chevron_right,
+                                      color: Colors.white70,
+                                      size: 18,
+                                    ),
+                                  ],
+                                ),
+                                if (_currentArea.isNotEmpty)
+                                  Text(
+                                    _currentArea,
+                                    style: TextStyle(fontFamily: 'ProximaNova', 
+                                      fontSize: 12,
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w400,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: isDark ? Colors.white70 : Colors.black54,
-                      size: 20,
+                  ),
+
+                  // ── Settings button ─────────────────────────────
+                  BouncingButton(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                      );
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(
+                        Iconsax.setting_2,
+                        color: Colors.white,
+                        size: 26,
+                      ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _currentArea,
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
-                    fontWeight: FontWeight.w400,
-                    height: 1.15,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+            ),
+
+            // ── Swiggy-style search bar row ──────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  // Search bar
+                  Expanded(
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: TextField(
+                        controller: _searchController,
+                        style: TextStyle(fontFamily: 'ProximaNova', 
+                          fontSize: 14.5,
+                          color: Colors.grey.shade900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val;
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: "Search for '${_searchHints[_hintIndex]}'",
+                          hintStyle: TextStyle(fontFamily: 'ProximaNova', 
+                            fontSize: 16.5,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.only(left: 8, right: 4),
+                            child: Icon(
+                              CupertinoIcons.search,
+                              color: Colors.grey.shade600,
+                              size: 24,
+                            ),
+                          ),
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                height: 32,
+                                width: 1.2,
+                                color: Colors.grey.shade300,
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: IconButton(
+                                  icon: Icon(
+                                    CupertinoIcons.mic_fill,
+                                    color: AppTheme.swiggyOrange,
+                                    size: 26,
+                                  ),
+                                  onPressed: () {
+                                    HapticFeedback.selectionClick();
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 10),
+
+                  // ── SORT button ──────────────────────────────
+                  BouncingButton(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _showSortBottomSheet();
+                    },
+                    child: Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'SORT',
+                            style: TextStyle(fontFamily: 'ProximaNova', 
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.swiggyOrange,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Icon(
+                            CupertinoIcons.sort_down,
+                            size: 14,
+                            color: AppTheme.swiggyGreen,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // ── Integrated Tabs inside Header ─────────────────────────────
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: !_isScrollUIVisible 
+                  ? const SizedBox(width: double.infinity, height: 0) 
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildHeaderTabBar(),
+                        const SizedBox(height: 8), // added padding before the curve ends
+                      ],
+                    ),
+            ),
+          ],
         ),
-        // Dark / Light Mode Toggle Button (Hidden for now, available for later activation)
-        if (false) ...[
-          BouncingButton(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              ThemeController.instance.toggleTheme();
-            },
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkCard : Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
-                  width: 1,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Icon(
-                isDark ? Iconsax.sun_1 : Iconsax.moon,
-                color: isDark ? const Color(0xFFFFEB3A) : const Color(0xFF141416),
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-        ],
-        // Search Icon Button before Post
-        BouncingButton(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => SearchScreen(
-                  properties: _allProperties,
-                  currentPosition: _currentPosition,
-                  initialCategory: 'All',
-                ),
-              ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Icon(
-              Iconsax.search_normal_1,
-              color: isDark ? Colors.white : Colors.black87,
-              size: 22,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        BouncingButton(
-          onTap: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFFBF7F7),
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              builder: (_) => PostBottomSheet(
-                currentLocation: _currentPosition,
-                onPropertyCreated: (newProp) {
-                  // Property is pending admin review - do not inject into live feed
-                  _fetchProperties();
-                },
-              ),
-            ).then((_) {
-              _fetchProperties();
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(6, 6, 14, 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFEB3A),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.black : Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Iconsax.add,
-                    color: isDark ? const Color(0xFFFFEB3A) : Colors.black,
-                    size: 19,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Post',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildBottomToggle() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final tabItems = [
-      (label: 'Hostel', activeIcon: Iconsax.buildings5, inactiveIcon: Iconsax.buildings),
-      (label: 'Rental', activeIcon: Iconsax.house5, inactiveIcon: Iconsax.house),
-      (label: 'Buy', activeIcon: Iconsax.key5, inactiveIcon: Iconsax.key),
+  Widget _buildHeaderTabBar() {
+    final tabs = [
+      (label: 'ALL', index: 0, icon: CupertinoIcons.square_grid_2x2),
+      (label: 'HOSTELS', index: 1, icon: CupertinoIcons.building_2_fill),
+      (label: 'RENTALS', index: 2, icon: CupertinoIcons.house_fill),
+      (label: 'EXPLORE', index: 3, icon: CupertinoIcons.lock_fill),
     ];
 
-    return Container(
-      height: 60, // Slightly increased height
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCard : Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.08),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.12),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(tabItems.length, (index) {
-          final isSelected = _selectedTypeIndex == index;
-          final item = tabItems[index];
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: BouncingButton(
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: List.generate(tabs.length * 2 - 1, (i) {
+            if (i.isOdd) {
+              return Container(
+                height: 14,
+                width: 1,
+                color: Colors.white.withValues(alpha: 0.2),
+                margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              );
+            }
+            final tabIndex = i ~/ 2;
+            final tab = tabs[tabIndex];
+            final isSelected = tab.index == _selectedTypeIndex;
+            return GestureDetector(
               onTap: () {
-                if (_selectedTypeIndex != index) {
+                if (_selectedTypeIndex != tab.index) {
                   HapticFeedback.selectionClick();
-                  setState(() {
-                    _selectedTypeIndex = index;
-                  });
-                  AnalyticsService.instance.logCategoryClick(item.label);
-                  if (_pageController.hasClients) {
-                    _pageController.animateToPage(
-                      index,
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeInOutCubic,
-                    );
-                  }
+                  setState(() { _selectedTypeIndex = tab.index; });
+                  _pageController.animateToPage(
+                    tab.index,
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeInOutCubic,
+                  );
                 }
               },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeInOutCubic,
-                padding: isSelected
-                    ? const EdgeInsets.only(left: 24, right: 24, top: 10, bottom: 10) // Extra padding for active state
-                    : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFFEB3A) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                alignment: Alignment.center,
-                child: Row(
+              child: Container(
+                color: Colors.transparent,
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      isSelected ? item.activeIcon : item.inactiveIcon, // Use filled icon if selected
-                      size: 20, // Slightly increased icon size
-                      color: isSelected ? Colors.black : (isDark ? Colors.white54 : Colors.black54),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(tab.icon, color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7), size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          tab.label,
+                          style: TextStyle(fontFamily: 'ProximaNova', 
+                            color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 5), // Reduced padding between icon and text
-                    Text(
-                      item.label,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        color: isSelected ? Colors.black : (isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700),
-                        fontWeight: FontWeight.w600, // Keep constant to prevent layout shifting
-                        fontSize: 15,
-                        letterSpacing: -0.2,
+                    const SizedBox(height: 14),
+                    // Indicator
+                    Container(
+                      height: 3.5,
+                      width: 50,
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.white : Colors.transparent,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          topRight: Radius.circular(4),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SWIGGY-STYLE WHITE BOTTOM NAVIGATION BAR
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildSwiggyBottomNav(bool isDark) {
+    final activeBgColor = isDark ? Colors.white.withValues(alpha: 0.1) : AppTheme.swiggyOrange.withValues(alpha: 0.1);
+    final activeTextColor = isDark ? Colors.white : AppTheme.swiggyOrange;
+    final inactiveIconColor = isDark ? Colors.grey.shade500 : Colors.grey.shade400;
+    final bgColor = isDark ? AppTheme.darkScaffold : Colors.white;
+    final borderColor = isDark ? AppTheme.darkBorder : Colors.grey.shade200;
+
+    final tabItems = [
+      (label: 'Home', activeIcon: CupertinoIcons.house_fill, inactiveIcon: CupertinoIcons.house),
+      (label: 'Saved', activeIcon: CupertinoIcons.heart_fill, inactiveIcon: CupertinoIcons.heart),
+      (label: 'Explore', activeIcon: CupertinoIcons.bag_fill, inactiveIcon: CupertinoIcons.bag),
+      (label: 'Sell', activeIcon: CupertinoIcons.tag_fill, inactiveIcon: CupertinoIcons.tag),
+      (label: 'AI', activeIcon: CupertinoIcons.chat_bubble_text_fill, inactiveIcon: CupertinoIcons.chat_bubble_text),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: Border(
+          top: BorderSide(color: borderColor, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(tabItems.length, (index) {
+              bool isSelected = false;
+              if (_bottomNavIndex == 0) {
+                if (index == 0) {
+                  isSelected = _selectedTypeIndex == 0 || _selectedTypeIndex == 1 || _selectedTypeIndex == 2;
+                } else if (index == 2) {
+                  isSelected = _selectedTypeIndex == 3;
+                }
+              } else if (_bottomNavIndex == index) {
+                isSelected = true;
+              }
+
+              final item = tabItems[index];
+
+              return InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  if (index == 0) {
+                    setState(() { _bottomNavIndex = 0; });
+                    if (_selectedTypeIndex != 0) {
+                      setState(() { _selectedTypeIndex = 0; });
+                      if (_pageController.hasClients) {
+                        _pageController.animateToPage(0, duration: const Duration(milliseconds: 280), curve: Curves.easeInOutCubic);
+                      }
+                    }
+                  } else if (index == 1) {
+                    setState(() { _bottomNavIndex = 1; });
+                  } else if (index == 2) {
+                    setState(() { _bottomNavIndex = 2; });
+                  } else if (index == 3) {
+                    setState(() { _bottomNavIndex = 3; });
+                  } else if (index == 4) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AiChatScreen()),
+                    );
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSelected ? item.activeIcon : item.inactiveIcon,
+                        size: 24,
+                        color: isSelected ? activeTextColor : inactiveIconColor,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontFamily: 'ProximaNova',
+                          color: isSelected ? activeTextColor : inactiveIconColor,
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }
@@ -1237,47 +1755,58 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            ColorFiltered(
-              colorFilter: isDark
-                  ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
-                  : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
-              child: Lottie.asset(
-                'assets/Nothing founded.json',
-                width: 250,
-                height: 250,
-                fit: BoxFit.contain,
+            // Swiggy empty-state style illustration
+            Lottie.asset(
+              'assets/Nothing founded.json',
+              width: 140,
+              height: 140,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Icon(
+                CupertinoIcons.house,
+                size: 60,
+                color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             Text(
-              'No $typeStr found within ${_currentSearchRadiusKm}km radius.',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
+              'Uh Oh! No $typeStr found',
+              style: TextStyle(fontFamily: 'ProximaNova', 
+                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
                 height: 1.25,
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 8),
+            Text(
+              'No properties within ${_currentSearchRadiusKm}km. Try a different location!',
+              style: TextStyle(fontFamily: 'ProximaNova', 
+                color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
             BouncingButton(
-              onTap: () {
-                _showLocationOptionsSheet();
-              },
+              onTap: _showLocationOptionsSheet,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 15),
                 decoration: BoxDecoration(
-                  color: isDark ? AppTheme.primaryYellow : Colors.black,
-                  borderRadius: BorderRadius.circular(50), // Fully rounded
+                  color: isDark ? AppTheme.swiggyOrange : AppTheme.lightTextPrimary,
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   'Use another location',
-                  style: TextStyle(
-                    color: isDark ? Colors.black : Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  style: TextStyle(fontFamily: 'ProximaNova', 
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
                   ),
                 ),
               ),
@@ -1312,9 +1841,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Widget _buildPropertyList(List<PropertyModel> properties) {
-    return Column(
-      children: properties.map((prop) {
+  Widget _buildPropertyList(List<PropertyModel> properties, String typeStr) {
+    return GridView.builder(
+      shrinkWrap: true,
+      padding: const EdgeInsets.only(top: 16),
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: properties.length,
+      itemBuilder: (context, index) {
+        final prop = properties[index];
         double? distance;
         final currentPos = _effectivePosition;
         if (currentPos != null) {
@@ -1325,33 +1865,279 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             prop.longitude,
           );
         }
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 20),
-          child: PropertyCard(
-            property: prop,
-            distanceInMeters: distance,
-            onTap: () {
-              // Pre-fetch transport data the moment user taps — before navigation
-              final transportFuture = TransportService.getNearby(
-                prop.latitude,
-                prop.longitude,
-              );
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PropertyDetailsScreen(
-                    property: prop,
-                    preloadedTransportFuture: transportFuture,
+        return GridPropertyCard(
+          property: prop,
+          distanceInMeters: distance,
+          onTap: () {
+            final transportFuture = TransportService.getNearby(
+              prop.latitude,
+              prop.longitude,
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PropertyDetailsScreen(
+                  property: prop,
+                  preloadedTransportFuture: transportFuture,
+                ),
+              ),
+            ).then((_) {
+              if (mounted) setState(() {});
+            });
+          },
+        );
+      },
+    );
+  }
+  void _showSortBottomSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text(
+                    'Sort Results By',
+                    style: TextStyle(fontFamily: 'ProximaNova', 
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? AppTheme.darkTextPrimary : AppTheme.lightTextPrimary,
+                    ),
                   ),
                 ),
-              ).then((_) {
-                setState(() {});
-              });
-            },
+                const SizedBox(height: 12),
+                _buildSortOption('Relevance (Default)', 'relevance', CupertinoIcons.wand_stars, isDark),
+                _buildSortOption('Distance (Closest First)', 'distance', CupertinoIcons.location_solid, isDark),
+                _buildSortOption('Price: Low to High', 'price_asc', CupertinoIcons.chevron_up, isDark),
+                _buildSortOption('Price: High to Low', 'price_desc', CupertinoIcons.chevron_down, isDark),
+              ],
+            ),
           ),
         );
-      }).toList(),
+      },
+    );
+  }
+
+  Widget _buildSortOption(String title, String key, IconData icon, bool isDark) {
+    final isSelected = _sortBy == key;
+    return ListTile(
+      dense: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      tileColor: isSelected
+          ? (isDark ? AppTheme.darkCardElevated : const Color(0xFFF1F5F9))
+          : Colors.transparent,
+      leading: Icon(
+        icon,
+        size: 18,
+        color: isSelected
+            ? AppTheme.primaryYellow
+            : (isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(fontFamily: 'ProximaNova', 
+          fontSize: 13.5,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          color: isSelected
+              ? (isDark ? Colors.white : const Color(0xFF0F172A))
+              : (isDark ? AppTheme.darkTextSecondary : const Color(0xFF475569)),
+        ),
+      ),
+      trailing: isSelected
+          ? const Icon(CupertinoIcons.checkmark_alt, color: AppTheme.primaryYellow, size: 18)
+          : null,
+      onTap: () {
+        setState(() => _sortBy = key);
+        Navigator.pop(context);
+        // Force re-fetch/re-sort of properties
+        if (mounted) setState(() {});
+      },
+    );
+  }
+}
+
+class GridPropertyCard extends StatelessWidget {
+  final PropertyModel property;
+  final double? distanceInMeters;
+  final VoidCallback onTap;
+
+  const GridPropertyCard({
+    super.key,
+    required this.property,
+    this.distanceInMeters,
+    required this.onTap,
+  });
+
+  String _formatDistance(double meters) {
+    if (meters < 1000) {
+      return '${meters.round()}m away';
+    } else {
+      return '${(meters / 1000).toStringAsFixed(1)}km away';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BouncingButton(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background Image
+            CachedNetworkImage(
+              imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(color: Colors.grey.shade300),
+              errorWidget: (context, url, error) => Container(color: Colors.grey.shade300, child: const Icon(CupertinoIcons.house_fill, color: Colors.grey)),
+            ),
+            // Gradient Overlay
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.25, 0.6, 1.0],
+                    colors: [
+                      Colors.black.withValues(alpha: 0.5),
+                      Colors.transparent,
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.8),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    property.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: 'ProximaNova', 
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.swiggyOrange,
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.swiggyOrange.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          property.price,
+                          style: TextStyle(fontFamily: 'ProximaNova', 
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      AnimatedBuilder(
+                        animation: SavedPropertiesService.instance,
+                        builder: (context, child) {
+                          final isSaved = SavedPropertiesService.instance.isSaved(property.id ?? '');
+                          return GestureDetector(
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              SavedPropertiesService.instance.toggleSave(property.id ?? '');
+                            },
+                            child: Icon(
+                              isSaved ? CupertinoIcons.heart_fill : CupertinoIcons.heart,
+                              color: isSaved ? AppTheme.swiggyOrange : Colors.white,
+                              size: 20,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Top Left Badges (Distance)
+            if (distanceInMeters != null)
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      CupertinoIcons.location_solid, 
+                      color: AppTheme.swiggyOrange, 
+                      size: 12,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDistance(distanceInMeters!),
+                      style: const TextStyle(
+                        fontFamily: 'ProximaNova',
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            // Top Right Badges (Type)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  property.type.toUpperCase(),
+                  style: const TextStyle(
+                    fontFamily: 'ProximaNova',
+                    color: Colors.black87,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1385,128 +2171,56 @@ class PropertyCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? AppTheme.darkCard : Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? AppTheme.darkBorder : Colors.transparent,
+            color: isDark ? AppTheme.darkBorder : const Color(0xFFEEEEEE),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Image with overlays ─────────────────────────────────────────
             Stack(
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
                   child: CachedNetworkImage(
-                    imageUrl: property.imageUrls.isNotEmpty
-                        ? property.imageUrls.first
-                        : '',
-                    height: 230,
+                    imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
+                    height: 210,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     memCacheWidth: 800,
                     fadeInDuration: Duration.zero,
                     fadeOutDuration: Duration.zero,
                     placeholder: (context, url) => Container(
-                      height: 230,
-                      color: isDark ? AppTheme.darkCardElevated : Colors.grey.shade100,
+                      height: 210,
+                      color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
                       child: Center(
-                        child: Icon(Iconsax.image, color: Colors.grey.shade400, size: 28),
+                        child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 28),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
-                      height: 230,
-                      color: isDark ? AppTheme.darkCardElevated : Colors.grey[200],
-                      child: const Center(
-                        child: Icon(Iconsax.image, color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                ),
-                // Top Left: Real Ratings Only (shown only when reviewCount > 0)
-                if (property.reviewCount > 0)
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppTheme.darkCard.withValues(alpha: 0.92)
-                            : Colors.white.withValues(alpha: 0.92),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: isDark ? AppTheme.darkBorder : Colors.black.withValues(alpha: 0.06),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Iconsax.star1, color: Colors.amber, size: 15),
-                          const SizedBox(width: 4),
-                          Text(
-                            property.averageRating.toStringAsFixed(1),
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12.5,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                          Text(
-                            ' (${property.reviewCount})',
-                            style: TextStyle(
-                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                              fontSize: 11.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                // Top Right: Availability Status (PhonePe payment success green at 100% solid opacity, clean text without dot)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5.5),
-                    decoration: BoxDecoration(
-                      color: property.isAvailable
-                          ? const Color(0xFF1A9E5B) // PhonePe Payment Success Green (100% solid)
-                          : Colors.redAccent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      property.isAvailable ? 'Available' : 'Not Available',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
+                      height: 210,
+                      color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
+                      child: Center(
+                        child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 28),
                       ),
                     ),
                   ),
                 ),
 
-                // Bottom Strip: Alternates every 4s between info & scrolling Admin Approved banner
+                // ── Discount / distance badge (bottom-left, Swiggy style) ──
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -1517,70 +2231,92 @@ class PropertyCard extends StatelessWidget {
                     formatDistance: _formatDistance,
                   ),
                 ),
+
+                // ── Rating badge (top-left, Swiggy green) ──────────────────
+                if (property.reviewCount > 0)
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.swiggyGreen,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            property.averageRating.toStringAsFixed(1),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          const Icon(CupertinoIcons.star_fill, color: Colors.white, size: 12),
+                          Text(
+                            ' (${property.reviewCount})',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // ── Availability badge (top-right) ─────────────────────────
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: property.isAvailable
+                          ? AppTheme.swiggyGreen
+                          : AppTheme.swiggyRed,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      property.isAvailable ? 'Available' : 'Unavailable',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
+
+            // ── Card content (Swiggy restaurant list style) ────────────────
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title and Price
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text.rich(
-                          TextSpan(
-                            children: [
-                              TextSpan(text: '${property.title} '),
-                              WidgetSpan(
-                                alignment: PlaceholderAlignment.middle,
-                                child: Icon(
-                                  Iconsax.verify5,
-                                  size: 16,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ),
-                              ),
-                            ],
-                          ),
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            height: 1.2,
-                            color: isDark ? Colors.white : Colors.black,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        property.price,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? AppTheme.primaryYellow : Colors.black,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Location with Location Icon and Distance
+                  // Location row (at the top now)
                   Row(
                     children: [
-                      const Icon(
-                        Iconsax.location5,
-                        color: Color(0xFFF59E0B),
-                        size: 16,
+                      Icon(
+                        CupertinoIcons.location_solid,
+                        color: AppTheme.swiggyOrange,
+                        size: 14,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           distanceInMeters != null
                               ? '${property.locationStr} • ${_formatDistance(distanceInMeters!)}'
                               : property.locationStr,
-                          style: TextStyle(
-                            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
-                            fontSize: 13,
+                          style: TextStyle(fontFamily: 'ProximaNova', 
+                            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -1589,8 +2325,68 @@ class PropertyCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  // Tags - Single horizontal row
+                  const SizedBox(height: 8),
+
+                  // Title and Price row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: property.title),
+                              const WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: SizedBox(width: 5),
+                              ),
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: Icon(
+                                  CupertinoIcons.check_mark_circled_solid,
+                                  size: 15,
+                                  color: AppTheme.swiggyOrange,
+                                ),
+                              ),
+                            ],
+                          ),
+                          style: TextStyle(fontFamily: 'ProximaNova', 
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.swiggyOrange,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.swiggyOrange.withValues(alpha: 0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          property.price,
+                          style: TextStyle(fontFamily: 'ProximaNova', 
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Tags row
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     physics: const BouncingScrollPhysics(),
@@ -1603,13 +2399,15 @@ class PropertyCard extends StatelessWidget {
                       }).toList(),
                     ),
                   ),
-                  const SizedBox(height: 14),
+
+                  const SizedBox(height: 12),
                   Divider(
                     height: 1,
-                    color: isDark ? AppTheme.darkBorder : const Color(0xFFEEEEEE),
+                    color: isDark ? AppTheme.darkBorder : const Color(0xFFF0F0F0),
                   ),
-                  const SizedBox(height: 14),
-                  // Bottom Row (Beds, Baths, Area)
+                  const SizedBox(height: 12),
+
+                  // Bottom info row (Beds, Baths, Area)
                   if (property.type == 'PG')
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -1617,80 +2415,58 @@ class PropertyCard extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          _buildBottomInfo(context, Iconsax.moon5, property.beds),
+                          _buildBottomInfo(context, CupertinoIcons.moon_fill, property.beds),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                            child: Container(
-                              height: 16,
-                              width: 1,
-                              color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
-                            ),
+                            child: Container(height: 14, width: 1, color: isDark ? AppTheme.darkBorder : const Color(0xFFE0E0E0)),
                           ),
-                          _buildBottomInfo(context, Iconsax.drop, property.baths),
+                          _buildBottomInfo(context, CupertinoIcons.drop_fill, property.baths),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                            child: Container(
-                              height: 16,
-                              width: 1,
-                              color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
-                            ),
+                            child: Container(height: 14, width: 1, color: isDark ? AppTheme.darkBorder : const Color(0xFFE0E0E0)),
                           ),
-                          _buildBottomInfo(context, Iconsax.maximize4, property.area),
+                          _buildBottomInfo(context, CupertinoIcons.fullscreen, property.area),
                         ],
                       ),
                     )
                   else
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _buildBottomInfo(context, Iconsax.moon5, property.beds),
-                        Container(
-                          height: 16,
-                          width: 1,
-                          color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
-                        ),
-                        _buildBottomInfo(context, Iconsax.drop, property.baths),
-                        Container(
-                          height: 16,
-                          width: 1,
-                          color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
-                        ),
-                        _buildBottomInfo(context, Iconsax.maximize4, property.area),
+                        _buildBottomInfo(context, CupertinoIcons.moon_fill, property.beds),
+                        Container(height: 14, width: 1, color: isDark ? AppTheme.darkBorder : const Color(0xFFE0E0E0)),
+                        _buildBottomInfo(context, CupertinoIcons.drop_fill, property.baths),
+                        Container(height: 14, width: 1, color: isDark ? AppTheme.darkBorder : const Color(0xFFE0E0E0)),
+                        _buildBottomInfo(context, CupertinoIcons.fullscreen, property.area),
                       ],
                     ),
-                  if (property.type == 'PG' && 
-                     ((property.perDayWithFood != null && property.perDayWithFood!.isNotEmpty) || 
+
+                  if (property.type == 'PG' &&
+                     ((property.perDayWithFood != null && property.perDayWithFood!.isNotEmpty) ||
                       (property.perDayWithoutFood != null && property.perDayWithoutFood!.isNotEmpty)))
                     Column(
                       children: [
-                        const SizedBox(height: 14),
-                        Divider(
-                          height: 1,
-                          color: isDark ? AppTheme.darkBorder : const Color(0xFFEEEEEE),
-                        ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
+                        Divider(height: 1, color: isDark ? AppTheme.darkBorder : const Color(0xFFF0F0F0)),
+                        const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             if (property.perDayWithFood != null && property.perDayWithFood!.isNotEmpty)
                               Expanded(
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Icon(Iconsax.calendar5, color: Colors.grey.shade500, size: 16),
-                                    const SizedBox(width: 8),
+                                    Icon(CupertinoIcons.calendar, color: Colors.grey.shade500, size: 15),
+                                    const SizedBox(width: 6),
                                     Flexible(
                                       child: Text(
                                         '₹${property.perDayWithFood}/day with food',
-                                        style: TextStyle(
-                                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                                          fontSize: 13,
+                                        style: TextStyle(fontFamily: 'ProximaNova', 
+                                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                          fontSize: 12.5,
                                           fontWeight: FontWeight.w500,
                                         ),
-                                        textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -1700,28 +2476,22 @@ class PropertyCard extends StatelessWidget {
                               ),
                             if ((property.perDayWithFood != null && property.perDayWithFood!.isNotEmpty) &&
                                 (property.perDayWithoutFood != null && property.perDayWithoutFood!.isNotEmpty))
-                              Container(
-                                height: 16,
-                                width: 1,
-                                color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
-                              ),
+                              Container(height: 14, width: 1, color: isDark ? AppTheme.darkBorder : const Color(0xFFE0E0E0)),
                             if (property.perDayWithoutFood != null && property.perDayWithoutFood!.isNotEmpty)
                               Expanded(
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Icon(Iconsax.calendar_15, color: Colors.grey.shade500, size: 16),
-                                    const SizedBox(width: 8),
+                                    Icon(CupertinoIcons.calendar, color: Colors.grey.shade500, size: 15),
+                                    const SizedBox(width: 6),
                                     Flexible(
                                       child: Text(
-                                        '₹${property.perDayWithoutFood}/day without food',
-                                        style: TextStyle(
-                                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                                          fontSize: 13,
+                                        '₹${property.perDayWithoutFood}/day no food',
+                                        style: TextStyle(fontFamily: 'ProximaNova', 
+                                          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+                                          fontSize: 12.5,
                                           fontWeight: FontWeight.w500,
                                         ),
-                                        textAlign: TextAlign.center,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -1744,22 +2514,22 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildTag(BuildContext context, String text) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkCardElevated : Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+          color: isDark ? AppTheme.darkBorder : const Color(0xFFE8E8E8),
+          width: 1,
         ),
       ),
       child: Text(
         text,
-        style: TextStyle(
-          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
+        style: TextStyle(fontFamily: 'ProximaNova', 
+          color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -1767,19 +2537,18 @@ class PropertyCard extends StatelessWidget {
 
   Widget _buildBottomInfo(BuildContext context, IconData icon, String text) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(icon, size: 16, color: Colors.grey.shade500),
-        const SizedBox(width: 6),
+        Icon(icon, size: 15, color: isDark ? AppTheme.darkTextSecondary : const Color(0xFF9E9E9E)),
+        const SizedBox(width: 5),
         Text(
           text,
-          style: TextStyle(
-            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+          style: TextStyle(fontFamily: 'ProximaNova', 
+            color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -2006,7 +2775,7 @@ class _CardBottomStripState extends State<_CardBottomStrip>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Iconsax.location5, color: Colors.black, size: 14.5),
+                const Icon(CupertinoIcons.location_solid, color: Colors.black, size: 14.5),
                 const SizedBox(width: 4),
                 Text(
                   widget.distanceInMeters != null
@@ -2293,14 +3062,14 @@ class _TopLocationLogoSwitcherState extends State<_TopLocationLogoSwitcher> {
                       height: 38,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => Icon(
-                        Iconsax.location5,
+                        CupertinoIcons.location_solid,
                         color: isDark ? Colors.white : Colors.black,
                         size: 24,
                       ),
                     ),
                   )
                 : Icon(
-                    Iconsax.location5,
+                    CupertinoIcons.location_solid,
                     key: const ValueKey('location_icon'),
                     color: isDark ? Colors.white : Colors.black,
                     size: 24,
@@ -2315,3 +3084,191 @@ class _TopLocationLogoSwitcherState extends State<_TopLocationLogoSwitcher> {
 
 
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Yellow Splash Screen — shown while location is being fetched
+// ─────────────────────────────────────────────────────────────────────────────
+class _YellowSplashScreen extends StatefulWidget {
+  final bool isLocating;
+  final String? city;
+  final String? subtext;
+  final bool isDenied;
+  const _YellowSplashScreen({
+    super.key,
+    required this.isLocating,
+    this.city,
+    this.subtext,
+    this.isDenied = false,
+  });
+
+  @override
+  State<_YellowSplashScreen> createState() => _YellowSplashScreenState();
+}
+
+class _YellowSplashScreenState extends State<_YellowSplashScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _dotsController;
+  late final AnimationController _cityFadeController;
+  late final Animation<double> _cityFade;
+
+  @override
+  void initState() {
+    super.initState();
+    _dotsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+
+    _cityFadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _cityFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _cityFadeController, curve: Curves.easeIn),
+    );
+
+    if (!widget.isLocating) {
+      _cityFadeController.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_YellowSplashScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isLocating && !widget.isLocating) {
+      _cityFadeController.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _dotsController.dispose();
+    _cityFadeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFD600),
+              Color(0xFFFFCA00),
+              Color(0xFFFFB800),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A1A).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.location_north_fill,
+                    color: Color(0xFF1A1A1A),
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                if (widget.isLocating)
+                  _buildLocatingText()
+                else
+                  FadeTransition(
+                    opacity: _cityFade,
+                    child: Column(
+                      children: [
+                        Text(
+                          widget.isDenied
+                              ? 'Location Access'
+                              : (widget.city ?? 'Your Location'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: 'ProximaNova',
+                            fontSize: 26,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1A1A1A),
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          widget.isDenied
+                              ? 'Enable location for better results'
+                              : (widget.subtext ?? ''),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'ProximaNova',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFF1A1A1A).withValues(alpha: 0.65),
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocatingText() {
+    return AnimatedBuilder(
+      animation: _dotsController,
+      builder: (context, _) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Locating',
+              style: TextStyle(
+                fontFamily: 'ProximaNova',
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1A1A1A),
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(width: 2),
+            ...List.generate(3, (i) {
+              final delay = i * 0.33;
+              final opacity = (((_dotsController.value - delay) % 1.0).abs() < 0.5) ? 1.0 : 0.3;
+              return Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: Opacity(
+                  opacity: opacity.clamp(0.3, 1.0),
+                  child: const Text(
+                    '.',
+                    style: TextStyle(
+                      fontFamily: 'ProximaNova',
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+}

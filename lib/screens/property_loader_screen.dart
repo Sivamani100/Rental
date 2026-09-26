@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/property_model.dart';
@@ -67,7 +68,7 @@ class _PropertyLoaderScreenState extends State<PropertyLoaderScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: isDark ? Colors.white : Colors.black),
+          icon: Icon(CupertinoIcons.back, color: isDark ? Colors.white : Colors.black),
           onPressed: () => Navigator.maybePop(context),
         ),
       ),
@@ -94,7 +95,7 @@ class _PropertyLoaderScreenState extends State<PropertyLoaderScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.error_outline,
+                      CupertinoIcons.exclamationmark_triangle,
                       size: 64,
                       color: Colors.redAccent,
                     ),

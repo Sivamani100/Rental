@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -244,7 +245,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                         color: AppTheme.primaryYellow.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Iconsax.crop, color: Colors.black, size: 20),
+                      child: const Icon(CupertinoIcons.crop, color: Colors.black, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -252,7 +253,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                       children: [
                         Text(
                           'Crop & Position Photo',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 16.5,
                             fontWeight: FontWeight.w800,
                             color: isDark ? Colors.white : Colors.black87,
@@ -261,7 +262,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                         if (_origWidth > 0)
                           Text(
                             '$_origWidth × $_origHeight px',
-                            style: GoogleFonts.inter(
+                            style: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 11,
                               color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
                             ),
@@ -271,7 +272,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                   ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const Icon(CupertinoIcons.clear),
                   onPressed: () => Navigator.pop(context),
                   color: isDark ? Colors.white70 : Colors.black54,
                 ),
@@ -410,7 +411,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                 // Rotate Button
                 IconButton(
                   tooltip: 'Rotate 90°',
-                  icon: const Icon(Icons.rotate_right_rounded, color: AppTheme.primaryYellow, size: 26),
+                  icon: const Icon(CupertinoIcons.rotate_right, color: AppTheme.primaryYellow, size: 26),
                   onPressed: _rotateRight,
                 ),
                 const SizedBox(width: 8),
@@ -432,7 +433,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                             },
                             selectedColor: AppTheme.primaryYellow,
                             backgroundColor: isDark ? const Color(0xFF22242D) : Colors.grey.shade200,
-                            labelStyle: GoogleFonts.inter(
+                            labelStyle: TextStyle(fontFamily: 'ProximaNova', 
                               fontSize: 12,
                               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                               color: isSelected ? Colors.black : (isDark ? Colors.white70 : Colors.black87),
@@ -466,7 +467,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                       ),
                       child: Text(
                         'Cancel',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'ProximaNova', 
                           color: isDark ? Colors.white : Colors.black,
                           fontWeight: FontWeight.w600,
                         ),
@@ -487,7 +488,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                         alignment: Alignment.center,
                         child: Text(
                           'Done & Apply Crop',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'ProximaNova', 
                             color: Colors.black,
                             fontWeight: FontWeight.w800,
                             fontSize: 14,

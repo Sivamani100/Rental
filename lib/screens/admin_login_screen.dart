@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -103,7 +104,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Iconsax.arrow_left_2, color: isDark ? Colors.white : Colors.black),
+          icon: Icon(CupertinoIcons.chevron_left, color: isDark ? Colors.white : Colors.black),
           onPressed: () {
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
@@ -137,7 +138,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       ],
                     ),
                     child: Icon(
-                      Iconsax.shield_tick,
+                      CupertinoIcons.shield_fill,
                       color: isDark ? Colors.black : Colors.white,
                       size: 44,
                     ),
@@ -197,7 +198,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           fontWeight: FontWeight.w400,
                         ),
                         prefixIcon: Icon(
-                          Iconsax.sms,
+                          CupertinoIcons.mail_solid,
                           color: isDark ? AppTheme.darkTextSecondary : Colors.black54,
                           size: 20,
                         ),
@@ -247,13 +248,13 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           fontWeight: FontWeight.w400,
                         ),
                         prefixIcon: Icon(
-                          Iconsax.lock,
+                          CupertinoIcons.lock_fill,
                           color: isDark ? AppTheme.darkTextSecondary : Colors.black54,
                           size: 20,
                         ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _isObscure ? Iconsax.eye_slash : Iconsax.eye,
+                            _isObscure ? CupertinoIcons.eye_slash_fill : CupertinoIcons.eye_solid,
                             color: isDark ? AppTheme.darkTextSecondary : Colors.black54,
                             size: 20,
                           ),
@@ -299,7 +300,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                                 ),
                                 SizedBox(width: 8),
-                                Icon(Iconsax.arrow_right_1, size: 20),
+                                Icon(CupertinoIcons.chevron_right, size: 20),
                               ],
                             ),
                     ),

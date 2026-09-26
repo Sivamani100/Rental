@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
@@ -56,12 +57,12 @@ class _TransportStreetViewScreenState
 
   IconData _typeIcon(String type) {
     switch (type) {
-      case 'Bus Stop':       return Iconsax.bus;
-      case 'Bus Complex':    return Iconsax.bus;
-      case 'Auto Stand':     return Iconsax.car;
-      case 'Train Station':  return Icons.train_rounded;
-      case 'Airport':        return Icons.flight_rounded;
-      default:               return Iconsax.location;
+      case 'Bus Stop':       return CupertinoIcons.bus;
+      case 'Bus Complex':    return CupertinoIcons.bus;
+      case 'Auto Stand':     return CupertinoIcons.car_detailed;
+      case 'Train Station':  return CupertinoIcons.tram_fill;
+      case 'Airport':        return CupertinoIcons.airplane;
+      default:               return CupertinoIcons.location_solid;
     }
   }
 
@@ -107,7 +108,7 @@ class _TransportStreetViewScreenState
                           : Colors.black.withValues(alpha: 0.08),
                     ),
                   ),
-                  child: const Icon(Iconsax.arrow_left_2,
+                  child: const Icon(CupertinoIcons.chevron_left,
                       color: Colors.white, size: 20),
                 ),
               ),
@@ -139,7 +140,7 @@ class _TransportStreetViewScreenState
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.open_in_new_rounded,
+                        Icon(CupertinoIcons.arrow_up_right_square,
                             color: Colors.white, size: 14),
                         SizedBox(width: 5),
                         Text(
@@ -214,7 +215,7 @@ class _TransportStreetViewScreenState
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.open_in_new_rounded,
+                            Icon(CupertinoIcons.arrow_up_right_square,
                                 color: Colors.white, size: 16),
                             SizedBox(width: 8),
                             Text(

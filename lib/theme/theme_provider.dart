@@ -8,30 +8,17 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
 
   ThemeMode _themeMode = ThemeMode.system;
 
-  ThemeMode get themeMode => _themeMode;
+  ThemeMode get themeMode => ThemeMode.light;
 
-  bool get isDarkMode {
-    if (_themeMode == ThemeMode.system) {
-      return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
-    }
-    return _themeMode == ThemeMode.dark;
-  }
+  bool get isDarkMode => false;
 
   Future<void> init() async {
     WidgetsBinding.instance.addObserver(this);
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedTheme = prefs.getString('app_theme_mode') ?? 'system';
-      if (savedTheme == 'dark') {
-        _themeMode = ThemeMode.dark;
-      } else if (savedTheme == 'light') {
-        _themeMode = ThemeMode.light;
-      } else {
-        _themeMode = ThemeMode.system;
-      }
-    } catch (_) {
-      _themeMode = ThemeMode.system;
-    }
+      await prefs.setString('app_theme_mode', 'light');
+    } catch (_) {}
+    _themeMode = ThemeMode.light;
     notifyListeners();
   }
 
@@ -55,13 +42,7 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (mode == ThemeMode.dark) {
-        await prefs.setString('app_theme_mode', 'dark');
-      } else if (mode == ThemeMode.light) {
-        await prefs.setString('app_theme_mode', 'light');
-      } else {
-        await prefs.setString('app_theme_mode', 'system');
-      }
+      await prefs.setString('app_theme_mode', 'light');
     } catch (_) {}
   }
 }
