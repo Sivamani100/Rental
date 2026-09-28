@@ -764,7 +764,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
                         : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
                     child: Lottie.asset(
-                      'assets/location.json',
+                      'assets/animations/location.json',
                       width: 250,
                       height: 250,
                       fit: BoxFit.contain,
@@ -1334,7 +1334,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Image.asset(
-                            'assets/Vector (1).png',
+                            'assets/icons/logowhite.png',
                             width: 24,
                             height: 24,
                             color: AppTheme.swiggyOrange,
@@ -1757,7 +1757,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             // Swiggy empty-state style illustration
             Lottie.asset(
-              'assets/Nothing founded.json',
+              'assets/animations/not_found.json',
               width: 140,
               height: 140,
               fit: BoxFit.contain,
@@ -3057,7 +3057,7 @@ class _TopLocationLogoSwitcherState extends State<_TopLocationLogoSwitcher> {
                     key: const ValueKey('app_logo'),
                     borderRadius: BorderRadius.circular(10),
                     child: Image.asset(
-                      'assets/logo.png',
+                      'assets/images/logo.png',
                       width: 38,
                       height: 38,
                       fit: BoxFit.cover,

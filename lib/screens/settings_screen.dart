@@ -80,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: Image.asset(
-                    'assets/logo.png',
+                    'assets/images/logo.png',
                     width: 56,
                     height: 56,
                     color: _selectedLogoColor,
@@ -102,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             setState(() => _selectedLogoColor = color);
                             try {
                               if (await FlutterDynamicIconPlus.supportsAlternateIcons) {
-                                await FlutterDynamicIconPlus.setAlternateIconName('.MainActivityColor$i');
+                                await FlutterDynamicIconPlus.setAlternateIconName(iconName: '.MainActivityColor$i');
                               }
                             } on PlatformException catch (e) {
                               debugPrint("Failed to change app icon: ${e.message}");

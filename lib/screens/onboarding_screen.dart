@@ -62,11 +62,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late Animation<Offset> _iconSlide;
   late Animation<double> _iconFade;
   static const List<String> _splashIcons = [
-    'assets/Icons/home.png',
-    'assets/Icons/Frame 341 (1).png',
-    'assets/Icons/Frame 342.png',
-    'assets/Icons/Vector (3).png',
-    'assets/Icons/Vector.png',
+    'assets/icons/home.png',
+    'assets/icons/stall.png',
+    'assets/icons/cot.png',
+    'assets/icons/snag.png',
+    'assets/icons/logoblack.png',
   ];
 
 
@@ -706,7 +706,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
-                  'assets/logo.png',
+                  'assets/images/logo.png',
                   width: 26,
                   height: 26,
                   fit: BoxFit.contain,
@@ -866,7 +866,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ? const ColorFilter.matrix([-1, 0, 0, 0, 255, 0, -1, 0, 0, 255, 0, 0, -1, 0, 255, 0, 0, 0, 1, 0])
                   : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
               child: Lottie.asset(
-                'assets/location.json',
+                'assets/animations/location.json',
                 fit: BoxFit.contain,
                 repeat: true,
                 errorBuilder: (_, __, ___) => Container(
@@ -955,7 +955,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: Image.asset(
-                        'assets/logo.png',
+                        'assets/images/logo.png',
                         width: 28,
                         height: 28,
                         fit: BoxFit.contain,

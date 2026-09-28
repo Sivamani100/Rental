@@ -1114,7 +1114,7 @@ class _PostingScreenState extends State<PostingScreen> {
                 badge: 'Rent',
                 subtitle: 'Flats, villas & apartments',
                 typeKey: 'Rental',
-                lottiePath: 'assets/rental.json',
+                lottiePath: 'assets/animations/rental.json',
                 icon: CupertinoIcons.house_fill,
                 lottieHeight: 110,
                 lottieScale: 1.55,
@@ -1127,7 +1127,7 @@ class _PostingScreenState extends State<PostingScreen> {
                 badge: 'Hostel / PG',
                 subtitle: 'Rooms with food & Wi-Fi',
                 typeKey: 'PG',
-                lottiePath: 'assets/hostel.json',
+                lottiePath: 'assets/animations/hostel.json',
                 icon: CupertinoIcons.building_2_fill,
                 lottieHeight: 85,
                 lottieScale: 1.05,
@@ -1143,7 +1143,7 @@ class _PostingScreenState extends State<PostingScreen> {
           badge: 'House',
           subtitle: 'List independent houses, villas, flats, commercial spaces or plots.',
           typeKey: 'Buy',
-          lottiePath: 'assets/buyorsell.json',
+          lottiePath: 'assets/animations/buy_or_sell.json',
           icon: CupertinoIcons.tag_fill,
         ),
         const SizedBox(height: 12),
@@ -3285,7 +3285,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
       // Load watermark raw bytes for background isolate
       Uint8List? watermarkRawBytes;
       try {
-        final ByteData watermarkData = await rootBundle.load('assets/watermarkofrental.png');
+        final ByteData watermarkData = await rootBundle.load('assets/images/watermark.png');
         watermarkRawBytes = watermarkData.buffer.asUint8List();
       } catch (e) {
         debugPrint('Failed to load watermark: $e');
@@ -3444,7 +3444,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: Image.asset(
-                      'assets/logo.png',
+                      'assets/images/logo.png',
                       width: 22,
                       height: 22,
                       fit: BoxFit.contain,

@@ -7,8 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/admin_login_screen.dart';
-import 'screens/admin_dashboard_screen.dart';
 import 'screens/ai_chat_screen.dart';
 import 'services/ai_assistant_service.dart';
 import 'services/analytics_service.dart';
@@ -121,45 +119,6 @@ class RentalApp extends StatelessWidget {
                 return MaterialPageRoute(
                   settings: settings,
                   builder: (_) => const AiChatScreen(),
-                );
-              }
-
-              if (path == '/admin' ||
-                  path == '/admin/' ||
-                  path == 'admin' ||
-                  path.startsWith('/admin')) {
-                final session = Supabase.instance.client.auth.currentSession;
-                if (session != null) {
-                  return MaterialPageRoute(
-                    settings: settings,
-                    builder: (_) => const AdminDashboardScreen(),
-                  );
-                }
-                return MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => const AdminLoginScreen(),
-                );
-              }
-
-              if (path == '/admin/login') {
-                return MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => const AdminLoginScreen(),
-                );
-              }
-
-              if (path == '/admin/dashboard') {
-                // SECURITY: Require valid session — same guard as /admin root
-                final dashSession = Supabase.instance.client.auth.currentSession;
-                if (dashSession != null) {
-                  return MaterialPageRoute(
-                    settings: settings,
-                    builder: (_) => const AdminDashboardScreen(),
-                  );
-                }
-                return MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => const AdminLoginScreen(),
                 );
               }
 
