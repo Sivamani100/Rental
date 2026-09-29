@@ -5,20 +5,22 @@ import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'screens/home_screen.dart';
-import 'screens/onboarding_screen.dart';
-import 'screens/ai_chat_screen.dart';
-import 'services/ai_assistant_service.dart';
-import 'services/analytics_service.dart';
-import 'theme/app_theme.dart';
-import 'theme/theme_provider.dart';
-import 'config/env.dart';
+import 'package:rental/features/home/presentation/pages/home_screen.dart';
+import 'package:rental/features/onboarding/presentation/pages/onboarding_screen.dart';
+import 'package:rental/features/ai_chat/presentation/pages/ai_chat_screen.dart';
+import 'package:rental/features/ai_chat/data/datasources/ai_assistant_service.dart';
+import 'package:rental/core/services/analytics_service.dart';
+import 'package:rental/app/theme/app_theme.dart';
+import 'package:rental/app/theme/theme_provider.dart';
+import 'package:rental/app/config/env.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'services/push_notification_service.dart';
-import 'services/in_app_update_service.dart';
-import 'services/review_trigger_service.dart';
-import 'services/saved_properties_service.dart';
-import 'package:device_preview/device_preview.dart';
+import 'package:rental/core/services/push_notification_service.dart';
+import 'package:rental/core/services/in_app_update_service.dart';
+import 'package:rental/core/services/review_trigger_service.dart';
+import 'package:rental/features/saved_properties/data/datasources/saved_properties_service.dart';
+import 'package:rental/core/services/secure_storage_adapter.dart';
+import 'package:rental/core/services/install_tracker.dart';
+
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -46,7 +48,13 @@ Future<void> main() async {
   await Supabase.initialize(
     url: Env.supabaseUrl,
     anonKey: Env.supabaseAnonKey,
+    authOptions: const FlutterAuthClientOptions(
+      localStorage: SecureLocalStorage(),
+    ),
   );
+
+  // Track unique installations anonymously in the background
+  InstallTracker.initAndTrack();
 
   final prefs = await SharedPreferences.getInstance();
 
@@ -59,12 +67,7 @@ Future<void> main() async {
   }
 
   // Launch UI INSTANTLY — 0ms blank screen delay
-  runApp(
-    DevicePreview(
-      enabled: !kReleaseMode,
-      builder: (context) => const RentalApp(),
-    ),
-  );
+  runApp(const RentalApp());
 
   // Initialize Analytics and Push Notification Service asynchronously in background
   _initAsyncServices();
@@ -108,7 +111,7 @@ class RentalApp extends StatelessWidget {
               final appContent = ReviewTriggerWrapper(
                 child: InAppUpdateWrapper(child: child ?? const SizedBox.shrink()),
               );
-              return DevicePreview.appBuilder(context, appContent);
+              return appContent;
             },
             onGenerateRoute: (settings) {
               final rawName = settings.name ?? '/';
