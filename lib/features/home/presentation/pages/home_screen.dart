@@ -737,7 +737,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() { _isSearchingLocations = true; });
     try {
       final url = Uri.parse('https://photon.komoot.io/api/?q=${Uri.encodeComponent(query)}&limit=5');
-      final response = await http.get(url);
+      final response = await http.get(
+        url,
+        headers: {
+          'User-Agent': 'RentalApp/1.0.0 (contact@rental.arkio.in)',
+        },
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['features'] != null) {
@@ -1001,9 +1006,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           offset: (_isScrollUIVisible && !(_searchFocusNode.hasFocus || _searchQuery.isNotEmpty)) ? Offset.zero : const Offset(0, 1),
           child: _buildBottomNav(isDark),
         ),
-        body: _bottomNavIndex == 1
+        body: _bottomNavIndex == 2
             ? _buildSavedPropertiesView(context, isDark)
-            : _bottomNavIndex == 2
+            : _bottomNavIndex == 1
             ? _buildExploreMarketplaceView(context, isDark)
             : _bottomNavIndex == 3
             ? PostingScreen(
@@ -1112,20 +1117,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           title: const Text(
             'Explore',
             style: TextStyle(
-              fontFamily: 'DMSans',
+              fontFamily: 'ProximaNova',
               color: Colors.black87,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
             ),
           ),
           actions: [
             Padding(
-              padding: const EdgeInsets.only(right: 8.0),
+              padding: const EdgeInsets.only(right: 16.0),
               child: BouncingButton(
                 onTap: () {
                   HapticFeedback.selectionClick();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Settings page coming soon!')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
                   );
                 },
                 child: const Padding(
@@ -1168,18 +1177,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       clipBehavior: Clip.antiAlias,
                       child: TextField(
                         controller: _searchController,
-                        focusNode: _searchFocusNode,
+                        readOnly: true,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _bottomNavIndex = 0;
+                          });
+                          Future.delayed(const Duration(milliseconds: 100), () {
+                            _searchFocusNode.requestFocus();
+                          });
+                        },
                         style: TextStyle(
                           fontFamily: 'ProximaNova',
                           fontSize: 14.5,
                           color: Colors.grey.shade900,
                           fontWeight: FontWeight.w500,
                         ),
-                        onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val;
-                          });
-                        },
                         decoration: InputDecoration(
                           hintText: "Search for '${_searchHints[_hintIndex]}'",
                           hintStyle: TextStyle(
@@ -1357,9 +1370,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   Row(
                     children: [
                       const Text(
-                        'Saved Properties', style: TextStyle(fontFamily: 'DMSans', color: Colors.black87,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
+                        'Saved Properties',
+                        style: TextStyle(
+                          fontFamily: 'ProximaNova',
+                          color: Colors.black87,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
                         ),
                       ),
                     ],
@@ -1367,9 +1384,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   BouncingButton(
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Settings page coming soon!'),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
                         ),
                       );
                     },
@@ -2098,17 +2116,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         inactiveIcon: CupertinoIcons.house,
       ),
       (
-        label: 'Saved',
-        activeIcon: CupertinoIcons.heart_fill,
-        inactiveIcon: CupertinoIcons.heart,
-      ),
-      (
         label: 'Explore',
         activeIcon: CupertinoIcons.search,
         inactiveIcon: CupertinoIcons.search,
       ),
       (
-        label: 'Sell',
+        label: 'Saved',
+        activeIcon: CupertinoIcons.heart_fill,
+        inactiveIcon: CupertinoIcons.heart,
+      ),
+      (
+        label: 'Post',
         activeIcon: CupertinoIcons.cart_fill,
         inactiveIcon: CupertinoIcons.cart,
       ),
@@ -2144,7 +2162,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       _selectedTypeIndex == 0 ||
                       _selectedTypeIndex == 1 ||
                       _selectedTypeIndex == 2;
-                } else if (index == 2) {
+                } else if (index == 1) {
                   isSelected = _selectedTypeIndex == 3;
                 }
               } else if (_bottomNavIndex == index) {

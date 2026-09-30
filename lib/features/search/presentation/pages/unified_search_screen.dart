@@ -97,7 +97,12 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
     setState(() { _isSearchingLocations = true; });
     try {
       final url = Uri.parse('https://photon.komoot.io/api/?q=${Uri.encodeComponent(query)}&limit=5');
-      final response = await http.get(url);
+      final response = await http.get(
+        url,
+        headers: {
+          'User-Agent': 'RentalApp/1.0.0 (contact@rental.arkio.in)',
+        },
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['features'] != null) {

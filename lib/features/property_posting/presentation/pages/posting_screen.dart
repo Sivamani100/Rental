@@ -709,12 +709,13 @@ class _PostingScreenState extends State<PostingScreen> {
                   Row(
                     children: [
                       const Text(
-                        'Sell Property',
+                        'Post Property',
                         style: TextStyle(
-                          fontFamily: 'DMSans',
+                          fontFamily: 'ProximaNova',
                           color: Colors.black87,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
                         ),
                       ),
                     ],
@@ -734,7 +735,7 @@ class _PostingScreenState extends State<PostingScreen> {
                       child: Icon(
                         Iconsax.setting_2,
                         color: Colors.black87,
-                        size: 26,
+                        size: 24,
                       ),
                     ),
                   ),
