@@ -108,7 +108,8 @@ class GridPropertyCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Container(
+                      Flexible(
+                        child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: AppTheme.swiggyOrange,
@@ -123,10 +124,13 @@ class GridPropertyCard extends StatelessWidget {
                         ),
                         child: Text(
                           property.price,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontFamily: 'ProximaNova', 
                             color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w800,
                           ),
                         ),
+                      ),
                       ),
                       AnimatedBuilder(
                         animation: SavedPropertiesService.instance,

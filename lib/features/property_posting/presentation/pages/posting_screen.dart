@@ -12,21 +12,23 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lottie/lottie.dart';
-
+import 'package:latlong2/latlong.dart';
 import 'package:rental/core/widgets/app_snackbar.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/app/theme/app_theme.dart';
-
 import 'package:rental/core/models/property_model.dart';
+import 'package:rental/features/saved_properties/presentation/pages/saved_properties_screen.dart';
 import 'package:rental/core/widgets/image_cropper_sheet.dart';
 import 'package:rental/features/property_posting/presentation/pages/photo_position_screen.dart';
 import 'package:rental/features/property_posting/presentation/widgets/property_posting_status_sheet.dart';
+import 'package:rental/features/property_posting/presentation/pages/area_calculator_map_screen.dart';
 
 class PostingScreen extends StatefulWidget {
   final Position? currentLocation;
   final Function(PropertyModel)? onPropertyCreated;
   final VoidCallback? onDismissForm;
   final PropertyModel? propertyToEdit;
+  final List<PropertyModel> allProperties;
 
   const PostingScreen({
     super.key,
@@ -34,6 +36,7 @@ class PostingScreen extends StatefulWidget {
     this.onPropertyCreated,
     this.onDismissForm,
     this.propertyToEdit,
+    this.allProperties = const [],
   });
 
   @override
@@ -94,6 +97,7 @@ class _PostingScreenState extends State<PostingScreen> {
   String _pgFoodType = '';
   String _pgWaterSupply = '';
   String _pgDrinkingWater = '';
+  Map<String, dynamic> _pgFoodMenu = {};
   String _pgPowerBackup = '';
   String _pgCleaning = '';
   String _pgCurfew = '';
@@ -159,6 +163,10 @@ class _PostingScreenState extends State<PostingScreen> {
   String _buyRoadWidth = '';
   String _buyWaterElectricity = '';
   String _buyPriceNegotiable = '';
+
+  final TextEditingController _rentalAreaController = TextEditingController();
+  final TextEditingController _buyPlotAreaController = TextEditingController();
+  final TextEditingController _buyBuiltUpAreaController = TextEditingController();
   String _buyParking = '';
 
 
@@ -205,6 +213,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _pgCurfew = p.gateRules ?? _pgCurfew;
         _pgNotice = p.noticePeriod ?? _pgNotice;
         _pgManagement = p.managementInfo ?? _pgManagement;
+        _pgFoodMenu = p.foodMenu != null ? Map<String, dynamic>.from(p.foodMenu!) : {};
         _pgSelectedAmenities.clear();
         _pgSelectedAmenities.addAll(p.features);
       } else if (p.type == 'Buy' || p.type == 'Sale') {
@@ -215,6 +224,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buyBuiltUpArea = p.area.isNotEmpty
             ? p.area.replaceAll(RegExp(r'[^0-9]'), '')
             : _buyBuiltUpArea;
+        _buyBuiltUpAreaController.text = _buyBuiltUpArea;
         _buyParking = p.parkingInfo ?? _buyParking;
         _buySelectedFeatures.clear();
         _buySelectedFeatures.addAll(p.features);
@@ -226,6 +236,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _rentalArea = p.area.isNotEmpty
             ? p.area.replaceAll(RegExp(r'[^0-9]'), '')
             : _rentalArea;
+        _rentalAreaController.text = _rentalArea;
         _rentalAgreement = p.agreementDuration ?? _rentalAgreement;
         _rentalNotice = p.noticePeriod ?? _rentalNotice;
         _rentalWaterBill = p.billsInfo ?? _rentalWaterBill;
@@ -276,11 +287,68 @@ class _PostingScreenState extends State<PostingScreen> {
         _perDayWithoutFoodController.clear();
         _latController.clear();
         _lngController.clear();
+        
         _selectedImages.clear();
         _existingImages.clear();
         _locationAddress = '';
         _currentStep = 1;
         _isSubmitting = false;
+
+        _selectedType = 'PG';
+        
+        // Reset PG fields
+        _pgGender = '';
+        _pgSharing = '';
+        _pgAcType = '';
+        _pgBathroom = '';
+        _pgToiletType = '';
+        _pgFoodPlan = '';
+        _pgFoodType = '';
+        _pgWaterSupply = '';
+        _pgDrinkingWater = '';
+        _pgFoodMenu.clear();
+        _pgPowerBackup = '';
+        _pgCleaning = '';
+        _pgCurfew = '';
+        _pgNotice = '';
+        _pgManagement = '';
+        _pgSelectedAmenities.clear();
+
+        // Reset Rental fields
+        _rentalBhk = '';
+        _rentalFurnishing = '';
+        _rentalBeds = '';
+        _rentalBaths = '';
+        _rentalArea = '';
+        _rentalFloor = '';
+        _rentalTotalFloors = '';
+        _rentalAgreement = '';
+        _rentalNotice = '';
+        _rentalWaterBill = '';
+        _rentalEbMeter = '';
+        _rentalTenantPref = '';
+        _rentalPetPolicy = '';
+        _rentalParking = '';
+        _rentalSelectedFeatures.clear();
+
+        // Reset Buy fields
+        _buyPropertyType = '';
+        _buyBhk = '';
+        _buyFurnishing = '';
+        _buyBeds = '';
+        _buyBaths = '';
+        _buyPlotArea = '';
+        _buyBuiltUpArea = '';
+        _buyFacing = '';
+        _buyConstructionStatus = '';
+        _buyTotalFloors = '';
+        _buyOwnershipType = '';
+        _buyApprovals = '';
+        _buyRoadWidth = '';
+        _buyWaterElectricity = '';
+        _buyPriceNegotiable = '';
+        _buyParking = '';
+        _buySelectedFeatures.clear();
       });
     }
   }
@@ -587,6 +655,7 @@ class _PostingScreenState extends State<PostingScreen> {
       // PG specifics
       genderPreference: isPg && _pgGender.isNotEmpty ? _pgGender : null,
       sharingType: isPg && _pgSharing.isNotEmpty ? _pgSharing : null,
+      foodMenu: isPg && _pgFoodMenu.isNotEmpty ? _pgFoodMenu : null,
       foodDetails: isPg && (_pgFoodPlan.isNotEmpty || _pgFoodType.isNotEmpty)
           ? '$_pgFoodPlan ${_pgFoodType.isNotEmpty ? "($_pgFoodType)" : ""}'
                 .trim()
@@ -720,24 +789,49 @@ class _PostingScreenState extends State<PostingScreen> {
                       ),
                     ],
                   ),
-                  BouncingButton(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
+                  Row(
+                    children: [
+                      BouncingButton(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SavedPropertiesScreen(
+                                allProperties: widget.allProperties,
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Padding(
+                          padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
+                          child: Icon(
+                            CupertinoIcons.heart,
+                            color: Colors.black87,
+                            size: 24,
+                          ),
                         ),
-                      );
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Icon(
-                        Iconsax.setting_2,
-                        color: Colors.black87,
-                        size: 24,
                       ),
-                    ),
+                      BouncingButton(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsScreen(),
+                            ),
+                          );
+                        },
+                        child: const Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
+                          child: Icon(
+                            Iconsax.setting_2,
+                            color: Colors.black87,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -813,15 +907,15 @@ class _PostingScreenState extends State<PostingScreen> {
                   children: List.generate(_totalSteps * 2 - 1, (index) {
                     if (index % 2 != 0) {
                       // Connecting line between steps
-                      final isPassed = (index ~/ 2) + 1 < _currentStep;
+                      final isLinePassed = (index ~/ 2) + 1 < _currentStep;
                       return Expanded(
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 250),
                           height: 2,
                           margin: const EdgeInsets.symmetric(horizontal: 6),
                           decoration: BoxDecoration(
-                            color: isPassed
-                                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                            color: isLinePassed
+                                ? Colors.green
                                 : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(1),
                           ),
@@ -831,7 +925,7 @@ class _PostingScreenState extends State<PostingScreen> {
 
                     // Step number circle
                     final stepIndex = (index ~/ 2) + 1;
-                    final isPassed = stepIndex <= _currentStep;
+                    final isCompleted = stepIndex < _currentStep;
                     final isCurrent = stepIndex == _currentStep;
 
                     return AnimatedContainer(
@@ -840,30 +934,38 @@ class _PostingScreenState extends State<PostingScreen> {
                       height: 28,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isCurrent
-                            ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                            : Colors.transparent,
+                        color: isCompleted
+                            ? Colors.green
+                            : (isCurrent
+                                ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                                : Colors.transparent),
                         border: Border.all(
-                          color: isPassed
-                              ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                              : (isDark ? AppTheme.darkBorder : Colors.grey.shade400),
+                          color: isCompleted
+                              ? Colors.green
+                              : (isCurrent
+                                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                                  : (isDark ? AppTheme.darkBorder : Colors.grey.shade400)),
                           width: 1.5,
                         ),
                       ),
                       child: Center(
-                        child: Text(
-                          '$stepIndex',
-                          style: TextStyle(
-                            fontFamily: 'ProximaNova',
-                            fontSize: 13,
-                            fontWeight: isPassed ? FontWeight.w800 : FontWeight.w600,
-                            color: isCurrent
-                                ? (isDark ? Colors.black : Colors.white)
-                                : (isPassed
-                                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                                    : (isDark ? Colors.grey.shade400 : Colors.grey.shade500)),
-                          ),
-                        ),
+                        child: isCompleted
+                            ? const Icon(
+                                CupertinoIcons.checkmark_alt,
+                                size: 16,
+                                color: Colors.white,
+                              )
+                            : Text(
+                                '$stepIndex',
+                                style: TextStyle(
+                                  fontFamily: 'ProximaNova',
+                                  fontSize: 13,
+                                  fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+                                  color: isCurrent
+                                      ? (isDark ? Colors.black : Colors.white)
+                                      : (isDark ? Colors.grey.shade400 : Colors.grey.shade500),
+                                ),
+                              ),
                       ),
                     );
                   }),
@@ -2214,11 +2316,33 @@ class _PostingScreenState extends State<PostingScreen> {
           subtitle: 'Total usable floor area in square feet',
           icon: CupertinoIcons.fullscreen,
           child: _buildCustomInput(
-            initialValue: _rentalArea,
+            controller: _rentalAreaController,
             label: 'Carpet Area (sqft)',
             hint: 'e.g. 1250',
             keyboardType: TextInputType.number,
             onChanged: (val) => _rentalArea = val,
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.map_outlined),
+              tooltip: 'Calculate via Map',
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AreaCalculatorMapScreen(
+                      initialLocation: _latitude != 0.0 && _longitude != 0.0 
+                          ? LatLng(_latitude, _longitude) 
+                          : null,
+                    ),
+                  ),
+                );
+                if (result != null && result is String) {
+                  setState(() {
+                    _rentalArea = result;
+                    _rentalAreaController.text = result;
+                  });
+                }
+              },
+            ),
           ),
         ),
         _buildQuestionSection(
@@ -2381,20 +2505,64 @@ class _PostingScreenState extends State<PostingScreen> {
             children: [
               Expanded(
                 child: _buildCustomInput(
-                  initialValue: _buyPlotArea,
+                  controller: _buyPlotAreaController,
                   label: 'Total Land Area',
                   hint: 'e.g. 150 Sq.Yds / 3.5 Cents',
                   onChanged: (val) => _buyPlotArea = val,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.map_outlined),
+                    tooltip: 'Calculate via Map',
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AreaCalculatorMapScreen(
+                            initialLocation: _latitude != 0.0 && _longitude != 0.0 
+                                ? LatLng(_latitude, _longitude) 
+                                : null,
+                          ),
+                        ),
+                      );
+                      if (result != null && result is String) {
+                        setState(() {
+                          _buyPlotArea = "$result sqft";
+                          _buyPlotAreaController.text = "$result sqft";
+                        });
+                      }
+                    },
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildCustomInput(
-                  initialValue: _buyBuiltUpArea,
+                  controller: _buyBuiltUpAreaController,
                   label: 'Built-up Area (sqft)',
                   hint: 'e.g. 1850',
                   keyboardType: TextInputType.number,
                   onChanged: (val) => _buyBuiltUpArea = val,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.map_outlined),
+                    tooltip: 'Calculate via Map',
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AreaCalculatorMapScreen(
+                            initialLocation: _latitude != 0.0 && _longitude != 0.0 
+                                ? LatLng(_latitude, _longitude) 
+                                : null,
+                          ),
+                        ),
+                      );
+                      if (result != null && result is String) {
+                        setState(() {
+                          _buyBuiltUpArea = result;
+                          _buyBuiltUpAreaController.text = result;
+                        });
+                      }
+                    },
+                  ),
                 ),
               ),
             ],
@@ -2472,6 +2640,7 @@ class _PostingScreenState extends State<PostingScreen> {
             onSelected: (val) => setState(() => _pgFoodType = val),
           ),
         ),
+        _buildWeeklyFoodMenuButton(),
         _buildQuestionSection(
           title: 'Drinking Water Facility',
           subtitle: 'Water purification and dispensing setup',
@@ -3221,6 +3390,7 @@ class _PostingScreenState extends State<PostingScreen> {
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     Function(String)? onChanged,
+    Widget? suffixIcon,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -3279,6 +3449,7 @@ class _PostingScreenState extends State<PostingScreen> {
                 width: 1.5,
               ),
             ),
+            suffixIcon: suffixIcon,
           ),
         ),
       ],
@@ -3441,6 +3612,337 @@ class _PostingScreenState extends State<PostingScreen> {
       }).toList(),
     );
   }
+
+  Widget _buildWeeklyFoodMenuButton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSet = _pgFoodMenu.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
+      child: BouncingButton(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          _showWeeklyFoodMenuSheet();
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkCard : const Color(0xFFFAFAFC),
+            border: Border.all(
+              color: isSet 
+                  ? Colors.green.withValues(alpha: 0.5) 
+                  : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                CupertinoIcons.calendar,
+                color: isSet ? Colors.green : (isDark ? Colors.white70 : Colors.black54),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Detailed Weekly Food Menu',
+                      style: TextStyle(
+                        fontFamily: 'ProximaNova',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isSet ? 'Menu is set. Tap to edit.' : 'Tap to add day-by-day menu (Optional)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isSet ? Colors.green : (isDark ? Colors.white54 : Colors.black54),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                CupertinoIcons.right_chevron,
+                size: 16,
+                color: isDark ? Colors.white54 : Colors.black54,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showWeeklyFoodMenuSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return _WeeklyFoodMenuSheet(
+          initialMenu: _pgFoodMenu,
+          onSave: (newMenu) {
+            setState(() {
+              _pgFoodMenu = newMenu;
+            });
+          },
+        );
+      },
+    );
+  }
 }
 
-/// Razorpay / Stripe Payment Drawer Style Status Sheet for Property Posting.
+class _WeeklyFoodMenuSheet extends StatefulWidget {
+  final Map<String, dynamic> initialMenu;
+  final Function(Map<String, dynamic>) onSave;
+
+  const _WeeklyFoodMenuSheet({
+    required this.initialMenu,
+    required this.onSave,
+  });
+
+  @override
+  State<_WeeklyFoodMenuSheet> createState() => _WeeklyFoodMenuSheetState();
+}
+
+class _WeeklyFoodMenuSheetState extends State<_WeeklyFoodMenuSheet> {
+  late Map<String, Map<String, TextEditingController>> _controllers;
+  final List<String> _days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  final List<String> _meals = ['breakfast', 'lunch', 'snacks', 'dinner'];
+  String _selectedDay = 'monday';
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = {};
+    for (var day in _days) {
+      _controllers[day] = {};
+      final dayData = widget.initialMenu[day] as Map<String, dynamic>? ?? {};
+      for (var meal in _meals) {
+        _controllers[day]![meal] = TextEditingController(text: dayData[meal]?.toString() ?? '');
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var day in _days) {
+      for (var meal in _meals) {
+        _controllers[day]![meal]?.dispose();
+      }
+    }
+    super.dispose();
+  }
+
+  void _save() {
+    final Map<String, dynamic> newMenu = {};
+    for (var day in _days) {
+      final Map<String, String> dayData = {};
+      for (var meal in _meals) {
+        final text = _controllers[day]![meal]!.text.trim();
+        if (text.isNotEmpty) {
+          dayData[meal] = text;
+        }
+      }
+      if (dayData.isNotEmpty) {
+        newMenu[day] = dayData;
+      }
+    }
+    widget.onSave(newMenu);
+    Navigator.pop(context);
+  }
+
+  String _getMealEmoji(String meal) {
+    switch (meal) {
+      case 'breakfast': return '🍳';
+      case 'lunch': return '🍛';
+      case 'snacks': return '🥪';
+      case 'dinner': return '🍲';
+      default: return '🍽️';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkScaffold : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.only(left: 20, right: 16, top: 20, bottom: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Weekly Food Menu',
+                    style: TextStyle(
+                      fontFamily: 'SF Pro Display',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, color: isDark ? Colors.white70 : Colors.black87, size: 26),
+                    onPressed: () => Navigator.pop(context),
+                  )
+                ],
+              ),
+            ),
+            
+            // Horizontal Day Selector (Pills)
+            Container(
+              height: 38,
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _days.length,
+                itemBuilder: (context, index) {
+                  final day = _days[index];
+                  final isSelected = day == _selectedDay;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedDay = day;
+                      });
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                            ? (isDark ? Colors.white : Colors.black)
+                            : (isDark ? AppTheme.darkCard : Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(100),
+                        border: Border.all(
+                          color: isSelected ? (isDark ? Colors.white : Colors.black) : Colors.transparent,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          day[0].toUpperCase() + day.substring(1),
+                          style: TextStyle(
+                            fontFamily: 'SF Pro Display',
+                            fontSize: 14,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                            color: isSelected ? (isDark ? Colors.black : Colors.white) : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            
+            // Inputs for the selected day
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Menu for ${_selectedDay[0].toUpperCase() + _selectedDay.substring(1)}',
+                    style: TextStyle(
+                      fontFamily: 'SF Pro Display',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ..._meals.map((meal) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: TextField(
+                        controller: _controllers[_selectedDay]![meal],
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 14),
+                        decoration: InputDecoration(
+                          labelText: meal[0].toUpperCase() + meal.substring(1),
+                          labelStyle: TextStyle(color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600, fontSize: 13),
+                          filled: true,
+                          fillColor: isDark ? AppTheme.darkCard : Colors.white,
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.only(left: 14, right: 10),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(_getMealEmoji(meal), style: const TextStyle(fontSize: 18)),
+                              ],
+                            ),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: isDark ? AppTheme.darkBorder : Colors.grey.shade300),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppTheme.primaryAccent, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+            
+            // Save Menu Button
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                left: 20,
+                right: 20,
+                top: 8,
+              ),
+              child: BouncingButton(
+                onTap: _save,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white : Colors.black,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Save Menu',
+                      style: TextStyle(
+                        fontFamily: 'SF Pro Display',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.black : Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}

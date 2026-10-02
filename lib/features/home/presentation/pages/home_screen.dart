@@ -1,4 +1,6 @@
 import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -25,7 +27,7 @@ import 'package:rental/features/saved_properties/data/datasources/saved_properti
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:lottie/lottie.dart';
+import 'package:lottie/lottie.dart' hide Marker;
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/app/theme/theme_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -80,6 +82,8 @@ List<PropertyModel> _parsePropertiesIsolate(String jsonStr) {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedTypeIndex = 0; // 0 for PG / Hostel, 1 for Rental
   int _bottomNavIndex = 0; // 0 for Home, 1 for Saved, etc.
+  PropertyModel? _selectedMapProperty;
+  final MapController _mapController = MapController();
   late final PageController _pageController;
 
   final TextEditingController _searchController = TextEditingController();
@@ -1006,21 +1010,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           offset: (_isScrollUIVisible && !(_searchFocusNode.hasFocus || _searchQuery.isNotEmpty)) ? Offset.zero : const Offset(0, 1),
           child: _buildBottomNav(isDark),
         ),
-        body: _bottomNavIndex == 2
-            ? _buildSavedPropertiesView(context, isDark)
-            : _bottomNavIndex == 1
-            ? _buildExploreMarketplaceView(context, isDark)
-            : _bottomNavIndex == 3
-            ? PostingScreen(
-                currentLocation: _currentPosition,
-                onPropertyCreated: (newProp) {
-                  _fetchProperties();
-                  setState(() {
-                    _bottomNavIndex = 0; // Go back to Home tab after posting
-                  });
-                },
-              )
-            : Column(
+        body: IndexedStack(
+          index: _bottomNavIndex == 4 ? 0 : _bottomNavIndex,
+          children: [
+            Column(
                 children: [
                   // ── Swiggy-style dark navy header ──
                   _buildSwiggyHeader(context),
@@ -1077,6 +1070,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 ],
               ),
+            _buildExploreMarketplaceView(context, isDark),
+            PostingScreen(
+              allProperties: _allProperties,
+              currentLocation: _currentPosition,
+              onPropertyCreated: (newProp) {
+                _fetchProperties();
+                setState(() {
+                  _bottomNavIndex = 0;
+                });
+              },
+            ),
+            _buildFullMapView(context, isDark),
+          ],
+        ),
       ),
     );
   }
@@ -1125,6 +1132,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
           actions: [
+            BouncingButton(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Scaffold(
+                      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF2F2F7),
+                      body: _buildSavedPropertiesView(context, isDark, showBackButton: true),
+                    ),
+                  ),
+                );
+              },
+              child: const Padding(
+                padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
+                child: Icon(
+                  CupertinoIcons.heart,
+                  color: Colors.black87,
+                  size: 24,
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: BouncingButton(
@@ -1138,7 +1167,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   );
                 },
                 child: const Padding(
-                  padding: EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
                   child: Icon(
                     Iconsax.setting_2,
                     color: Colors.black87,
@@ -1343,7 +1372,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildSavedPropertiesView(BuildContext context, bool isDark) {
+  Widget _buildSavedPropertiesView(BuildContext context, bool isDark, {bool showBackButton = false}) {
     final savedProps = _allProperties
         .where((p) => SavedPropertiesService.instance.isSaved(p.id ?? ''))
         .toList();
@@ -1363,12 +1392,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(24, 24, 16, 32),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
+                      if (showBackButton)
+                        BouncingButton(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.pop(context);
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.only(right: 12.0),
+                            child: Icon(
+                              CupertinoIcons.back,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
                       const Text(
                         'Saved Properties',
                         style: TextStyle(
@@ -1381,25 +1424,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ],
                   ),
-                  BouncingButton(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
-                        ),
-                      );
-                    },
-                    child: const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Icon(
-                        Iconsax.setting_2,
-                        color: Colors.black87,
-                        size: 24,
-                      ),
-                    ),
-                  ),
+                  const SizedBox(),
                 ],
               ),
             ),
@@ -1791,6 +1816,29 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                           ),
 
+                          // ── Saved Properties button ─────────────────────────────
+                          BouncingButton(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => Scaffold(
+                                    backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF2F2F7),
+                                    body: _buildSavedPropertiesView(context, isDark, showBackButton: true),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Padding(
+                              padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
+                              child: Icon(
+                                CupertinoIcons.heart,
+                                color: Colors.black87,
+                                size: 24,
+                              ),
+                            ),
+                          ),
                           // ── Settings button ─────────────────────────────
                           BouncingButton(
                             onTap: () {
@@ -1803,7 +1851,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               );
                             },
                             child: const Padding(
-                              padding: EdgeInsets.all(8.0),
+                              padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
                               child: Icon(
                                 Iconsax.setting_2,
                                 color: Colors.black87,
@@ -2100,6 +2148,468 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ═══════════════════════════════════════════════════════════════════════════
   // SWIGGY-STYLE WHITE BOTTOM NAVIGATION BAR
   // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildMapLegendItem(String label, Color color, bool isPg, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.darkCardElevated : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: isPg ? Colors.black : Colors.white, width: 1.5),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFullMapView(BuildContext context, bool isDark) {
+    if (_allProperties.isEmpty) {
+      return Center(child: Text("No properties to map", style: TextStyle(color: isDark ? Colors.white : Colors.black)));
+    }
+    final mapProperties = _allProperties;
+    final centerLat = mapProperties.isNotEmpty ? mapProperties.first.latitude : (_currentPosition?.latitude ?? 0.0);
+    final centerLng = mapProperties.isNotEmpty ? mapProperties.first.longitude : (_currentPosition?.longitude ?? 0.0);
+
+    return Column(
+      children: [
+        // App Bar (Matching PostingScreen)
+        Container(
+          decoration: const BoxDecoration(
+            color: AppTheme.primaryAccent,
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(36),
+              bottomRight: Radius.circular(36),
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 16, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Find in Map',
+                    style: TextStyle(
+                      fontFamily: 'ProximaNova',
+                      color: Colors.black87,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      height: 1.1,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      BouncingButton(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => Scaffold(
+                                backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF2F2F7),
+                                body: _buildSavedPropertiesView(context, isDark, showBackButton: true),
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Padding(
+                          padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
+                          child: Icon(
+                            CupertinoIcons.heart,
+                            color: Colors.black87,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                      BouncingButton(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsScreen(),
+                            ),
+                          );
+                        },
+                        child: const Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
+                          child: Icon(
+                            Iconsax.setting_2,
+                            color: Colors.black87,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Map
+        Expanded(
+          child: Stack(
+            children: [
+
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: LatLng(centerLat, centerLng),
+                  initialZoom: 13.0,
+                  onTap: (pos, latlng) {
+                    setState(() {
+                      _selectedMapProperty = null;
+                    });
+                  },
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.arkiolabs.rental',
+                    tileBuilder: (context, tileWidget, tile) {
+                      if (!isDark) return tileWidget;
+                      return ColorFiltered(
+                        colorFilter: const ColorFilter.matrix([
+                          -0.85, 0, 0, 0, 240,
+                          0, -0.85, 0, 0, 240,
+                          0, 0, -0.85, 0, 240,
+                          0, 0, 0, 1, 0,
+                        ]),
+                        child: tileWidget,
+                      );
+                    },
+                  ),
+                  MarkerLayer(
+                    markers: mapProperties.map((prop) {
+                      final isSelected = _selectedMapProperty?.id == prop.id;
+                      final String lowerType = prop.type.toLowerCase();
+                      final bool isPg = lowerType.contains('pg') || lowerType.contains('hostel');
+                      
+                      Color baseColor = AppTheme.primaryYellow;
+                      if (isPg) {
+                        baseColor = const Color(0xFFFFD600); // Primary color for PGs
+                      } else if (lowerType.contains('buy') || lowerType.contains('sale') || lowerType.contains('plot') || lowerType.contains('land')) {
+                        baseColor = const Color(0xFF4CAF50); // Green for Buy/Sell
+                      } else {
+                        baseColor = const Color(0xFF42A5F5); // Blue for Rental/House
+                      }
+                      
+                      Color unselectedAccent = isPg ? Colors.black : Colors.white;
+
+                      return Marker(
+                        point: LatLng(prop.latitude, prop.longitude),
+                        width: isSelected ? 48 : 40,
+                        height: isSelected ? 48 : 40,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedMapProperty = prop;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            decoration: BoxDecoration(
+                              color: isSelected ? Colors.black : baseColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: isSelected ? baseColor : unselectedAccent, width: isSelected ? 3 : 2),
+                              boxShadow: isSelected ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                )
+                              ] : [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  spreadRadius: 1,
+                                )
+                              ],
+                            ),
+                            child: Icon(
+                              CupertinoIcons.house_fill,
+                              color: isSelected ? baseColor : unselectedAccent,
+                              size: isSelected ? 24 : 20,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              // Legend (Floating over Map)
+              Positioned(
+                top: 12,
+                left: 16,
+                right: 16,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildMapLegendItem("PGs", const Color(0xFFFFD600), true, isDark),
+                      const SizedBox(width: 8),
+                      _buildMapLegendItem("Rentals", const Color(0xFF42A5F5), false, isDark),
+                      const SizedBox(width: 8),
+                      _buildMapLegendItem("Buy / Sell", const Color(0xFF4CAF50), false, isDark),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 16,
+                bottom: _selectedMapProperty != null ? 300 : 120, // Sit above bottom nav bar or card
+                child: BouncingButton(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    if (_currentPosition != null) {
+                      _mapController.move(
+                        LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                        14.0,
+                      );
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkCard : Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      CupertinoIcons.location_fill,
+                      color: isDark ? Colors.white : Colors.black87,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ),
+              if (_selectedMapProperty != null)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 120, // Sit above bottom nav bar
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.darkCard : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 20,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Image with badges
+                            ClipRRect(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                              child: SizedBox(
+                                height: 160,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    CachedNetworkImage(
+                                      imageUrl: _selectedMapProperty!.imageUrls.isNotEmpty ? _selectedMapProperty!.imageUrls.first : 'https://via.placeholder.com/400',
+                                      fit: BoxFit.cover,
+                                    ),
+                                    Positioned(
+                                      top: 12,
+                                      left: 12,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.75),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          _selectedMapProperty!.type,
+                                          style: const TextStyle(
+                                            color: AppTheme.primaryYellow,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 12,
+                                      right: 12,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryYellow,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          '₹${_selectedMapProperty!.price}/m',
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Details
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _selectedMapProperty!.title,
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w800,
+                                            color: isDark ? Colors.white : Colors.black,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.verified, color: Colors.black, size: 20),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.location_on, color: Colors.grey.shade600, size: 16),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          _selectedMapProperty!.locationStr,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 14,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  BouncingButton(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => PropertyDetailsScreen(property: _selectedMapProperty!),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryYellow,
+                                        borderRadius: BorderRadius.circular(30),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: const [
+                                          Icon(Icons.visibility, color: Colors.black, size: 20),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'View Details',
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Close Button
+                      Positioned(
+                        top: -12,
+                        right: -12,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedMapProperty = null;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 4,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.close, size: 20, color: Colors.black),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildBottomNav(bool isDark) {
     final activeBgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
     final activeTextColor = isDark ? Colors.white : Colors.black87;
@@ -2121,14 +2631,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         inactiveIcon: CupertinoIcons.search,
       ),
       (
-        label: 'Saved',
-        activeIcon: CupertinoIcons.heart_fill,
-        inactiveIcon: CupertinoIcons.heart,
+        label: 'Post',
+        activeIcon: CupertinoIcons.add_circled_solid,
+        inactiveIcon: CupertinoIcons.add_circled,
       ),
       (
-        label: 'Post',
-        activeIcon: CupertinoIcons.cart_fill,
-        inactiveIcon: CupertinoIcons.cart,
+        label: 'Map',
+        activeIcon: CupertinoIcons.map_fill,
+        inactiveIcon: CupertinoIcons.map,
       ),
       (
         label: 'AI',
@@ -2268,8 +2778,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             // Swiggy empty-state style illustration
             Lottie.asset(
               'assets/animations/not_found.json',
-              width: 140,
-              height: 140,
+              width: 280,
+              height: 280,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Icon(
                 CupertinoIcons.house,

@@ -354,15 +354,28 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                                   ),
                                 )
-                              : _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: Icon(CupertinoIcons.clear_circled_solid, color: Colors.grey.shade400, size: 20),
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_searchController.text.isNotEmpty)
+                                      IconButton(
+                                        icon: Icon(CupertinoIcons.clear_circled_solid, color: Colors.grey.shade400, size: 20),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() => _suggestions = []);
+                                        },
+                                      ),
+                                    IconButton(
+                                      icon: Icon(CupertinoIcons.search, color: isDark ? Colors.white : Colors.black87, size: 20),
                                       onPressed: () {
-                                        _searchController.clear();
-                                        setState(() => _suggestions = []);
+                                        if (_searchController.text.isNotEmpty) {
+                                          _performSearch(_searchController.text);
+                                        }
                                       },
-                                    )
-                                  : null,
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         ),
@@ -382,8 +395,10 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                             BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))
                           ],
                         ),
-                        child: ListView.separated(
-                          shrinkWrap: true,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: ListView.separated(
+                            shrinkWrap: true,
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: _suggestions.length,
                           separatorBuilder: (c, i) => Divider(height: 1, color: isDark ? Colors.white12 : Colors.grey.shade100),
@@ -418,6 +433,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                               onTap: () => _onSuggestionSelected(suggestion),
                             );
                           },
+                        ),
                         ),
                       ),
                   ],

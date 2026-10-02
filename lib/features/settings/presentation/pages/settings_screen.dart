@@ -261,7 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Padding(
               padding: const EdgeInsets.only(bottom: 32, top: 8),
               child: Text(
-                'Rental v1.1.8  •  Made with ♥ in India',
+                'Rental v1.1.10  •  Made with ♥ in India',
                 style: TextStyle(
                   fontFamily: 'ProximaNova',
                   fontSize: 12,
@@ -473,7 +473,7 @@ class _DeveloperProfileScreen extends StatelessWidget {
                     iconColor: const Color(0xFF5856D6),
                     textColor: textColor,
                     content:
-                        'I was the person who built this application from end to end, wanna know me reach me out below.',
+                        "I am a passionate developer who built this end-to-end rental ecosystem to simplify property discovery and management. I specialize in building scalable, modern, and user-centric mobile applications using Flutter. If you're interested in collaborating or learning more about my work, please feel free to reach out below.",
                   ),
 
 

@@ -1918,8 +1918,8 @@ class _SearchScreenState extends State<SearchScreen> {
                   : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
               child: Lottie.asset(
                 'assets/animations/not_found.json',
-                width: 220,
-                height: 220,
+                width: 280,
+                height: 280,
                 fit: BoxFit.contain,
                 errorBuilder: (_, _, _) => Icon(
                   CupertinoIcons.search,

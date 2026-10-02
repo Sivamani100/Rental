@@ -29,6 +29,7 @@ class PropertyModel {
   List<dynamic> suggestedPhotos;
 
   // PG Specific details
+  final Map<String, dynamic>? foodMenu;
   final String? genderPreference; // Boys, Girls, Co-Living
   final String? sharingType; // Single, 2 Sharing, 3 Sharing, etc.
   final String? foodDetails; // 3 Meals, 2 Meals, Veg/Non-Veg, Self Cooking
@@ -81,6 +82,7 @@ class PropertyModel {
     this.description,
     this.perDayWithFood,
     this.perDayWithoutFood,
+    this.foodMenu,
     this.genderPreference,
     this.sharingType,
     this.foodDetails,
@@ -159,6 +161,7 @@ class PropertyModel {
       description: _sanitize(json['description']) ?? '',
       perDayWithFood: _sanitize(json['per_day_with_food']),
       perDayWithoutFood: _sanitize(json['per_day_without_food']),
+      foodMenu: json['food_menu'] != null ? Map<String, dynamic>.from(json['food_menu']) : null,
       genderPreference: json['gender_preference'],
       sharingType: json['sharing_type'],
       foodDetails: json['food_details'],
@@ -211,6 +214,7 @@ class PropertyModel {
       'description': description,
       'per_day_with_food': perDayWithFood,
       'per_day_without_food': perDayWithoutFood,
+      'food_menu': foodMenu,
       'gender_preference': genderPreference,
       'sharing_type': sharingType,
       'food_details': foodDetails,

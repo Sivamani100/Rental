@@ -1565,6 +1565,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       // 6. DETAILED CATEGORY SECTIONS (LINE-BY-LINE)
                       // ==========================================
                       if (isPg) ...[
+                        if (widget.property.foodMenu != null && widget.property.foodMenu!.isNotEmpty) ...[
+                          _buildWeeklyFoodMenu(),
+                          const SizedBox(height: 24),
+                        ],
                         // Food, Mess & Drinking Water
                         _buildVerticalSectionCard(
                           title: 'Food, Mess & Dining',
@@ -3296,6 +3300,99 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildWeeklyFoodMenu() {
+    if (widget.property.foodMenu == null || widget.property.foodMenu!.isEmpty) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Day order for display
+    final days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Weekly Food Menu', CupertinoIcons.calendar),
+        const SizedBox(height: 16),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCard : AppTheme.lightBackground,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: DataTable(
+                border: TableBorder.all(
+                  color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder, 
+                  width: 1.0,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                headingRowColor: WidgetStateProperty.all(
+                  isDark ? AppTheme.primaryAccent.withOpacity(0.15) : AppTheme.primaryAccent.withOpacity(0.1)
+                ),
+                dataRowMinHeight: 56,
+                dataRowMaxHeight: double.infinity,
+                columnSpacing: 32,
+                headingTextStyle: TextStyle(
+                  fontFamily: 'SF Pro Display',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: isDark ? AppTheme.primaryAccent : AppTheme.primaryDark,
+                  letterSpacing: 0.5,
+                ),
+                dataTextStyle: TextStyle(
+                  fontFamily: 'SF Pro Display',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+                columns: const [
+                  DataColumn(label: Text('DAY')),
+                  DataColumn(label: Text('Breakfast')),
+                  DataColumn(label: Text('Lunch')),
+                  DataColumn(label: Text('Snacks')),
+                  DataColumn(label: Text('Dinner')),
+                ],
+                rows: days.where((day) => widget.property.foodMenu!.containsKey(day)).map((day) {
+                  final dayData = widget.property.foodMenu![day] ?? {};
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          child: Text(
+                            day.substring(0, 3).toUpperCase(),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                      DataCell(Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        child: Text(dayData['breakfast']?.toString() ?? '-'),
+                      )),
+                      DataCell(Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        child: Text(dayData['lunch']?.toString() ?? '-'),
+                      )),
+                      DataCell(Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        child: Text(dayData['snacks']?.toString() ?? '-'),
+                      )),
+                      DataCell(Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        child: Text(dayData['dinner']?.toString() ?? '-'),
+                      )),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
