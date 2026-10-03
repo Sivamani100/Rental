@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 class AppTheme {
   // Primary & Accents
-  static const Color primaryAccent = Color(0xFFFFD600); // Deep Yellow from Splash Screen
+  static Color primaryAccent = const Color(0xFFFFD600); // Deep Yellow from Splash Screen
   static const Color primaryDark = Color(0xFF000000);   // OLED Black
   static const Color successGreen = Color(0xFF34C759);
   static const Color errorRed = Color(0xFFFF3B30);
@@ -25,9 +25,9 @@ class AppTheme {
   static const Color textSecondaryDark = Color(0xFF8E8E93);
 
   // Legacy mappings to prevent app breaking (mapping to iOS colors)
-  static const Color swiggyOrange = primaryAccent;
-  static const Color swiggyOrangeDark = primaryAccent;
-  static const Color swiggyYellow = primaryAccent;
+  static Color swiggyOrange = primaryAccent;
+  static Color swiggyOrangeDark = primaryAccent;
+  static Color swiggyYellow = primaryAccent;
   static const Color swiggyGreen = successGreen;
   static const Color swiggyRed = errorRed;
   static const Color swiggyNavyHeader = lightBackground;
@@ -43,10 +43,10 @@ class AppTheme {
   static const Color darkCardElevated = darkSurface;
   static const Color darkTextPrimary = textPrimaryDark;
   static const Color darkTextSecondary = textSecondaryDark;
-  static const Color primaryYellow = primaryAccent;
-  static const Color primaryOrange = primaryAccent;
+  static Color primaryYellow = primaryAccent;
+  static Color primaryOrange = primaryAccent;
 
-  static const LinearGradient orangeGradient = LinearGradient(
+  static LinearGradient get orangeGradient => LinearGradient(
     colors: [primaryAccent, primaryAccent],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -73,7 +73,7 @@ class AppTheme {
       scaffoldBackgroundColor: lightBackground,
       dividerColor: lightBorder,
       fontFamily: 'SF Pro Display', // Substitute with 'Inter' or 'Roboto' if SF isn't available
-      colorScheme: const ColorScheme.light(
+      colorScheme: ColorScheme.light(
         primary: primaryAccent,
         secondary: successGreen,
         error: errorRed,
@@ -103,7 +103,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primaryAccent,
-          side: const BorderSide(color: primaryAccent, width: 1.5),
+          side: BorderSide(color: primaryAccent, width: 1.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
         ),
@@ -118,7 +118,7 @@ class AppTheme {
       scaffoldBackgroundColor: darkBackground,
       dividerColor: darkBorder,
       fontFamily: 'SF Pro Display',
-      colorScheme: const ColorScheme.dark(
+      colorScheme: ColorScheme.dark(
         primary: primaryAccent,
         secondary: successGreen,
         error: errorRed,
@@ -148,7 +148,7 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primaryAccent,
-          side: const BorderSide(color: primaryAccent, width: 1.5),
+          side: BorderSide(color: primaryAccent, width: 1.5),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
         ),

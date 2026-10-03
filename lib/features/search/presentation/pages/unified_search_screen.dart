@@ -272,7 +272,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                   color: AppTheme.primaryYellow.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(CupertinoIcons.building_2_fill, color: AppTheme.primaryYellow, size: 20),
+                child: Icon(CupertinoIcons.building_2_fill, color: AppTheme.primaryYellow, size: 20),
               ),
               title: Text(
                 p.title, 

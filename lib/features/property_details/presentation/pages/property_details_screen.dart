@@ -312,7 +312,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       ),
                       child: Icon(CupertinoIcons.info_circle_fill, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
                     ),
-                    const SizedBox(width: 14),
+                    SizedBox(width: 14),
                     Expanded(
                       child: Text(
                         'Fetching transport data...\nCheck back in a moment.',
@@ -761,7 +761,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : const Color(0xFFFFEB3A).withValues(alpha: 0.3),
+            color: AppTheme.primaryYellow.withValues(alpha: isDark ? 0.15 : 0.2),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
@@ -962,6 +962,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.primaryYellow) == Brightness.dark;
+    final accentTextColor = isAccentDark ? Colors.white : Colors.black;
     final isPg = widget.property.type == 'PG';
     final isBuy = widget.property.type == 'Buy' || widget.property.type == 'Sale';
 
@@ -1177,7 +1179,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.2) : const Color(0xFFFFEB3A),
+                              color: AppTheme.primaryYellow,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
@@ -1186,13 +1188,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                 Icon(
                                   isPg ? CupertinoIcons.building_2_fill : (isBuy ? CupertinoIcons.tag_fill : CupertinoIcons.house_fill),
                                   size: 13,
-                                  color: isDark ? AppTheme.primaryYellow : Colors.black,
+                                  color: accentTextColor,
                                 ),
-                                const SizedBox(width: 5),
+                                SizedBox(width: 5),
                                 Text(
                                   isPg ? 'PG / Hostel' : (isBuy ? 'For Sale (Buy)' : 'Rental House / Flat'),
                                   style: TextStyle(
-                                    color: isDark ? AppTheme.primaryYellow : Colors.black,
+                                    color: accentTextColor,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1324,7 +1326,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         letterSpacing: 0.8,
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
+                                    SizedBox(height: 2),
                                     Text(
                                       widget.property.price,
                                       style: TextStyle(
@@ -1907,7 +1909,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(CupertinoIcons.map_fill, size: 14, color: isDark ? AppTheme.primaryYellow : Colors.black),
-                                      const SizedBox(width: 5),
+                                      SizedBox(width: 5),
                                       Text(
                                         'Open Full Map',
                                         style: TextStyle(
@@ -1950,12 +1952,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : const Color(0xFFFFEB3A).withValues(alpha: 0.3),
+                                color: AppTheme.primaryYellow.withValues(alpha: isDark ? 0.15 : 0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(CupertinoIcons.camera_fill, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2028,7 +2030,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(CupertinoIcons.pencil, size: 13, color: isDark ? AppTheme.primaryYellow : Colors.black87),
-                                  const SizedBox(width: 5),
+                                  SizedBox(width: 5),
                                   Text(
                                     _hasReviewed ? 'Edit Review' : 'Write Review',
                                     style: TextStyle(
@@ -2111,18 +2113,18 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFEB3A),
+                        color: AppTheme.primaryYellow,
                         borderRadius: BorderRadius.circular(30),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(CupertinoIcons.phone_fill, color: Colors.black, size: 20),
+                          Icon(CupertinoIcons.phone_fill, color: accentTextColor, size: 20),
                           SizedBox(width: 8),
                           Text(
                             'Contact Owner',
                             style: TextStyle(
-                              color: Colors.black,
+                              color: accentTextColor,
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.2,
@@ -2248,7 +2250,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         elevation: 0,
                       ),
-                      child: const Text('No, Occupied', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: Text('No, Occupied', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

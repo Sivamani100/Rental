@@ -16,9 +16,9 @@ class SessionExpiryScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(CupertinoIcons.lock_shield, size: 80, color: AppTheme.primaryAccent),
-              const SizedBox(height: 32),
-              const Text(
+              Icon(CupertinoIcons.lock_shield, size: 80, color: AppTheme.primaryAccent),
+              SizedBox(height: 32),
+              Text(
                 "Session Expired",
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),

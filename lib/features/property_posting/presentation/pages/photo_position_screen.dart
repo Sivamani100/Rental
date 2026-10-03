@@ -218,11 +218,11 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                       color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: _addMorePhotos,
-                    icon: const Icon(CupertinoIcons.add, size: 18),
-                    label: const Text('Add Photos'),
+                    icon: Icon(CupertinoIcons.add, size: 18),
+                    label: Text('Add Photos'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryYellow,
                       foregroundColor: Colors.black,

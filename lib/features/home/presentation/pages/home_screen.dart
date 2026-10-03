@@ -280,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _manualLocationName = name;
         if (name != null) {
           _currentCity = name;
-          _currentArea = 'Custom Location';
+          _currentArea = '';
         }
       });
       _startLocationPromptTimer();
@@ -297,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _manualLocationOverride = pos;
       _manualLocationName = name;
       _currentCity = name;
-      _currentArea = 'Custom Location';
+      _currentArea = '';
     });
 
     _startLocationPromptTimer();
@@ -355,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 size: 48,
                 color: isDark ? AppTheme.primaryYellow : Colors.black,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 'Use Current Location?',
                 style: TextStyle(
@@ -397,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: 16),
                   Expanded(
                     child: BouncingButton(
                       onTap: () {
@@ -576,37 +576,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _precachePropertyImages(List<PropertyModel> properties) {
     if (!mounted) return;
-    // Phase 1: Pre-cache thumbnails for first 10 visible cards immediately
-    for (final prop in properties.take(10)) {
+    for (final prop in properties.take(5)) {
       if (prop.imageUrls.isNotEmpty) {
         final firstUrl = prop.imageUrls.first;
         if (firstUrl.startsWith('http')) {
           try {
             precacheImage(
-              CachedNetworkImageProvider(firstUrl, maxWidth: 600),
+              CachedNetworkImageProvider(firstUrl),
               context,
             );
           } catch (_) {}
         }
       }
     }
-    // Phase 2: Pre-cache full detail resolution after 2-second idle
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      for (final prop in properties.take(10)) {
-        if (prop.imageUrls.isNotEmpty) {
-          final firstUrl = prop.imageUrls.first;
-          if (firstUrl.startsWith('http')) {
-            try {
-              precacheImage(
-                CachedNetworkImageProvider(firstUrl, maxWidth: 1080),
-                context,
-              );
-            } catch (_) {}
-          }
-        }
-      }
-    });
   }
 
   /// Single GPS fetch — used for initial load and manual refresh.
@@ -943,7 +925,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: 32),
                   BouncingButton(
                     onTap: () {
                       Geolocator.openAppSettings();
@@ -988,9 +970,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return PopScope(
       canPop: false,
-      // Double-back-to-exit: press back twice within 2 seconds to exit
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
+
+        // If search overlay is active, close it
+        if (_searchFocusNode.hasFocus || _searchQuery.isNotEmpty) {
+          _searchFocusNode.unfocus();
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+          });
+          return;
+        }
+
+        // If on another tab, return to home tab
+        if (_bottomNavIndex != 0) {
+          setState(() {
+            _bottomNavIndex = 0;
+          });
+          return;
+        }
+
+        // Double-back-to-exit
         final now = DateTime.now();
         if (_lastBackPress != null &&
             now.difference(_lastBackPress!).inSeconds < 2) {
@@ -1089,6 +1090,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildExploreMarketplaceView(BuildContext context, bool isDark) {
+    final headerBgColor = _isScrollUIVisible ? AppTheme.primaryAccent : (isDark ? AppTheme.darkScaffold : Colors.white);
+    final isBgDark = ThemeData.estimateBrightnessForColor(headerBgColor) == Brightness.dark;
+    final headerTextColor = isBgDark ? Colors.white : Colors.black87;
+
     final query = _searchQuery.trim().toLowerCase();
     final displayedProperties = query.isEmpty
         ? _allProperties
@@ -1112,7 +1117,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       child: CustomScrollView(
         slivers: [
           SliverAppBar(
-            backgroundColor: _isScrollUIVisible ? AppTheme.primaryAccent : (isDark ? AppTheme.darkScaffold : Colors.white),
+            backgroundColor: headerBgColor,
             floating: true,
             pinned: true,
             elevation: 0,
@@ -1121,11 +1126,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
             ),
           titleSpacing: 24,
-          title: const Text(
+          title: Text(
             'Explore',
             style: TextStyle(
               fontFamily: 'ProximaNova',
-              color: Colors.black87,
+              color: headerTextColor,
               fontSize: 20,
               fontWeight: FontWeight.w800,
               height: 1.1,
@@ -1145,11 +1150,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   ),
                 );
               },
-              child: const Padding(
+              child: Padding(
                 padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
                 child: Icon(
                   CupertinoIcons.heart,
-                  color: Colors.black87,
+                  color: headerTextColor,
                   size: 24,
                 ),
               ),
@@ -1166,11 +1171,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   );
                 },
-                child: const Padding(
+                child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
                   child: Icon(
                     Iconsax.setting_2,
-                    color: Colors.black87,
+                    color: headerTextColor,
                     size: 24,
                   ),
                 ),
@@ -1263,9 +1268,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         _locationSuggestions = [];
                                       });
                                     }
-                                  : () {
+                                  : () async {
                                       HapticFeedback.selectionClick();
-                                      Navigator.push(
+                                      final result = await Navigator.push<String>(
                                         context,
                                         PageRouteBuilder(
                                           pageBuilder: (context, animation, secondaryAnimation) =>
@@ -1280,6 +1285,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           },
                                         ),
                                       );
+                                      if (result != null && result.isNotEmpty) {
+                                        _searchController.text = result;
+                                        _onSearchChanged(result);
+                                      }
                                     },
                             ),
                           ),
@@ -1311,8 +1320,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
-                            'SORT',
+                          Text('SORT',
                             style: TextStyle(
                               fontFamily: 'ProximaNova',
                               fontSize: 11,
@@ -1322,8 +1330,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                           ),
                           const SizedBox(height: 2),
-                          const Icon(
-                            CupertinoIcons.sort_down,
+                          Icon(CupertinoIcons.sort_down,
                             size: 14,
                             color: Colors.black87,
                           ),
@@ -1373,6 +1380,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildSavedPropertiesView(BuildContext context, bool isDark, {bool showBackButton = false}) {
+    final isAppBarDark = ThemeData.estimateBrightnessForColor(_isScrollUIVisible ? AppTheme.primaryAccent : (isDark ? AppTheme.darkScaffold : Colors.white)) == Brightness.dark;
+    final appBarTextColor = isAppBarDark ? Colors.white : Colors.black87;
     final savedProps = _allProperties
         .where((p) => SavedPropertiesService.instance.isSaved(p.id ?? ''))
         .toList();
@@ -1404,19 +1413,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             HapticFeedback.selectionClick();
                             Navigator.pop(context);
                           },
-                          child: const Padding(
-                            padding: EdgeInsets.only(right: 12.0),
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 12.0),
                             child: Icon(
                               CupertinoIcons.back,
-                              color: Colors.black87,
+                              color: appBarTextColor,
                             ),
                           ),
                         ),
-                      const Text(
+                      Text(
                         'Saved Properties',
                         style: TextStyle(
                           fontFamily: 'ProximaNova',
-                          color: Colors.black87,
+                          color: appBarTextColor,
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
                           height: 1.1,
@@ -1452,7 +1461,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           color: AppTheme.swiggyOrange.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           CupertinoIcons.heart,
                           size: 50,
                           color: AppTheme.swiggyOrange,
@@ -1529,7 +1538,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_isSearchingLocations) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: AppTheme.primaryYellow),
       );
     }
@@ -1569,7 +1578,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             final subtitle = [state, country].where((e) => e.toString().isNotEmpty).join(', ');
 
             return ListTile(
-              leading: const Icon(Iconsax.location),
+              leading: Icon(Iconsax.location),
               title: Text(name, style: TextStyle(color: isDark ? Colors.white : Colors.black87)),
               subtitle: subtitle.isNotEmpty ? Text(subtitle, style: TextStyle(color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary)) : null,
               onTap: () async {
@@ -1724,10 +1733,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSearchActive = _searchFocusNode.hasFocus || _searchQuery.isNotEmpty;
     
+    final headerBgColor = (_isScrollUIVisible && !isSearchActive) ? AppTheme.primaryAccent : (isDark ? AppTheme.darkScaffold : Colors.white);
+    final isBgDark = ThemeData.estimateBrightnessForColor(headerBgColor) == Brightness.dark;
+    final headerTextColor = isBgDark ? Colors.white : Colors.black87;
+    final headerSubTextColor = isBgDark ? Colors.white70 : Colors.black54;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       decoration: BoxDecoration(
-        color: (_isScrollUIVisible && !isSearchActive) ? AppTheme.primaryAccent : (isDark ? AppTheme.darkScaffold : Colors.white),
+        color: headerBgColor,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(isSearchActive ? 0 : 36),
           bottomRight: Radius.circular(isSearchActive ? 0 : 36),
@@ -1761,8 +1775,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   Image.asset(
                                     'assets/icons/logowhite.png',
                                     width: 22,
-                                    height: 22,
-                                    color: Colors.black87,
+                                    height: 22,color: headerTextColor,
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
@@ -1780,7 +1793,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                   fontFamily: 'ProximaNova',
                                                   fontSize: 15,
                                                   fontWeight: FontWeight.w800,
-                                                  color: Colors.black87,
+                                                  color: headerTextColor,
                                                   height: 1.1,
                                                 ),
                                                 maxLines: 1,
@@ -1788,9 +1801,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                               ),
                                             ),
                                             const SizedBox(width: 4),
-                                            const Icon(
-                                              CupertinoIcons.chevron_right,
-                                              color: Colors.black54,
+                                            Icon(
+                                              CupertinoIcons.chevron_right,color: headerSubTextColor,
                                               size: 20,
                                             ),
                                           ],
@@ -1801,7 +1813,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                             style: TextStyle(
                                               fontFamily: 'ProximaNova',
                                               fontSize: 12,
-                                              color: Colors.black54,
+                                              color: headerSubTextColor,
                                               fontWeight: FontWeight.w400,
                                               height: 1.2,
                                             ),
@@ -1830,11 +1842,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 ),
                               );
                             },
-                            child: const Padding(
+                            child: Padding(
                               padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
                               child: Icon(
                                 CupertinoIcons.heart,
-                                color: Colors.black87,
+                                color: headerTextColor,
                                 size: 24,
                               ),
                             ),
@@ -1850,11 +1862,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 ),
                               );
                             },
-                            child: const Padding(
+                            child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
                               child: Icon(
                                 Iconsax.setting_2,
-                                color: Colors.black87,
+                                color: headerTextColor,
                                 size: 24,
                               ),
                             ),
@@ -1876,9 +1888,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               CupertinoIcons.back, // iOS style back button
-                              color: Colors.black87,
+                              color: headerTextColor,
                               size: 24,
                             ),
                             onPressed: () {
@@ -1905,6 +1917,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         controller: _searchController,
                         focusNode: _searchFocusNode,
                         readOnly: false,
+                        cursorColor: Colors.black87,
+                        cursorWidth: 2.0,
+                        cursorHeight: 20.0,
                         onTap: () {
                           HapticFeedback.selectionClick();
                           setState(() {}); // Trigger rebuild to show search results
@@ -1960,9 +1975,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         _locationSuggestions = [];
                                       });
                                     } 
-                                  : () {
+                                  : () async {
                                       HapticFeedback.selectionClick();
-                                      Navigator.push(
+                                      final result = await Navigator.push<String>(
                                         context,
                                         PageRouteBuilder(
                                           pageBuilder: (context, animation, secondaryAnimation) => const VoiceSearchScreen(),
@@ -1975,6 +1990,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           },
                                         ),
                                       );
+                                      if (result != null && result.isNotEmpty) {
+                                        setState(() {
+                                          _searchController.text = result;
+                                          _searchQuery = result;
+                                        });
+                                      }
                                     },
                             ),
                           ),
@@ -2039,7 +2060,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   : Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildHeaderTabBar(),
+                        _buildHeaderTabBar(headerTextColor, headerSubTextColor),
                         const SizedBox(
                           height: 8,
                         ), // added padding before the curve ends
@@ -2052,7 +2073,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildHeaderTabBar() {
+  Widget _buildHeaderTabBar(Color textColor, Color subTextColor) {
     final tabs = [
       (label: 'ALL', index: 0, icon: CupertinoIcons.square_grid_2x2),
       (label: 'HOSTELS', index: 1, icon: Iconsax.building),
@@ -2072,7 +2093,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               return Container(
                 height: 14,
                 width: 1,
-                color: Colors.black.withValues(alpha: 0.3),
+                color: subTextColor.withValues(alpha: 0.3),
                 margin: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 14,
@@ -2106,7 +2127,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       children: [
                         Icon(
                           tab.icon,
-                          color: Colors.black,
+                          color: textColor,
                           size: 16,
                         ),
                         const SizedBox(width: 6),
@@ -2114,7 +2135,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           tab.label,
                           style: TextStyle(
                             fontFamily: 'ProximaNova',
-                            color: Colors.black,
+                            color: textColor,
                             fontSize: 12.5,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.3,
@@ -2128,7 +2149,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       height: 3.5,
                       width: 50,
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.black : Colors.transparent,
+                        color: isSelected ? textColor : Colors.transparent,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(4),
                           topRight: Radius.circular(4),
@@ -2185,6 +2206,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildFullMapView(BuildContext context, bool isDark) {
+    final isAppBarDark = ThemeData.estimateBrightnessForColor(AppTheme.primaryAccent) == Brightness.dark;
+    final appBarTextColor = isAppBarDark ? Colors.white : Colors.black87;
     if (_allProperties.isEmpty) {
       return Center(child: Text("No properties to map", style: TextStyle(color: isDark ? Colors.white : Colors.black)));
     }
@@ -2196,7 +2219,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       children: [
         // App Bar (Matching PostingScreen)
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppTheme.primaryAccent,
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(36),
@@ -2210,11 +2233,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Find in Map',
                     style: TextStyle(
                       fontFamily: 'ProximaNova',
-                      color: Colors.black87,
+                      color: appBarTextColor,
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       height: 1.1,
@@ -2235,11 +2258,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                           );
                         },
-                        child: const Padding(
+                        child: Padding(
                           padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
                           child: Icon(
                             CupertinoIcons.heart,
-                            color: Colors.black87,
+                            color: appBarTextColor,
                             size: 24,
                           ),
                         ),
@@ -2254,11 +2277,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             ),
                           );
                         },
-                        child: const Padding(
+                        child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
                           child: Icon(
                             Iconsax.setting_2,
-                            color: Colors.black87,
+                            color: appBarTextColor,
                             size: 24,
                           ),
                         ),
@@ -2461,7 +2484,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                         ),
                                         child: Text(
                                           _selectedMapProperty!.type,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: AppTheme.primaryYellow,
                                             fontWeight: FontWeight.bold,
                                             fontSize: 12,
@@ -2841,7 +2864,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _searchQuery.isNotEmpty ? 'Clear Search' : 'Use another location',
                   style: TextStyle(
                     fontFamily: 'ProximaNova',
-                    color: isDark ? Colors.black87 : Colors.white,
+                    color: isDark 
+                        ? (ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark ? Colors.white : Colors.black87) 
+                        : Colors.white,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.1,
@@ -3035,7 +3060,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       ),
       trailing: isSelected
-          ? const Icon(
+          ? Icon(
               CupertinoIcons.checkmark_alt,
               color: AppTheme.primaryYellow,
               size: 18,

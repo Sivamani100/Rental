@@ -33,6 +33,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   bool _locationDenied = false;     // permission denied
 
   // ── Onboarding page control ───────────────────────────────────────────────
+  
+  Color get accentTextColor {
+    final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark;
+    return isAccentDark ? Colors.white : const Color(0xFF1A1A1A);
+  }
+
   final PageController _pageController = PageController();
   int _currentPage = 0;
   static const int _totalPages = 2;
@@ -201,7 +207,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           position = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.medium,
-              timeLimit: Duration(seconds: 1),
+              timeLimit: Duration(seconds: 5),
             ),
           );
         } catch (_) {
@@ -223,7 +229,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       try {
         final placemarks = await Geocoding()
             .placemarkFromCoordinates(position.latitude, position.longitude)
-            .timeout(const Duration(seconds: 1));
+            .timeout(const Duration(seconds: 5));
         if (placemarks.isNotEmpty) {
           final p = placemarks.first;
           city = p.subLocality?.isNotEmpty == true
@@ -438,7 +444,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: 32),
 
                     // ── Location text ────────────────────────────────
                     if (_isLocating)
@@ -504,6 +510,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   // ONBOARDING SLIDES
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildOnboarding() {
+    final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark;
+    
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -514,7 +522,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           Positioned(
             top: 0, left: 0, right: 0, height: 4,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [AppTheme.swiggyOrange, AppTheme.swiggyYellow],
                 ),
@@ -598,7 +606,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             colors: [AppTheme.swiggyOrange, Color(0xFFFF9A3C)],
                             begin: Alignment.centerLeft,
                             end: Alignment.centerRight,
@@ -614,12 +622,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         ),
                         alignment: Alignment.center,
                         child: _isRequestingLocation || _isRequestingNotification
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
+                                height: 22,child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
-                                  color: const Color(0xFF1A1A1A),
+                                  color: accentTextColor,
                                 ),
                               )
                             : Row(
@@ -632,11 +639,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                     style: TextStyle(fontFamily: 'ProximaNova', 
                                       fontSize: 16,
                                       fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF1A1A1A),
+                                      color: accentTextColor,
                                       letterSpacing: 0.1,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
+                                  SizedBox(width: 8),
                                   Icon(
                                     _currentPage == 0
                                         ? CupertinoIcons.location_solid
@@ -644,7 +651,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                             ? CupertinoIcons.chevron_right
                                             : CupertinoIcons.bell_fill),
                                     size: 18,
-                                    color: const Color(0xFF1A1A1A),
+                                    color: accentTextColor,
                                   ),
                                 ],
                               ),
@@ -697,7 +704,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [AppTheme.swiggyOrange, Color(0xFFFF9A3C)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -712,7 +719,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   width: 26,
                   height: 26,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, __, ___) => Icon(
                     CupertinoIcons.house_fill,
                     color: const Color(0xFF1A1A1A),
                     size: 22,
@@ -809,8 +816,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           if (isLoading)
                             SizedBox(
                               width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
+                              height: 14,child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: accentColor,
                               ),
@@ -821,7 +827,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               size: 15,
                               color: isGranted ? AppTheme.swiggyGreen : AppTheme.swiggyOrange,
                             ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           Text(
                             isGranted ? grantedLabel : pendingLabel,
                             style: TextStyle(fontFamily: 'ProximaNova', 
@@ -875,7 +881,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   width: 110,
                   height: 110,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [AppTheme.swiggyOrange, Color(0xFFFF9A3C)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -946,7 +952,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [AppTheme.swiggyOrange, Color(0xFFFF9A3C)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -987,7 +993,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               letterSpacing: -0.2,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(

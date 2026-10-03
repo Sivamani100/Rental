@@ -508,7 +508,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
             alignment: Alignment.center,
-            child: const Icon(
+            child: Icon(
               CupertinoIcons.sparkles,
               size: 24,
               color: Colors.black,
@@ -649,12 +649,12 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             CupertinoIcons.search,
             size: 18,
             color: AppTheme.primaryYellow,
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchController,
@@ -876,7 +876,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         color: isDark ? AppTheme.primaryYellow : Colors.black87,
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    SizedBox(width: 5),
                     GestureDetector(
                       onTap: c['onRemove'] as VoidCallback,
                       child: Icon(
@@ -961,7 +961,7 @@ class _SearchScreenState extends State<SearchScreen> {
               size: 14,
               color: AppTheme.primaryYellow,
             ),
-            const SizedBox(width: 5),
+            SizedBox(width: 5),
             Text(
               label,
               style: TextStyle(fontFamily: 'ProximaNova', 
@@ -1049,7 +1049,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       ),
       trailing: isSelected
-          ? const Icon(CupertinoIcons.checkmark_alt, color: AppTheme.primaryYellow, size: 18)
+          ? Icon(CupertinoIcons.checkmark_alt, color: AppTheme.primaryYellow, size: 18)
           : null,
       onTap: () {
         setState(() => _sortBy = key);
@@ -1236,7 +1236,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         RangeSlider(
                           values: tempBudget,
                           min: 0,
@@ -1549,7 +1549,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6),
                           RangeSlider(
                             values: tempArea,
                             min: 0,
@@ -1751,12 +1751,12 @@ class _SearchScreenState extends State<SearchScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
 
               // Action Options: Use Current Location
               if (widget.currentPosition != null)
                 ListTile(
-                  leading: const Icon(CupertinoIcons.location_fill, color: AppTheme.primaryYellow),
+                  leading: Icon(CupertinoIcons.location_fill, color: AppTheme.primaryYellow),
                   title: Text('Use current location', style: TextStyle(fontFamily: 'ProximaNova', fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
                   onTap: () {
                     onSelected('Near My Location');

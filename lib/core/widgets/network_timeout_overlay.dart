@@ -25,7 +25,7 @@ class NetworkTimeoutOverlay extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(CupertinoIcons.exclamationmark_triangle_fill, size: 64, color: AppTheme.errorRed),
+                Icon(CupertinoIcons.exclamationmark_triangle_fill, size: 64, color: AppTheme.errorRed),
                 const SizedBox(height: 24),
                 const Text(
                   "Connection timed out",
@@ -42,15 +42,15 @@ class NetworkTimeoutOverlay extends StatelessWidget {
                   width: double.infinity,
                   child: CupertinoButton.filled(
                     onPressed: onRetry,
-                    child: const Text("Retry Connection", style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: Text("Retry Connection", style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: CupertinoButton(
                     onPressed: onManualEntry,
-                    child: const Text("Enter Location Manually", style: TextStyle(color: AppTheme.primaryAccent)),
+                    child: Text("Enter Location Manually", style: TextStyle(color: AppTheme.primaryAccent)),
                   ),
                 ),
               ],

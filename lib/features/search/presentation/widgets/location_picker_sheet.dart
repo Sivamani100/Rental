@@ -330,6 +330,9 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                       ),
                       child: TextField(
                         controller: _searchController,
+                        cursorColor: isDark ? Colors.white : Colors.black87,
+                        cursorWidth: 2.0,
+                        cursorHeight: 20.0,
                         style: TextStyle(
                           color: isDark ? Colors.white : Colors.black87,
                           fontFamily: 'ProximaNova',

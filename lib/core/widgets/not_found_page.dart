@@ -20,7 +20,7 @@ class NotFoundPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(CupertinoIcons.question_circle, size: 100, color: AppTheme.lightBorder),
+              Icon(CupertinoIcons.question_circle, size: 100, color: AppTheme.lightBorder),
               const SizedBox(height: 32),
               const Text(
                 "Looks like you're lost",

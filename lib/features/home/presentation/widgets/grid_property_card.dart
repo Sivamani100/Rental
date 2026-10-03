@@ -53,6 +53,8 @@ class GridPropertyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark;
+    final accentTextColor = isAccentDark ? Colors.white : Colors.black87;
     return BouncingButton(
       onTap: onTap,
       child: ClipRRect(
@@ -103,7 +105,7 @@ class GridPropertyCard extends StatelessWidget {
                       height: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -127,7 +129,7 @@ class GridPropertyCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontFamily: 'ProximaNova', 
-                            color: Colors.black87, fontSize: 13, fontWeight: FontWeight.w800,
+                            color: accentTextColor, fontSize: 13, fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
@@ -162,7 +164,7 @@ class GridPropertyCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       CupertinoIcons.location_solid, 
                       color: AppTheme.swiggyOrange, 
                       size: 12,

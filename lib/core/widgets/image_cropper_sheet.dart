@@ -229,7 +229,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           // Header Bar
           Padding(
@@ -364,10 +364,10 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                                       ],
                                     ),
                                     // 4 Corner Markers
-                                    Positioned(top: -2, left: -2, child: Container(width: 14, height: 14, decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppTheme.primaryYellow, width: 4), left: BorderSide(color: AppTheme.primaryYellow, width: 4))))),
-                                    Positioned(top: -2, right: -2, child: Container(width: 14, height: 14, decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppTheme.primaryYellow, width: 4), right: BorderSide(color: AppTheme.primaryYellow, width: 4))))),
-                                    Positioned(bottom: -2, left: -2, child: Container(width: 14, height: 14, decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppTheme.primaryYellow, width: 4), left: BorderSide(color: AppTheme.primaryYellow, width: 4))))),
-                                    Positioned(bottom: -2, right: -2, child: Container(width: 14, height: 14, decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppTheme.primaryYellow, width: 4), right: BorderSide(color: AppTheme.primaryYellow, width: 4))))),
+                                    Positioned(top: -2, left: -2, child: Container(width: 14, height: 14, decoration: BoxDecoration(border: Border(top: BorderSide(color: AppTheme.primaryYellow, width: 4), left: BorderSide(color: AppTheme.primaryYellow, width: 4))))),
+                                    Positioned(top: -2, right: -2, child: Container(width: 14, height: 14, decoration: BoxDecoration(border: Border(top: BorderSide(color: AppTheme.primaryYellow, width: 4), right: BorderSide(color: AppTheme.primaryYellow, width: 4))))),
+                                    Positioned(bottom: -2, left: -2, child: Container(width: 14, height: 14, decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppTheme.primaryYellow, width: 4), left: BorderSide(color: AppTheme.primaryYellow, width: 4))))),
+                                    Positioned(bottom: -2, right: -2, child: Container(width: 14, height: 14, decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppTheme.primaryYellow, width: 4), right: BorderSide(color: AppTheme.primaryYellow, width: 4))))),
                                   ],
                                 ),
                               ),
@@ -375,14 +375,14 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                           ),
                         )
                       else
-                        const Center(
+                        Center(
                           child: CircularProgressIndicator(color: AppTheme.primaryYellow),
                         ),
 
                       if (_isProcessing)
                         Container(
                           color: Colors.black54,
-                          child: const Center(
+                          child: Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -411,7 +411,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                 // Rotate Button
                 IconButton(
                   tooltip: 'Rotate 90°',
-                  icon: const Icon(CupertinoIcons.rotate_right, color: AppTheme.primaryYellow, size: 26),
+                  icon: Icon(CupertinoIcons.rotate_right, color: AppTheme.primaryYellow, size: 26),
                   onPressed: _rotateRight,
                 ),
                 const SizedBox(width: 8),
@@ -474,7 +474,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12),
                   Expanded(
                     child: BouncingButton(
                       scaleFactor: 0.96,

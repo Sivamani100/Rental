@@ -337,17 +337,17 @@ class _AiChatScreenState extends State<AiChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Glowing Ambient AI Sparkles Avatar
           Container(
             width: 66,
             height: 66,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppTheme.primaryYellow,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: const Icon(
+            child: Icon(
               CupertinoIcons.sparkles,
               color: Colors.black,
               size: 30,
@@ -528,14 +528,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
           // Recommended Properties Card List
           if (msg.recommendedProperties != null && msg.recommendedProperties!.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Icon(CupertinoIcons.house_fill, color: AppTheme.swiggyOrange, size: 15),
-                    const SizedBox(width: 6),
+                    Icon(CupertinoIcons.house_fill, color: AppTheme.swiggyOrange, size: 15),
+                    SizedBox(width: 6),
                     Text(
                       msg.recommendedProperties!.length == 1
                           ? 'Top Match For You'
@@ -576,6 +576,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Widget _buildPropertyCard(PropertyModel prop, bool isDark, {bool isFullWidth = false}) {
     final hasImg = prop.imageUrls.isNotEmpty;
     final priceStr = prop.price.replaceAll(RegExp(r'[^0-9.]'), '');
+
+    final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark;
+    final accentTextColor = isAccentDark ? Colors.white : Colors.black;
 
     return Container(
       width: isFullWidth ? double.infinity : 260,
@@ -621,7 +624,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   ),
                   child: Text(
                     prop.type,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppTheme.swiggyOrange,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -641,8 +644,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   ),
                   child: Text(
                     '₹${priceStr.isNotEmpty ? priceStr : prop.price}/m',
-                    style: const TextStyle(
-                      color: Colors.black,
+                    style: TextStyle(
+                      color: accentTextColor,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
                     ),
@@ -707,7 +710,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 7),
+                SizedBox(height: 7),
 
                 // Fully Rounded View Button Only
                 BouncingButton(
@@ -720,15 +723,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       borderRadius: BorderRadius.circular(24),
                     ),
                     alignment: Alignment.center,
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(CupertinoIcons.eye_solid, size: 14, color: Colors.black),
+                        Icon(CupertinoIcons.eye_solid, size: 14, color: accentTextColor),
                         SizedBox(width: 5),
                         Text(
                           'View Details',
                           style: TextStyle(
-                            color: Colors.black,
+                            color: accentTextColor,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
@@ -771,7 +774,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   '• ',
                   style: TextStyle(
                     color: AppTheme.swiggyOrange,
@@ -873,7 +876,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 12,
             height: 12,
             child: CircularProgressIndicator(

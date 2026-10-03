@@ -93,8 +93,8 @@ class YellowSplashScreenState extends State<YellowSplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFD600), // AppTheme.primaryAccent
-      body: const Center(
+      backgroundColor: AppTheme.primaryAccent, // AppTheme.primaryAccent
+      body: Center(
         child: Image(
           image: AssetImage('assets/icons/logoblack.png'),
           width: 160,

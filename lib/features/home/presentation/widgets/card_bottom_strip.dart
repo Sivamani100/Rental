@@ -92,10 +92,12 @@ class CardBottomStripState extends State<CardBottomStrip>
 
   @override
   Widget build(BuildContext context) {
+    final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.primaryYellow) == Brightness.dark;
+    final accentTextColor = isAccentDark ? Colors.white : Colors.black;
     return Container(
       height: 32,
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFEB3A),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryYellow,
       ),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 350),
@@ -112,12 +114,12 @@ class CardBottomStripState extends State<CardBottomStrip>
           );
         },
         // Admin approved banner text hidden for now as requested (can be re-enabled later)
-        child: _buildStandardInfoView(),
+        child: _buildStandardInfoView(accentTextColor),
       ),
     );
   }
 
-  Widget _buildStandardInfoView() {
+  Widget _buildStandardInfoView(accentTextColor) {
     return Row(
       key: const ValueKey('standard_info'),
       children: [
@@ -127,15 +129,15 @@ class CardBottomStripState extends State<CardBottomStrip>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(CupertinoIcons.location_solid, color: Colors.black, size: 14.5),
+                Icon(CupertinoIcons.location_solid, color: accentTextColor, size: 14.5),
                 const SizedBox(width: 4),
                 Text(
                   widget.distanceInMeters != null
                       ? widget.formatDistance(widget.distanceInMeters!)
                       : 'Nearby',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Inter',
-                    color: Colors.black,
+                    color: accentTextColor,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,
@@ -152,7 +154,7 @@ class CardBottomStripState extends State<CardBottomStrip>
         Container(
           width: 1.2,
           height: 16,
-          color: Colors.black.withValues(alpha: 0.25),
+          color: accentTextColor.withValues(alpha: 0.25),
         ),
 
         // Column 2: Category / Property Type
@@ -162,9 +164,9 @@ class CardBottomStripState extends State<CardBottomStrip>
               widget.property.type == 'PG'
                   ? 'PG / Hostel'
                   : (widget.property.type == 'Buy' ? 'Buy / Sale' : widget.property.type),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Inter',
-                color: Colors.black,
+                color: accentTextColor,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
@@ -180,7 +182,7 @@ class CardBottomStripState extends State<CardBottomStrip>
         Container(
           width: 1.2,
           height: 16,
-          color: Colors.black.withValues(alpha: 0.25),
+          color: accentTextColor.withValues(alpha: 0.25),
         ),
 
         // Column 3: Rental App Brand
@@ -189,13 +191,13 @@ class CardBottomStripState extends State<CardBottomStrip>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const RentalAppIcon(size: 14.5, color: Colors.black),
+                RentalAppIcon(size: 14.5, color: accentTextColor),
                 const SizedBox(width: 4.5),
-                const Text(
+                Text(
                   'Rental App',
                   style: TextStyle(
                     fontFamily: 'Inter',
-                    color: Colors.black,
+                    color: accentTextColor,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.2,

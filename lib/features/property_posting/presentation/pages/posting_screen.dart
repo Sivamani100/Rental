@@ -761,7 +761,7 @@ class _PostingScreenState extends State<PostingScreen> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppTheme.primaryAccent,
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(36),
@@ -1960,7 +1960,7 @@ class _PostingScreenState extends State<PostingScreen> {
                                           width: 1.2,
                                         ),
                                       ),
-                                      child: const Icon(
+                                      child: Icon(
                                         CupertinoIcons.crop,
                                         color: AppTheme.primaryYellow,
                                         size: 12,
@@ -3898,7 +3898,7 @@ class _WeeklyFoodMenuSheetState extends State<_WeeklyFoodMenuSheet> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: const BorderSide(color: AppTheme.primaryAccent, width: 1.5),
+                            borderSide: BorderSide(color: AppTheme.primaryAccent, width: 1.5),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         ),

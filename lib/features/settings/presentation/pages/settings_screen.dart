@@ -6,6 +6,9 @@ import 'package:iconsax/iconsax.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:flutter_dynamic_icon_plus/flutter_dynamic_icon_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:rental/app/theme/theme_provider.dart';
+import 'package:in_app_review/in_app_review.dart';
 
 // ─────────────────────────────────────────────────────────────
 // SETTINGS SCREEN
@@ -22,16 +25,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _emailAlerts = false;
   bool _locationServices = true;
 
-  Color _selectedLogoColor = AppTheme.primaryAccent;
+  Color _selectedLogoColor = ThemeController.instance.appColor;
 
   final List<Color> _availableColors = [
-    const Color(0xFF1A1A1A),
-    const Color(0xFF0A2342),
-    const Color(0xFF5E0B15),
-    const Color(0xFF0B421A),
-    const Color(0xFF3B154D),
-    const Color(0xFF5E2B0B),
+    const Color(0xFFFFD600), // Default Yellow
+    const Color(0xFF0A2342), // Navy Blue
+    const Color(0xFF5E0B15), // Deep Red
+    const Color(0xFF0B421A), // Deep Green
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _pushNotifications = prefs.getBool('push_notifications') ?? true;
+      _emailAlerts = prefs.getBool('email_alerts') ?? false;
+      _locationServices = prefs.getBool('location_services') ?? true;
+    });
+  }
+
+  Future<void> _savePreference(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,6 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         return GestureDetector(
                           onTap: () async {
                             setState(() => _selectedLogoColor = color);
+                            await ThemeController.instance.setAppColor(color);
                             try {
                               if (await FlutterDynamicIconPlus.supportsAlternateIcons) {
                                 await FlutterDynamicIconPlus.setAlternateIconName(
@@ -207,19 +229,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: _iconBox(Colors.blue, CupertinoIcons.bell_fill),
               label: 'Push Notifications',
               value: _pushNotifications,
-              onChanged: (val) => setState(() => _pushNotifications = val),
+              onChanged: (val) {
+                setState(() => _pushNotifications = val);
+                _savePreference('push_notifications', val);
+              },
             ),
             _buildSwitchTile(
               icon: _iconBox(Colors.orange, CupertinoIcons.mail_solid),
               label: 'Email Alerts',
               value: _emailAlerts,
-              onChanged: (val) => setState(() => _emailAlerts = val),
+              onChanged: (val) {
+                setState(() => _emailAlerts = val);
+                _savePreference('email_alerts', val);
+              },
             ),
             _buildSwitchTile(
               icon: _iconBox(Colors.green, CupertinoIcons.location_solid),
               label: 'Location Services',
               value: _locationServices,
-              onChanged: (val) => setState(() => _locationServices = val),
+              onChanged: (val) {
+                setState(() => _locationServices = val);
+                _savePreference('location_services', val);
+              },
             ),
           ]),
           const SizedBox(height: 24),
@@ -245,13 +276,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
             _buildNavTile(
-              icon: _iconBox(const Color(0xFFFFCC00), CupertinoIcons.star_fill),
+              icon: _iconBox(AppTheme.primaryYellow, CupertinoIcons.star_fill),
               label: 'Rate the App',
-              onTap: () {
+              onTap: () async {
                 HapticFeedback.selectionClick();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Thank you! Rating coming soon on the App Store.')),
-                );
+                final InAppReview inAppReview = InAppReview.instance;
+                if (await inAppReview.isAvailable()) {
+                  inAppReview.requestReview();
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('In-app review is not available on this device.')),
+                    );
+                  }
+                }
               },
             ),
           ]),
@@ -524,7 +562,7 @@ class _DeveloperProfileScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
                             ),
-                            child: Text(tech, style: const TextStyle(
+                            child: Text(tech, style: TextStyle(
                               fontFamily: 'ProximaNova',
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -799,7 +837,7 @@ class _HelpCenterScreen extends StatelessWidget {
               ],
             ),
           )),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(

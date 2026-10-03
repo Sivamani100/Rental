@@ -55,6 +55,9 @@ class PropertyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark;
+    final accentTextColor = isAccentDark ? Colors.white : Colors.black87;
 
     return BouncingButton(
       onTap: onTap,
@@ -248,7 +251,7 @@ class PropertyCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
@@ -266,7 +269,7 @@ class PropertyCard extends StatelessWidget {
                           property.price,
                           style: TextStyle(fontFamily: 'ProximaNova', 
                             fontSize: 15,
-                            fontWeight: FontWeight.w800, color: Colors.black87,
+                            fontWeight: FontWeight.w800, color: accentTextColor,
                           ),
                         ),
                       ),

@@ -120,14 +120,14 @@ class _AreaCalculatorMapScreenState extends State<AreaCalculatorMapScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Calculate Area', style: TextStyle(fontFamily: 'SF Pro Display', fontSize: 18, fontWeight: FontWeight.bold)),
+        title: Text('Calculate Area', style: TextStyle(fontFamily: 'SF Pro Display', fontSize: 18, fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: isDark ? AppTheme.darkScaffold : AppTheme.primaryYellow,
         foregroundColor: isDark ? Colors.white : Colors.black,
         actions: [
           IconButton(
-            icon: const Icon(Icons.check, size: 28),
+            icon: Icon(Icons.check, size: 28),
             color: isDark ? AppTheme.primaryYellow : Colors.black,
             onPressed: () {
               Navigator.pop(context, _calculatedAreaSqft.round().toString());

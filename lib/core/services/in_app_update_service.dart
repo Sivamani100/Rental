@@ -19,11 +19,9 @@ class InAppUpdateService with WidgetsBindingObserver {
   static final InAppUpdateService instance = InAppUpdateService._();
 
   AppUpdateInfo? _updateInfo;
-  bool _isBannerVisible = false;
   bool _isChecking = false;
   BuildContext? _currentContext;
 
-  bool get isBannerVisible => _isBannerVisible;
   AppUpdateInfo? get updateInfo => _updateInfo;
 
   /// Initializes lifecycle observation and performs initial update check.
@@ -63,7 +61,7 @@ class InAppUpdateService with WidgetsBindingObserver {
 
       // Edge Case 1: Download has already completed (e.g. while app was minimized or in background)
       if (info.installStatus == InstallStatus.downloaded) {
-        if (context.mounted) _showUpdateDownloadedBanner(context);
+        if (context.mounted) completeUpdate(context);
         _isChecking = false;
         return;
       }
@@ -86,8 +84,8 @@ class InAppUpdateService with WidgetsBindingObserver {
     try {
       final result = await InAppUpdate.startFlexibleUpdate();
       if (result == AppUpdateResult.success && context.mounted) {
-        debugPrint('✅ [InAppUpdateService] Flexible update downloaded successfully!');
-        _showUpdateDownloadedBanner(context);
+        debugPrint('✅ [InAppUpdateService] Flexible update downloaded successfully! Automatically completing...');
+        completeUpdate(context);
       }
     } catch (e) {
       debugPrint('❌ [InAppUpdateService] Failed to start flexible update: $e');
@@ -114,80 +112,6 @@ class InAppUpdateService with WidgetsBindingObserver {
     }
   }
 
-  /// Displays the persistent Bottom Installation Banner (State 3)
-  void _showUpdateDownloadedBanner(BuildContext context) {
-    if (_isBannerVisible || !context.mounted) return;
-    _isBannerVisible = true;
-
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(days: 365), // Persistent until user acts
-        behavior: SnackBarBehavior.fixed,
-        backgroundColor: const Color(0xFF0F172A),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(CupertinoIcons.chevron_down, color: Color(0xFF10B981), size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Rental app just downloaded an update',
-                    style: TextStyle(fontFamily: 'ProximaNova', 
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Restart to apply features and security updates.',
-                    style: TextStyle(fontFamily: 'ProximaNova', 
-                      fontSize: 11.5,
-                      color: const Color(0xFF94A3B8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            ElevatedButton(
-              onPressed: () {
-                _isBannerVisible = false;
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                completeUpdate(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: Text(
-                'Reload',
-                style: TextStyle(fontFamily: 'ProximaNova', 
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   /// Platform check helper to avoid non-Android runtime exceptions
   bool _isSupportedPlatform() {

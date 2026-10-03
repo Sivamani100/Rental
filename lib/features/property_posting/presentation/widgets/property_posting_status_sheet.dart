@@ -53,8 +53,8 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
   String _errorMessage = '';
   double _progress = 0.01;
   int _countdownSeconds = 5;
-  Timer? _progressRampTimer;
   Timer? _countdownTimer;
+  bool _isCancelled = false;
 
   @override
   void initState() {
@@ -64,7 +64,6 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
 
   @override
   void dispose() {
-    _progressRampTimer?.cancel();
     _countdownTimer?.cancel();
     super.dispose();
   }
@@ -77,20 +76,6 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
       _progress = 0.01;
       _errorMessage = '';
       _countdownSeconds = 5;
-    });
-
-    // Smooth, natural progress count from 1% up to 80% dynamically while upload processes
-    _progressRampTimer?.cancel();
-    _progressRampTimer = Timer.periodic(const Duration(milliseconds: 65), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_progress < 0.80) {
-        setState(() {
-          _progress = (_progress + 0.012).clamp(0.01, 0.80);
-        });
-      }
     });
 
     try {
@@ -108,12 +93,14 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
 
       int totalImages = widget.selectedImages.length;
       for (int i = 0; i < totalImages; i++) {
+        if (_isCancelled) return;
+
         final file = widget.selectedImages[i];
         if (mounted) {
           setState(() {
             _statusMessage = totalImages == 1
-                ? 'Compressing & uploading photo...'
-                : 'Uploading photo ${i + 1} of $totalImages (Smart 30KB)...';
+                ? 'Compressing photo...'
+                : 'Compressing photo ${i + 1} of $totalImages...';
           });
         }
 
@@ -124,6 +111,18 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
           originalBytes,
           watermarkRawBytes: watermarkRawBytes,
         );
+
+        if (_isCancelled) return;
+
+        if (mounted) {
+          setState(() {
+            _statusMessage = totalImages == 1
+                ? 'Uploading photo...'
+                : 'Uploading photo ${i + 1} of $totalImages...';
+            // Update progress halfway through this chunk (compression done)
+            _progress = (0.01 + ((i + 0.5) / totalImages) * 0.79).clamp(0.01, 0.80);
+          });
+        }
 
         final rawBaseName = file.name.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
         final fileName = '${DateTime.now().millisecondsSinceEpoch}_$rawBaseName.${result.fileExtension}';
@@ -136,10 +135,18 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
 
         final url = supabase.storage.from('property_images').getPublicUrl(fileName);
         uploadedUrls.add(url);
+
+        if (mounted) {
+          setState(() {
+            // Update progress completely for this chunk (upload done)
+            _progress = (0.01 + ((i + 1) / totalImages) * 0.79).clamp(0.01, 0.80);
+          });
+        }
       }
 
       if (mounted) {
         setState(() {
+          _progress = 0.85; // Move to 85% after images are done
           _statusMessage = widget.isEditing ? 'Updating property in database...' : 'Saving property listing...';
         });
       }
@@ -165,7 +172,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
         await prefs.remove('posting_draft_v1');
       }
 
-      _progressRampTimer?.cancel();
+  
 
       if (mounted) {
         setState(() {
@@ -199,7 +206,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
         });
       }
     } catch (e) {
-      _progressRampTimer?.cancel();
+
       debugPrint('Upload error: $e');
       if (mounted) {
         setState(() {
@@ -242,33 +249,22 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
               ),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
 
           // Header Logo & "Uploading" Title Bar
           Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryYellow,
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(color: Colors.black, width: 1.8),
-                ),
-                child: Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      width: 22,
-                      height: 22,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => const Icon(
-                        CupertinoIcons.house_fill,
-                        color: Colors.black,
-                        size: 17,
-                      ),
-                    ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 36,
+                  height: 36,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const Icon(
+                    CupertinoIcons.house_fill,
+                    color: Colors.black,
+                    size: 24,
                   ),
                 ),
               ),
@@ -297,6 +293,28 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                   ),
                 ],
               ),
+              const Spacer(),
+              if (_statusState == _UploadStatusState.uploading)
+                TextButton(
+                  onPressed: () {
+                    _isCancelled = true;
+                    Navigator.of(context).pop();
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontFamily: 'ProximaNova',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -360,7 +378,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32), // Distinct 32px gap between circle disk and progress line
+                  SizedBox(height: 32), // Distinct 32px gap between circle disk and progress line
 
                   // Gradual Horizontal Progress Bar
                   ClipRRect(
@@ -492,7 +510,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 12,
                   height: 12,
                   child: CircularProgressIndicator(
@@ -599,7 +617,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: BouncingButton(
                   onTap: _startUploadProcess,
