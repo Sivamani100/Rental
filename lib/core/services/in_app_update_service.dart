@@ -66,9 +66,10 @@ class InAppUpdateService with WidgetsBindingObserver {
         return;
       }
 
-      // State 1 & 2: Update is available and flexible update is allowed
-      if (info.updateAvailability == UpdateAvailability.updateAvailable && info.flexibleUpdateAllowed) {
-        if (!isAppResumeCheck && context.mounted) {
+      if (info.updateAvailability == UpdateAvailability.updateAvailable) {
+        if (info.immediateUpdateAllowed && !isAppResumeCheck) {
+          _startImmediateUpdate();
+        } else if (info.flexibleUpdateAllowed && !isAppResumeCheck && context.mounted) {
           _startFlexibleUpdate(context);
         }
       }
@@ -76,6 +77,15 @@ class InAppUpdateService with WidgetsBindingObserver {
       debugPrint('⚠️ [InAppUpdateService] In-App Update Check Skipped / Unsupported Environment: $e');
     } finally {
       _isChecking = false;
+    }
+  }
+
+  /// Triggers Google Play Immediate Update Flow (Auto-completes)
+  Future<void> _startImmediateUpdate() async {
+    try {
+      await InAppUpdate.performImmediateUpdate();
+    } catch (e) {
+      debugPrint('❌ [InAppUpdateService] Failed to start immediate update: $e');
     }
   }
 
@@ -98,17 +108,6 @@ class InAppUpdateService with WidgetsBindingObserver {
       await InAppUpdate.completeFlexibleUpdate();
     } catch (e) {
       debugPrint('❌ [InAppUpdateService] Error completing flexible update: $e');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Unable to restart app automatically. Please restart the app manually from home screen.',
-              style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: Colors.white),
-            ),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
     }
   }
 

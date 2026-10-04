@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/models/property_model.dart';
 import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 // Top-level isolate helper for JSON parsing
 List<PropertyModel> _parsePropertiesIsolate(String jsonStr) {
@@ -118,7 +119,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF2F2F7),
+      backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
       appBar: AppBar(
         backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
         elevation: 0,
@@ -157,14 +158,6 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 8, right: 4),
-                  child: Icon(
-                    CupertinoIcons.search,
-                    color: isDark ? Colors.grey.shade500 : Colors.grey.shade600,
-                    size: 20,
-                  ),
-                ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: Icon(CupertinoIcons.clear, color: isDark ? Colors.grey.shade400 : Colors.black54, size: 20),
@@ -263,16 +256,26 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
               ),
             ),
           ),
-          ...matchedProperties.map((p) => Container(
+          ...matchedProperties.map((p) => Material(
             color: isDark ? AppTheme.darkScaffold : Colors.white,
             child: ListTile(
               leading: Container(
-                padding: const EdgeInsets.all(8),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: AppTheme.primaryYellow.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(CupertinoIcons.building_2_fill, color: AppTheme.primaryYellow, size: 20),
+                child: p.imageUrls.isNotEmpty 
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        imageUrl: p.imageUrls.first,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Icon(CupertinoIcons.building_2_fill, color: AppTheme.primaryYellow, size: 20),
+                      ),
+                    )
+                  : Icon(CupertinoIcons.building_2_fill, color: AppTheme.primaryYellow, size: 20),
               ),
               title: Text(
                 p.title, 
@@ -286,6 +289,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                 overflow: TextOverflow.ellipsis, 
                 style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: isDark ? Colors.grey.shade400 : Colors.black54)
               ),
+              trailing: Icon(CupertinoIcons.chevron_right, size: 16, color: isDark ? Colors.grey.shade600 : Colors.grey.shade400),
               onTap: () {
                 _searchFocusNode.unfocus();
                 Navigator.push(context, MaterialPageRoute(builder: (_) => PropertyDetailsScreen(property: p)));
@@ -295,8 +299,6 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
         ],
         
         if (_locationSuggestions.isNotEmpty || _isSearchingLocations) ...[
-          if (matchedProperties.isNotEmpty) 
-            const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.only(left: 16, top: 20, bottom: 8),
             child: Text(
@@ -326,7 +328,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
               final subtitleParts = [county, state].where((e) => e.toString().trim().isNotEmpty).toList();
               final subtitle = subtitleParts.join(', ');
               
-              return Container(
+              return Material(
                 color: isDark ? AppTheme.darkScaffold : Colors.white,
                 child: ListTile(
                   leading: Container(

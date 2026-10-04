@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/core/widgets/image_cropper_sheet.dart';
+import 'package:rental/core/widgets/app_snackbar.dart';
 
 class PhotoItem {
   final XFile? file;
@@ -59,7 +60,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick images: $e')),
+          SnackBar(content: Text('Failed to pick images: ${AppSnackbar.getErrorMessage(e)}')),
         );
       }
     }

@@ -9,11 +9,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
+  final bool isGrayscale;
 
   const FullScreenImageViewer({
     super.key,
     required this.imageUrls,
     this.initialIndex = 0,
+    this.isGrayscale = false,
   });
 
   @override
@@ -38,8 +40,9 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
   }
 
   Widget _buildImageWidget(String path) {
+    Widget imageWidget;
     if (path.startsWith('http')) {
-      return CachedNetworkImage(
+      imageWidget = CachedNetworkImage(
         imageUrl: path,
         fit: BoxFit.contain,
         placeholder: (context, url) => const Center(
@@ -50,7 +53,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         ),
       );
     } else if (path.startsWith('assets/')) {
-      return Image.asset(
+      imageWidget = Image.asset(
         path,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const Center(
@@ -58,7 +61,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         ),
       );
     } else if (kIsWeb) {
-      return Image.network(
+      imageWidget = Image.network(
         path,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const Center(
@@ -66,7 +69,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         ),
       );
     } else {
-      return Image.file(
+      imageWidget = Image.file(
         File(path),
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const Center(
@@ -74,6 +77,20 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         ),
       );
     }
+
+    if (widget.isGrayscale) {
+      return ColorFiltered(
+        colorFilter: const ColorFilter.matrix([
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0,      0,      0,      1, 0,
+        ]),
+        child: imageWidget,
+      );
+    }
+
+    return imageWidget;
   }
 
   @override

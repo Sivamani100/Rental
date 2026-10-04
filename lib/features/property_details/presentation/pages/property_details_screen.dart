@@ -148,8 +148,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Widget _buildCarouselImage(String imagePath) {
+    Widget imageWidget;
     if (imagePath.startsWith('http')) {
-      return CachedNetworkImage(
+      imageWidget = CachedNetworkImage(
         imageUrl: imagePath,
         width: double.infinity,
         fit: BoxFit.cover,
@@ -170,7 +171,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ),
       );
     } else if (imagePath.startsWith('assets/')) {
-      return Image.asset(
+      imageWidget = Image.asset(
         imagePath,
         width: double.infinity,
         fit: BoxFit.cover,
@@ -182,7 +183,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ),
       );
     } else if (kIsWeb) {
-      return Image.network(
+      imageWidget = Image.network(
         imagePath,
         width: double.infinity,
         fit: BoxFit.cover,
@@ -194,7 +195,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ),
       );
     } else {
-      return Image.file(
+      imageWidget = Image.file(
         File(imagePath),
         width: double.infinity,
         fit: BoxFit.cover,
@@ -206,6 +207,20 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ),
       );
     }
+
+    if (!widget.property.isAvailable) {
+      return ColorFiltered(
+        colorFilter: const ColorFilter.matrix([
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0,      0,      0,      1, 0,
+        ]),
+        child: imageWidget,
+      );
+    }
+    
+    return imageWidget;
   }
 
   Widget _buildGlassIconButton({
@@ -1000,6 +1015,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   builder: (_) => FullScreenImageViewer(
                                     imageUrls: widget.property.imageUrls,
                                     initialIndex: index,
+                                    isGrayscale: !widget.property.isAvailable,
                                   ),
                                 ),
                               );
@@ -1123,6 +1139,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   builder: (_) => FullScreenImageViewer(
                                     imageUrls: widget.property.imageUrls,
                                     initialIndex: _currentImageIndex,
+                                    isGrayscale: !widget.property.isAvailable,
                                   ),
                                 ),
                               );
@@ -1848,20 +1865,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   ),
                                   children: [
                                     TileLayer(
-                                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                      userAgentPackageName: 'com.example.rental',
-                                      tileBuilder: (context, tileWidget, tile) {
-                                        if (!isDark) return tileWidget;
-                                        return ColorFiltered(
-                                          colorFilter: const ColorFilter.matrix([
-                                            -0.85, 0, 0, 0, 240,
-                                            0, -0.85, 0, 0, 240,
-                                            0, 0, -0.85, 0, 240,
-                                            0, 0, 0, 1, 0,
-                                          ]),
-                                          child: tileWidget,
-                                        );
-                                      },
+                                      urlTemplate: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+                                      userAgentPackageName: 'com.arkiolabs.rental',
+                                      maxNativeZoom: 21,
+                                      maxZoom: 22.0,
                                     ),
                                     MarkerLayer(
                                       markers: [
@@ -2446,18 +2453,34 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             builder: (_) => FullScreenImageViewer(
                               imageUrls: List<String>.from(review['photos']),
                               initialIndex: idx,
+                              isGrayscale: !widget.property.isAvailable,
                             ),
                           ),
                         );
                       },
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
-                        child: CachedNetworkImage(
-                          imageUrl: review['photos'][idx],
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                        ),
+                        child: !widget.property.isAvailable 
+                          ? ColorFiltered(
+                              colorFilter: const ColorFilter.matrix([
+                                0.2126, 0.7152, 0.0722, 0, 0,
+                                0.2126, 0.7152, 0.0722, 0, 0,
+                                0.2126, 0.7152, 0.0722, 0, 0,
+                                0,      0,      0,      1, 0,
+                              ]),
+                              child: CachedNetworkImage(
+                                imageUrl: review['photos'][idx],
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: review['photos'][idx],
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                            ),
                       ),
                     ),
                   );
@@ -2733,7 +2756,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  AppSnackbar.error(context, 'Failed to save review: $e');
+                                  AppSnackbar.error(context, 'Failed to save review: ${AppSnackbar.getErrorMessage(e)}');
                                 }
                               } finally {
                                 if (mounted) {
@@ -2959,7 +2982,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  AppSnackbar.error(context, 'Failed to submit photos: $e');
+                                  AppSnackbar.error(context, 'Failed to submit photos: ${AppSnackbar.getErrorMessage(e)}');
                                 }
                               } finally {
                                 if (mounted) {

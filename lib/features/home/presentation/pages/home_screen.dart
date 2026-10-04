@@ -2,6 +2,7 @@ import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.d
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:rental/features/settings/presentation/pages/settings_screen.dart';
@@ -123,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Position? get _effectivePosition =>
       _manualLocationOverride ?? _currentPosition;
-
+  String _mapFilter = 'All';
   List<PropertyModel> _allProperties = [];
   int _currentSearchRadiusKm = 5;
 
@@ -1212,14 +1213,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       child: TextField(
                         controller: _searchController,
                         readOnly: true,
+                        textAlignVertical: TextAlignVertical.center,
                         onTap: () {
                           HapticFeedback.selectionClick();
-                          setState(() {
-                            _bottomNavIndex = 0;
-                          });
-                          Future.delayed(const Duration(milliseconds: 100), () {
-                            _searchFocusNode.requestFocus();
-                          });
+                          Navigator.push(
+                            context,
+                            CupertinoPageRoute(
+                              builder: (context) => const UnifiedSearchScreen(),
+                            ),
+                          );
                         },
                         style: TextStyle(
                           fontFamily: 'ProximaNova',
@@ -1585,8 +1587,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _searchFocusNode.unfocus();
                 
                 final coords = feature['geometry']['coordinates'];
-                final lon = coords[0];
-                final lat = coords[1];
+                final lon = (coords[0] as num).toDouble();
+                final lat = (coords[1] as num).toDouble();
                 final newPos = Position(
                   latitude: lat,
                   longitude: lon,
@@ -1607,6 +1609,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 setState(() {});
                 await _updateGeocodingIfNeeded(newPos, force: true);
                 _fetchProperties();
+
+                if (_bottomNavIndex == 3) {
+                  _mapController.move(LatLng(lat, lon), 14.0);
+                }
               },
             );
           }),
@@ -1881,7 +1887,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               clipBehavior: Clip.none,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 25),
                   child: Row(
                     children: [
                       if (isSearchActive)
@@ -1905,6 +1911,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       // Search bar
                   Expanded(
+                    key: const ValueKey('home_search_expanded'),
                     child: Container(
                       height: 50,
                       decoration: BoxDecoration(
@@ -1915,14 +1922,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       clipBehavior: Clip.antiAlias,
                       child: TextField(
                         controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        readOnly: false,
+                        readOnly: true,
+                        textAlignVertical: TextAlignVertical.center,
                         cursorColor: Colors.black87,
                         cursorWidth: 2.0,
                         cursorHeight: 20.0,
                         onTap: () {
                           HapticFeedback.selectionClick();
-                          setState(() {}); // Trigger rebuild to show search results
+                          Navigator.push(
+                            context,
+                            CupertinoPageRoute(
+                              builder: (context) => const UnifiedSearchScreen(),
+                            ),
+                          );
                         },
                         style: TextStyle(
                           fontFamily: 'ProximaNova',
@@ -2082,7 +2094,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ];
 
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.only(top: 4),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -2094,9 +2106,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 height: 14,
                 width: 1,
                 color: subTextColor.withValues(alpha: 0.3),
-                margin: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 14,
+                margin: const EdgeInsets.only(
+                  left: 14,
+                  right: 14,
+                  bottom: 6,
                 ),
               );
             }
@@ -2143,7 +2156,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     // Indicator
                     Container(
                       height: 3.5,
@@ -2211,25 +2224,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (_allProperties.isEmpty) {
       return Center(child: Text("No properties to map", style: TextStyle(color: isDark ? Colors.white : Colors.black)));
     }
-    final mapProperties = _allProperties;
-    final centerLat = mapProperties.isNotEmpty ? mapProperties.first.latitude : (_currentPosition?.latitude ?? 0.0);
-    final centerLng = mapProperties.isNotEmpty ? mapProperties.first.longitude : (_currentPosition?.longitude ?? 0.0);
+    final mapProperties = _allProperties.where((prop) {
+      if (_mapFilter == 'All') return true;
+      final lowerType = prop.type.toLowerCase();
+      final isPg = lowerType.contains('pg') || lowerType.contains('hostel');
+      final isBuy = lowerType.contains('buy') || lowerType.contains('sale') || lowerType.contains('plot') || lowerType.contains('land');
+      if (_mapFilter == 'PG') return isPg;
+      if (_mapFilter == 'Buy') return isBuy;
+      if (_mapFilter == 'Rental') return !isPg && !isBuy;
+      return true;
+    }).toList();
+    final centerLat = _effectivePosition != null ? _effectivePosition!.latitude : (mapProperties.isNotEmpty ? mapProperties.first.latitude : 0.0);
+    final centerLng = _effectivePosition != null ? _effectivePosition!.longitude : (mapProperties.isNotEmpty ? mapProperties.first.longitude : 0.0);
 
-    return Column(
-      children: [
-        // App Bar (Matching PostingScreen)
-        Container(
-          decoration: BoxDecoration(
-            color: AppTheme.primaryAccent,
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(36),
-              bottomRight: Radius.circular(36),
-            ),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 16, 16),
+    final isSearchActive = _searchFocusNode.hasFocus || _searchQuery.isNotEmpty;
+    final appBar = Container(
+      decoration: BoxDecoration(
+        color: AppTheme.primaryAccent,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(36),
+          bottomRight: Radius.circular(36),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Row with Title and Actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 12, 16, 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -2291,10 +2315,220 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ],
               ),
             ),
-          ),
+            
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 25),
+              child: Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: TextField(
+                  controller: _searchController,
+                  readOnly: true,
+                  textAlignVertical: TextAlignVertical.center,
+                  onTap: () async {
+                    HapticFeedback.selectionClick();
+                    final result = await Navigator.push(
+                      context,
+                      CupertinoPageRoute(
+                        builder: (context) => const UnifiedSearchScreen(),
+                      ),
+                    );
+
+                    if (result != null && result is Position) {
+                      _manualLocationOverride = result;
+                      _searchQuery = '';
+                      _searchController.clear();
+                      
+                      setState(() {});
+                      await _updateGeocodingIfNeeded(result, force: true);
+                      _fetchProperties();
+
+                      if (_bottomNavIndex == 3) {
+                        _mapController.move(LatLng(result.latitude, result.longitude), 14.0);
+                      }
+                    }
+                  },
+                  style: TextStyle(
+                    fontFamily: 'ProximaNova',
+                    fontSize: 14.5,
+                    color: Colors.grey.shade900,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: "Search for '${_searchHints[_hintIndex]}'",
+                    hintStyle: TextStyle(
+                      fontFamily: 'ProximaNova',
+                      fontSize: 14.0,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: IconButton(
+                        icon: Icon(
+                          _searchQuery.isNotEmpty
+                              ? CupertinoIcons.clear
+                              : CupertinoIcons.mic_fill,
+                          color: Colors.black87,
+                          size: 20,
+                        ),
+                        onPressed: _searchQuery.isNotEmpty
+                            ? () {
+                                HapticFeedback.selectionClick();
+                                _searchController.clear();
+                                _searchFocusNode.unfocus();
+                                setState(() {
+                                  _searchQuery = '';
+                                  _locationSuggestions = [];
+                                });
+                              }
+                            : () async {
+                                HapticFeedback.selectionClick();
+                                final result = await Navigator.push<String>(
+                                  context,
+                                  PageRouteBuilder(
+                                    pageBuilder: (context, animation, secondaryAnimation) =>
+                                        const VoiceSearchScreen(),
+                                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                      const begin = Offset(0.0, 1.0);
+                                      const end = Offset.zero;
+                                      final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: Curves.ease));
+                                      return SlideTransition(position: animation.drive(tween), child: child);
+                                    },
+                                  ),
+                                );
+                                if (result != null && result.isNotEmpty) {
+                                  _searchController.text = result;
+                                  _onSearchChanged(result);
+                                }
+                              },
+                      ),
+                    ),
+
+                  ),
+                ),
+              ),
+            ),
+            
+            // Map Filters inside AppBar
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 0),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: List.generate(7, (i) {
+                    if (i.isOdd) {
+                      return Container(
+                        height: 14,
+                        width: 1,
+                        color: appBarTextColor.withOpacity(0.3),
+                        margin: const EdgeInsets.only(
+                          left: 14,
+                          right: 14,
+                          bottom: 6,
+                        ),
+                      );
+                    }
+                    final index = i ~/ 2;
+                    final filters = ['All', 'PG', 'Rental', 'Buy'];
+                    final filter = filters[index];
+                    final isSelected = _mapFilter == filter;
+                    final textColor = appBarTextColor;
+                    final subTextColor = appBarTextColor.withOpacity(0.6);
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _mapFilter = filter;
+                          _selectedMapProperty = null; // hide detail card on filter change
+                        });
+                      },
+                      child: Container(
+                        color: Colors.transparent,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (filter == 'All')
+                                  Icon(
+                                    CupertinoIcons.square_grid_2x2,
+                                    size: 16,
+                                    color: isSelected ? textColor : subTextColor,
+                                  )
+                                else
+                                  Container(
+                                    width: 14,
+                                    height: 14,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.rectangle,
+                                      borderRadius: BorderRadius.circular(2),
+                                      color: filter == 'PG' 
+                                        ? const Color(0xFFFFD600) 
+                                        : (filter == 'Buy' ? const Color(0xFF4CAF50) : const Color(0xFF42A5F5)),
+                                      border: Border.all(
+                                        color: isDark ? Colors.black87 : Colors.black87, 
+                                        width: 1.2,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  filter == 'All' ? 'ALL' : (filter == 'PG' ? 'HOSTELS' : (filter == 'Rental' ? 'RENTALS' : 'BUY')),
+                                  style: TextStyle(
+                                    fontFamily: 'ProximaNova',
+                                    fontSize: 12.5,
+                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                    color: isSelected ? textColor : subTextColor,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              height: 3.5,
+                              width: 50,
+                              decoration: BoxDecoration(
+                                color: isSelected ? textColor : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(4),
+                                  topRight: Radius.circular(4),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
+      ),
+    );
+
+    return Stack(
+      children: [
         // Map
-        Expanded(
+        Positioned.fill(
           child: Stack(
             children: [
 
@@ -2311,23 +2545,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
                     userAgentPackageName: 'com.arkiolabs.rental',
-                    tileBuilder: (context, tileWidget, tile) {
-                      if (!isDark) return tileWidget;
-                      return ColorFiltered(
-                        colorFilter: const ColorFilter.matrix([
-                          -0.85, 0, 0, 0, 240,
-                          0, -0.85, 0, 0, 240,
-                          0, 0, -0.85, 0, 240,
-                          0, 0, 0, 1, 0,
-                        ]),
-                        child: tileWidget,
-                      );
-                    },
+                    maxNativeZoom: 21,
+                    maxZoom: 22.0,
                   ),
                   MarkerLayer(
-                    markers: mapProperties.map((prop) {
+                    markers: [
+                      ...mapProperties.map((prop) {
                       final isSelected = _selectedMapProperty?.id == prop.id;
                       final String lowerType = prop.type.toLowerCase();
                       final bool isPg = lowerType.contains('pg') || lowerType.contains('hostel');
@@ -2382,27 +2607,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         ),
                       );
                     }).toList(),
-                  ),
-                ],
-              ),
-              // Legend (Floating over Map)
-              Positioned(
-                top: 12,
-                left: 16,
-                right: 16,
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildMapLegendItem("PGs", const Color(0xFFFFD600), true, isDark),
-                      const SizedBox(width: 8),
-                      _buildMapLegendItem("Rentals", const Color(0xFF42A5F5), false, isDark),
-                      const SizedBox(width: 8),
-                      _buildMapLegendItem("Buy / Sell", const Color(0xFF4CAF50), false, isDark),
-                    ],
-                  ),
+                    if (_currentPosition != null)
+                      Marker(
+                        point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                        width: 24,
+                        height: 24,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: [
+                              BoxShadow(color: Colors.blue.withOpacity(0.5), blurRadius: 10, spreadRadius: 4),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              ),
+              ],
+            ),
+
               Positioned(
                 right: 16,
                 bottom: _selectedMapProperty != null ? 300 : 120, // Sit above bottom nav bar or card
@@ -2430,7 +2655,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ],
                     ),
                     child: Icon(
-                      CupertinoIcons.location_fill,
+                      Icons.my_location,
                       color: isDark ? Colors.white : Colors.black87,
                       size: 24,
                     ),
@@ -2628,6 +2853,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
             ],
           ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: appBar,
         ),
       ],
     );

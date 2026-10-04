@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rental/app/theme/theme_provider.dart';
 import 'package:in_app_review/in_app_review.dart';
+import 'package:share_plus/share_plus.dart';
 
 // ─────────────────────────────────────────────────────────────
 // SETTINGS SCREEN
@@ -281,15 +282,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () async {
                 HapticFeedback.selectionClick();
                 final InAppReview inAppReview = InAppReview.instance;
-                if (await inAppReview.isAvailable()) {
-                  inAppReview.requestReview();
-                } else {
+                try {
+                  await inAppReview.openStoreListing();
+                } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('In-app review is not available on this device.')),
+                      const SnackBar(content: Text('Could not open the Play Store.')),
                     );
                   }
                 }
+              },
+            ),
+            _buildNavTile(
+              icon: _iconBox(Colors.blue, CupertinoIcons.share),
+              label: 'Share the App',
+              onTap: () async {
+                HapticFeedback.selectionClick();
+                await Share.share('https://play.google.com/store/apps/details?id=com.arkiolabs.rental');
               },
             ),
           ]),
@@ -855,7 +864,7 @@ class _HelpCenterScreen extends StatelessWidget {
                       Text('Still need help?', style: TextStyle(
                         fontFamily: 'DMSans', fontSize: 14, fontWeight: FontWeight.w800, color: Colors.black,
                       )),
-                      Text('Contact us at support@rentaleco.in', style: TextStyle(
+                      Text('Contact us at mallipurapusiva@gmail.com', style: TextStyle(
                         fontFamily: 'ProximaNova', fontSize: 12, color: Colors.black87,
                       )),
                     ],

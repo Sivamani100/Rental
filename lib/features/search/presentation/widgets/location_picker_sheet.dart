@@ -61,17 +61,19 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
   Future<void> _updateAddress(LatLng pos) async {
     try {
       final res = await http.get(
-        Uri.parse('https://nominatim.openstreetmap.org/reverse?lat=${pos.latitude}&lon=${pos.longitude}&format=jsonv2&addressdetails=1'),
-        headers: {'User-Agent': 'RentalEcoApp/1.0 (mallipurapusiva@gmail.com)'},
+        Uri.parse('https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.latitude}&lon=${pos.longitude}&zoom=18&addressdetails=1'),
+        headers: {'User-Agent': 'RentalApp/1.0'},
       );
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        final name = data['display_name'];
-        if (name != null && mounted) {
-          setState(() {
-            _currentAddress = name;
-          });
-          return;
+        if (data['error'] == null && data['display_name'] != null) {
+          final displayName = data['display_name'].toString();
+          if (mounted) {
+            setState(() {
+              _currentAddress = displayName;
+            });
+            return;
+          }
         }
       }
     } catch (e) {
@@ -92,14 +94,14 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
     setState(() => _isSearching = true);
     try {
       final res = await http.get(
-        Uri.parse('https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=jsonv2&addressdetails=1&countrycodes=in&limit=8'),
-        headers: {'User-Agent': 'RentalEcoApp/1.0 (mallipurapusiva@gmail.com)'},
+        Uri.parse('https://photon.komoot.io/api/?q=${Uri.encodeComponent(query)}&limit=8'),
       );
       if (res.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(res.body);
+        final data = jsonDecode(res.body);
+        final List<dynamic> features = data['features'] ?? [];
         if (mounted) {
           setState(() {
-            _suggestions = data;
+            _suggestions = features;
           });
         }
       }
@@ -117,17 +119,23 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
   }
 
   void _onSuggestionSelected(dynamic suggestion) {
-    final lat = double.tryParse(suggestion['lat'].toString()) ?? 0.0;
-    final lon = double.tryParse(suggestion['lon'].toString()) ?? 0.0;
-    final name = suggestion['display_name'] ?? 'Unknown Location';
+    final coords = suggestion['geometry']['coordinates'];
+    final lon = double.tryParse(coords[0].toString()) ?? 0.0;
+    final lat = double.tryParse(coords[1].toString()) ?? 0.0;
+    
+    final props = suggestion['properties'] ?? {};
+    final name = props['name'] ?? props['street'] ?? props['district'] ?? props['city'] ?? 'Unknown Location';
+    final state = props['state'] ?? '';
+    final country = props['country'] ?? '';
+    final fullName = [name, state, country].where((e) => e.toString().trim().isNotEmpty).toSet().join(', ');
     
     final newPos = LatLng(lat, lon);
     _mapController.move(newPos, 15.0);
     setState(() {
       _currentCenter = newPos;
-      _currentAddress = name;
+      _currentAddress = fullName;
       _suggestions = [];
-      _searchController.text = name.split(',').first;
+      _searchController.text = name;
     });
     FocusScope.of(context).unfocus();
   }
@@ -180,20 +188,10 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.example.rental',
-                      tileBuilder: (context, tileWidget, tile) {
-                        if (!isDark) return tileWidget;
-                        return ColorFiltered(
-                          colorFilter: const ColorFilter.matrix([
-                            -0.85, 0, 0, 0, 240,
-                            0, -0.85, 0, 0, 240,
-                            0, 0, -0.85, 0, 240,
-                            0, 0, 0, 1, 0,
-                          ]),
-                          child: tileWidget,
-                        );
-                      },
+                      urlTemplate: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+                      userAgentPackageName: 'com.arkiolabs.rental',
+                      maxNativeZoom: 21,
+                      maxZoom: 22.0,
                     ),
                     MarkerLayer(
                       markers: () {
@@ -407,9 +405,17 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                           separatorBuilder: (c, i) => Divider(height: 1, color: isDark ? Colors.white12 : Colors.grey.shade100),
                           itemBuilder: (c, i) {
                             final suggestion = _suggestions[i];
-                            final parts = (suggestion['display_name'] ?? '').split(',');
-                            final title = parts.isNotEmpty ? parts[0] : '';
-                            final subtitle = parts.length > 1 ? parts.sublist(1).join(',').trim() : '';
+                            final props = suggestion['properties'] ?? {};
+                            final title = props['name'] ?? props['street'] ?? props['district'] ?? props['city'] ?? 'Unknown Location';
+                            
+                            final subtitleParts = [
+                              props['city'],
+                              props['state'],
+                              props['country']
+                            ].where((e) => e != null && e.toString().trim().isNotEmpty).toSet().toList();
+                            
+                            final subtitle = subtitleParts.join(', ').trim();
+                            
                             return ListTile(
                               leading: Icon(CupertinoIcons.location_solid, color: Colors.grey.shade400, size: 20),
                               title: Text(

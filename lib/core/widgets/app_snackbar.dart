@@ -19,6 +19,19 @@ class AppSnackbar {
   static const _verticalPadding = 14.0;
   static const _logoTextGap = 14.0;
 
+  static String getErrorMessage(dynamic error) {
+    final str = error.toString().toLowerCase();
+    if (str.contains('socketexception') || str.contains('connection refused') || str.contains('network') || str.contains('clientexception') || str.contains('failed host lookup')) {
+      return 'Internet connection dropped or no internet available.';
+    } else if (str.contains('timeout')) {
+      return 'The connection timed out. Please try again.';
+    } else if (str.contains('format')) {
+      return 'We received unexpected data. Please try again later.';
+    } else {
+      return 'Something went wrong. Please try again.';
+    }
+  }
+
   static void success(BuildContext context, String message, {Duration duration = _successDuration}) {
     _display(context, message, duration, true, isInfo: false);
   }

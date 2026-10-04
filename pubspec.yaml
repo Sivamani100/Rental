@@ -42,6 +42,7 @@ dependencies:
   device_frame: ^1.1.0
   uuid: ^4.6.0
   speech_to_text: ^7.5.0
+  device_preview: ^1.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

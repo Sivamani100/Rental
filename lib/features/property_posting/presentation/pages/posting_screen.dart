@@ -399,7 +399,7 @@ class _PostingScreenState extends State<PostingScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showSheetError('Failed to pick images: $e');
+        _showSheetError('Failed to pick images: ${AppSnackbar.getErrorMessage(e)}');
       }
     }
   }

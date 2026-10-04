@@ -20,6 +20,7 @@ import 'package:rental/core/services/review_trigger_service.dart';
 import 'package:rental/features/saved_properties/data/datasources/saved_properties_service.dart';
 import 'package:rental/core/services/secure_storage_adapter.dart';
 import 'package:rental/core/services/install_tracker.dart';
+import 'package:device_preview/device_preview.dart';
 
 
 @pragma('vm:entry-point')
@@ -67,7 +68,12 @@ Future<void> main() async {
   }
 
   // Launch UI INSTANTLY — 0ms blank screen delay
-  runApp(const RentalApp());
+  runApp(
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => const RentalApp(),
+    ),
+  );
 
   // Initialize Analytics and Push Notification Service asynchronously in background
   _initAsyncServices();
@@ -108,11 +114,13 @@ class RentalApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode: ThemeMode.light,
             builder: (context, child) {
+              child = DevicePreview.appBuilder(context, child);
               final appContent = ReviewTriggerWrapper(
                 child: InAppUpdateWrapper(child: child ?? const SizedBox.shrink()),
               );
               return appContent;
             },
+            locale: DevicePreview.locale(context),
             onGenerateRoute: (settings) {
               final rawName = settings.name ?? '/';
               final uri = Uri.parse(rawName);

@@ -84,16 +84,16 @@ class _AreaCalculatorMapScreenState extends State<AreaCalculatorMapScreen> {
     
     setState(() => _isSearching = true);
     try {
-      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=1');
-      final response = await http.get(url, headers: {
-        'User-Agent': 'rentalecosystem_app'
-      });
+      final url = Uri.parse('https://photon.komoot.io/api/?q=${Uri.encodeComponent(query)}&limit=1');
+      final response = await http.get(url);
       
       if (response.statusCode == 200) {
-        final List data = json.decode(response.body);
-        if (data.isNotEmpty) {
-          final lat = double.parse(data[0]['lat'].toString());
-          final lon = double.parse(data[0]['lon'].toString());
+        final data = json.decode(response.body);
+        final List features = data['features'] ?? [];
+        if (features.isNotEmpty) {
+          final coords = features[0]['geometry']['coordinates'];
+          final lon = double.parse(coords[0].toString());
+          final lat = double.parse(coords[1].toString());
           _mapController.move(LatLng(lat, lon), 18.0);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

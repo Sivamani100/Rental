@@ -8,6 +8,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
+import 'package:rental/core/widgets/app_snackbar.dart';
 
 enum CropAspectRatio {
   ratio16x9(16 / 9, '16:9 Cover'),
@@ -197,7 +198,7 @@ class _InAppInteractiveCropperModalState extends State<_InAppInteractiveCropperM
       if (mounted) {
         setState(() => _isProcessing = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process image: $e')),
+          SnackBar(content: Text('Failed to process image: ${AppSnackbar.getErrorMessage(e)}')),
         );
       }
     }
