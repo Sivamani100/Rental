@@ -294,7 +294,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _currentStep = 1;
         _isSubmitting = false;
 
-        _selectedType = 'PG';
+        _selectedType = '';
         
         // Reset PG fields
         _pgGender = '';
@@ -1198,7 +1198,7 @@ class _PostingScreenState extends State<PostingScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: _buildCompactTypeCard(
-                title: 'PG / Co-Living / Hostel',
+                title: 'PG/Hostel',
                 badge: 'Hostel / PG',
                 subtitle: 'Rooms with food & Wi-Fi',
                 typeKey: 'PG',

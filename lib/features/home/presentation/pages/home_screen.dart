@@ -1,6 +1,7 @@
 import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:rental/features/home/presentation/widgets/filter_bottom_sheet.dart';
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
@@ -90,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
-  String _sortBy = 'distance';
+  FilterState _filterState = const FilterState();
   
   Timer? _searchDebounce;
   List<dynamic> _locationSuggestions = [];
@@ -766,10 +767,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           p.features.join(' ').toLowerCase().contains(q);
     }
 
+    bool matchesFilters(PropertyModel p) {
+      double parsedPrice = double.tryParse(p.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+      if (parsedPrice < _filterState.minBudget || parsedPrice > _filterState.maxBudget) return false;
+      if (_filterState.propertyTypes.isNotEmpty) {
+        if (!_filterState.propertyTypes.contains(p.type)) return false;
+      }
+      if (_filterState.furnishing.isNotEmpty) {
+        bool match = false;
+        String pFurnish = p.furnishingStatus ?? '';
+        for (final f in _filterState.furnishing) {
+          if (pFurnish.toLowerCase().contains(f.toLowerCase())) match = true;
+        }
+        if (!match) return false;
+      }
+      if (_filterState.occupancy.isNotEmpty) {
+        bool match = false;
+        for (final o in _filterState.occupancy) {
+          if (p.tags.any((tag) => tag.toLowerCase().contains(o.toLowerCase()))) match = true;
+        }
+        if (!match) return false;
+      }
+      return true;
+    }
+
     final currentPos = _effectivePosition;
     if (currentPos == null) {
       return _allProperties
-          .where((p) => matchesType(p) && matchesSearch(p))
+          .where((p) => matchesType(p) && matchesSearch(p) && matchesFilters(p))
           .toList();
     }
 
@@ -779,7 +804,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Increment radius by 5km until we find properties or hit 50km limit
     while (searchRadiusKm <= 50) {
       tempFiltered = _allProperties.where((property) {
-        if (!matchesType(property) || !matchesSearch(property)) return false;
+        if (!matchesType(property) || !matchesSearch(property) || !matchesFilters(property)) return false;
 
         double distanceInMeters = Geolocator.distanceBetween(
           currentPos.latitude,
@@ -803,7 +828,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     tempFiltered.sort((a, b) {
-      if (_sortBy == 'distance') {
+      if (_filterState.sortBy == 'distance') {
         double distA = Geolocator.distanceBetween(
           currentPos.latitude,
           currentPos.longitude,
@@ -817,10 +842,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           b.longitude,
         );
         return distA.compareTo(distB);
-      } else if (_sortBy == 'price_asc') {
-        return a.price.compareTo(b.price);
-      } else if (_sortBy == 'price_desc') {
-        return b.price.compareTo(a.price);
+      } else if (_filterState.sortBy == 'price_asc' || _filterState.sortBy == 'price_desc') {
+        double priceA = double.tryParse(a.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+        double priceB = double.tryParse(b.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+        if (_filterState.sortBy == 'price_asc') {
+          return priceA.compareTo(priceB);
+        } else {
+          return priceB.compareTo(priceA);
+        }
       }
       return 0; // relevance or fallback
     });
@@ -1311,33 +1340,59 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       HapticFeedback.selectionClick();
                       _showSortBottomSheet();
                     },
-                    child: Container(
-                      height: 50,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: _isScrollUIVisible ? null : Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('SORT',
-                            style: TextStyle(
-                              fontFamily: 'ProximaNova',
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.black87,
-                              letterSpacing: 0.5,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          height: 50,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: _isScrollUIVisible ? null : Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('SORT',
+                                style: TextStyle(
+                                  fontFamily: 'ProximaNova',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black87,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Icon(CupertinoIcons.sort_down,
+                                size: 14,
+                                color: Colors.black87,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_filterState.activeFilterCount > 0)
+                          Positioned(
+                            top: -8,
+                            right: -8,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: Text(
+                                '${_filterState.activeFilterCount}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Icon(CupertinoIcons.sort_down,
-                            size: 14,
-                            color: Colors.black87,
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
                 ],
@@ -2025,35 +2080,61 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         HapticFeedback.selectionClick();
                         _showSortBottomSheet();
                       },
-                      child: Container(
-                        height: 50,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: (_isScrollUIVisible && !isSearchActive) ? null : Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'SORT',
-                              style: TextStyle(
-                                fontFamily: 'ProximaNova',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black87,
-                                letterSpacing: 0.5,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            height: 50,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: (_isScrollUIVisible && !isSearchActive) ? null : Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'SORT',
+                                  style: TextStyle(
+                                    fontFamily: 'ProximaNova',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.black87,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Icon(
+                                  CupertinoIcons.sort_down,
+                                  size: 12, // Decreased size
+                                  color: Colors.black87,
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_filterState.activeFilterCount > 0)
+                            Positioned(
+                              top: -8,
+                              right: -8,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: Text(
+                                  '${_filterState.activeFilterCount}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 2),
-                            const Icon(
-                              CupertinoIcons.sort_down,
-                              size: 12, // Decreased size
-                              color: Colors.black87,
-                            ),
-                          ],
-                        ),
+                        ],
                       ),
                     ),
                   ],
@@ -3195,114 +3276,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _showSortBottomSheet() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FilterBottomSheet(
+        initialState: _filterState,
+        onApply: (newState) {
+          setState(() {
+            _filterState = newState;
+          });
+        },
       ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text(
-                    'Sort Results By',
-                    style: TextStyle(
-                      fontFamily: 'ProximaNova',
-                      fontSize: 16.5,
-                      fontWeight: FontWeight.w800,
-                      color: isDark
-                          ? AppTheme.darkTextPrimary
-                          : AppTheme.lightTextPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildSortOption(
-                  'Relevance (Default)',
-                  'relevance',
-                  CupertinoIcons.wand_stars,
-                  isDark,
-                ),
-                _buildSortOption(
-                  'Distance (Closest First)',
-                  'distance',
-                  CupertinoIcons.location_solid,
-                  isDark,
-                ),
-                _buildSortOption(
-                  'Price: Low to High',
-                  'price_asc',
-                  CupertinoIcons.chevron_up,
-                  isDark,
-                ),
-                _buildSortOption(
-                  'Price: High to Low',
-                  'price_desc',
-                  CupertinoIcons.chevron_down,
-                  isDark,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSortOption(
-    String title,
-    String key,
-    IconData icon,
-    bool isDark,
-  ) {
-    final isSelected = _sortBy == key;
-    return ListTile(
-      dense: true,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      tileColor: isSelected
-          ? (isDark ? AppTheme.darkCardElevated : const Color(0xFFF1F5F9))
-          : Colors.transparent,
-      leading: Icon(
-        icon,
-        size: 18,
-        color: isSelected
-            ? AppTheme.primaryYellow
-            : (isDark
-                  ? AppTheme.darkTextSecondary
-                  : AppTheme.lightTextSecondary),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontFamily: 'ProximaNova',
-          fontSize: 13.5,
-          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-          color: isSelected
-              ? (isDark ? Colors.white : const Color(0xFF0F172A))
-              : (isDark ? AppTheme.darkTextSecondary : const Color(0xFF475569)),
-        ),
-      ),
-      trailing: isSelected
-          ? Icon(
-              CupertinoIcons.checkmark_alt,
-              color: AppTheme.primaryYellow,
-              size: 18,
-            )
-          : null,
-      onTap: () {
-        setState(() => _sortBy = key);
-        Navigator.pop(context);
-        // Force re-fetch/re-sort of properties
-        if (mounted) setState(() {});
-      },
     );
   }
 }

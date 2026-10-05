@@ -1,7 +1,7 @@
 name: rental
 description: "A new Flutter project."
 publish_to: 'none'
-version: 1.1.11+21
+version: 1.1.12+22
 
 environment:
   sdk: ^3.12.1
@@ -42,7 +42,11 @@ dependencies:
   device_frame: ^1.1.0
   uuid: ^4.6.0
   speech_to_text: ^7.5.0
-  device_preview: ^1.2.0
+
+  qr_flutter: ^4.1.0
+  screenshot: ^3.0.0
+  gal: ^2.3.3
+  google_mobile_ads: ^9.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

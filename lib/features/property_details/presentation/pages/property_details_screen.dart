@@ -10,7 +10,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:rental/features/property_details/presentation/widgets/share_options_sheet.dart';
 import 'package:rental/core/widgets/app_snackbar.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/app/theme/app_theme.dart';
@@ -24,6 +24,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rental/features/transport/data/datasources/transport_service.dart';
 import 'package:rental/core/services/analytics_service.dart';
 import 'package:rental/core/utils/image_compressor.dart';
+import 'package:rental/core/ads/native_ad_widget.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final PropertyModel property;
@@ -125,26 +126,23 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     }
   }
 
-  Future<void> _shareProperty() async {
+  void _shareProperty() {
     HapticFeedback.selectionClick();
     final propertyId = widget.property.id ?? '';
     final shareUrl = 'https://rental.arkio.in/?propertyId=$propertyId';
     final shareText =
         '🏡 Check out "${widget.property.title}" (${widget.property.type == 'PG' ? 'PG / Hostel' : (widget.property.type == 'Buy' || widget.property.type == 'Sale' ? 'Property for Sale' : 'Rental House')}) for ${widget.property.price} on Arkio Rental!\n\n📱 Open in App:\n$shareUrl';
 
-    try {
-      await SharePlus.instance.share(
-        ShareParams(
-          text: shareText,
-          subject: widget.property.title,
-        ),
-      );
-    } catch (_) {
-      await Clipboard.setData(ClipboardData(text: shareUrl));
-      if (mounted) {
-        AppSnackbar.success(context, 'Link copied to clipboard!');
-      }
-    }
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ShareOptionsSheet(
+        property: widget.property,
+        shareUrl: shareUrl,
+        shareText: shareText,
+      ),
+    );
   }
 
   Widget _buildCarouselImage(String imagePath) {
@@ -1934,6 +1932,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
+
+                      // ==========================================
+                      // 8c. NATIVE AD SLOT (after map, before transport)
+                      // ==========================================
+                      // Only shown on Android/iOS (AdMob is not available on web).
+                      // The widget collapses itself when the ad fails to load
+                      // or when ads are disabled in ad_config.dart.
+                      if (!kIsWeb) const PropertyNativeAdWidget(),
 
                       // ==========================================
                       // 8b. NEARBY TRANSPORT SECTION

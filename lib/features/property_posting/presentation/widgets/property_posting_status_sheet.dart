@@ -92,18 +92,16 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
       }
 
       int totalImages = widget.selectedImages.length;
-      for (int i = 0; i < totalImages; i++) {
-        if (_isCancelled) return;
+      
+      if (mounted) {
+        setState(() {
+          _statusMessage = totalImages == 1
+              ? 'Compressing & Uploading photo...'
+              : 'Compressing & Uploading $totalImages photos...';
+        });
+      }
 
-        final file = widget.selectedImages[i];
-        if (mounted) {
-          setState(() {
-            _statusMessage = totalImages == 1
-                ? 'Compressing photo...'
-                : 'Compressing photo ${i + 1} of $totalImages...';
-          });
-        }
-
+      final futures = widget.selectedImages.map((file) async {
         final originalBytes = await file.readAsBytes();
 
         // Off-thread isolate compression
@@ -111,18 +109,6 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
           originalBytes,
           watermarkRawBytes: watermarkRawBytes,
         );
-
-        if (_isCancelled) return;
-
-        if (mounted) {
-          setState(() {
-            _statusMessage = totalImages == 1
-                ? 'Uploading photo...'
-                : 'Uploading photo ${i + 1} of $totalImages...';
-            // Update progress halfway through this chunk (compression done)
-            _progress = (0.01 + ((i + 0.5) / totalImages) * 0.79).clamp(0.01, 0.80);
-          });
-        }
 
         final rawBaseName = file.name.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
         final fileName = '${DateTime.now().millisecondsSinceEpoch}_$rawBaseName.${result.fileExtension}';
@@ -134,15 +120,19 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
         );
 
         final url = supabase.storage.from('property_images').getPublicUrl(fileName);
-        uploadedUrls.add(url);
 
-        if (mounted) {
+        if (mounted && !_isCancelled) {
           setState(() {
-            // Update progress completely for this chunk (upload done)
-            _progress = (0.01 + ((i + 1) / totalImages) * 0.79).clamp(0.01, 0.80);
+            _progress = (_progress + (0.79 / totalImages)).clamp(0.01, 0.80);
           });
         }
-      }
+        return url;
+      });
+
+      final newUrls = await Future.wait(futures);
+      if (_isCancelled) return;
+      uploadedUrls.addAll(newUrls);
+
 
       if (mounted) {
         setState(() {

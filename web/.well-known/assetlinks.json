@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.arkiolabs.rental",
+      "sha256_cert_fingerprints": [
+        "D3:6D:64:60:63:76:30:6F:35:B8:DD:08:BE:B5:9B:F1:B1:C6:D1:DB:F3:CE:75:0D:22:30:F4:3E:BC:43:09:54"
+      ]
+    }
+  }
+]

@@ -20,7 +20,9 @@ import 'package:rental/core/services/review_trigger_service.dart';
 import 'package:rental/features/saved_properties/data/datasources/saved_properties_service.dart';
 import 'package:rental/core/services/secure_storage_adapter.dart';
 import 'package:rental/core/services/install_tracker.dart';
-import 'package:device_preview/device_preview.dart';
+import 'package:rental/core/services/app_install_prompt_service.dart';
+import 'package:rental/core/ads/ads_initializer.dart';
+
 
 
 @pragma('vm:entry-point')
@@ -68,15 +70,21 @@ Future<void> main() async {
   }
 
   // Launch UI INSTANTLY — 0ms blank screen delay
-  runApp(
-    DevicePreview(
-      enabled: !kReleaseMode,
-      builder: (context) => const RentalApp(),
-    ),
-  );
+  runApp(const RentalApp());
+
+  // Initialize AdMob SDK non-blocking after first frame (never delays UI).
+  AdsInitializer.init();
 
   // Initialize Analytics and Push Notification Service asynchronously in background
   _initAsyncServices();
+
+  // Trigger the web install prompt (shows up to 3 times with 1-min gaps)
+  // Wire the navigator key first, then check after a short delay
+  AppInstallPromptService.instance.navigatorKey =
+      PushNotificationService.instance.navigatorKey;
+  Future.delayed(const Duration(seconds: 3), () {
+    AppInstallPromptService.instance.checkAndShowPrompt();
+  });
 }
 
 void _initAsyncServices() async {
@@ -114,13 +122,11 @@ class RentalApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode: ThemeMode.light,
             builder: (context, child) {
-              child = DevicePreview.appBuilder(context, child);
               final appContent = ReviewTriggerWrapper(
                 child: InAppUpdateWrapper(child: child ?? const SizedBox.shrink()),
               );
               return appContent;
             },
-            locale: DevicePreview.locale(context),
             onGenerateRoute: (settings) {
               final rawName = settings.name ?? '/';
               final uri = Uri.parse(rawName);

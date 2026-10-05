@@ -11,7 +11,8 @@ import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/models/property_model.dart';
 import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
+import 'package:rental/features/search/presentation/pages/voice_search_screen.dart';
+import 'package:flutter/services.dart';
 // Top-level isolate helper for JSON parsing
 List<PropertyModel> _parsePropertiesIsolate(String jsonStr) {
   final decoded = jsonDecode(jsonStr) as List;
@@ -168,7 +169,25 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
                       )
                     : IconButton(
                         icon: Icon(CupertinoIcons.mic_fill, color: isDark ? Colors.grey.shade400 : Colors.black54, size: 20),
-                        onPressed: () {}, // Future Voice feature
+                        onPressed: () async {
+                          HapticFeedback.selectionClick();
+                          final result = await Navigator.push<String>(
+                            context,
+                            PageRouteBuilder(
+                              pageBuilder: (context, animation, secondaryAnimation) => const VoiceSearchScreen(),
+                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                const begin = Offset(0.0, 1.0);
+                                const end = Offset.zero;
+                                final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: Curves.ease));
+                                return SlideTransition(position: animation.drive(tween), child: child);
+                              },
+                            ),
+                          );
+                          if (result != null && result.isNotEmpty) {
+                            _searchController.text = result;
+                            _onSearchChanged(result);
+                          }
+                        },
                       ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),

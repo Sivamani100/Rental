@@ -53,3 +53,4 @@ env*.json
 *.secret
 google-services.json
 GoogleService-Info.plist
+.env*

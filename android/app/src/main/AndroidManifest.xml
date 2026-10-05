@@ -63,7 +63,7 @@
             android:name=".MainActivityColor0"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/launcher_icon_0"
+            android:icon="@mipmap/launcher_icon"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -74,7 +74,7 @@
             android:name=".MainActivityColor1"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/launcher_icon_1"
+            android:icon="@mipmap/launcher_icon"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -85,7 +85,7 @@
             android:name=".MainActivityColor2"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/launcher_icon_2"
+            android:icon="@mipmap/launcher_icon"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -96,7 +96,7 @@
             android:name=".MainActivityColor3"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/launcher_icon_3"
+            android:icon="@mipmap/launcher_icon"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -107,7 +107,7 @@
             android:name=".MainActivityColor4"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/launcher_icon_4"
+            android:icon="@mipmap/launcher_icon"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -118,7 +118,7 @@
             android:name=".MainActivityColor5"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/launcher_icon_5"
+            android:icon="@mipmap/launcher_icon"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -136,6 +136,16 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!--
+            ============================================================
+            ADMOB APPLICATION ID
+            TEST  : ca-app-pub-3940256099942544~3347511713  (current)
+            REAL  : REPLACE_REAL_APP_ID_HERE (fill this before release)
+            ============================================================
+        -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="high_importance_channel" />
