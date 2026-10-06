@@ -1,0 +1,9 @@
+.dart_tool/
+build/
+flutter/
+android/
+ios/
+linux/
+macos/
+windows/
+.vercel/
