@@ -12,6 +12,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:rental/features/property_details/presentation/widgets/share_options_sheet.dart';
 import 'package:rental/core/widgets/app_snackbar.dart';
+import 'package:rental/features/property_details/presentation/widgets/contribute_photos_status_sheet.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/models/property_model.dart';
@@ -2808,7 +2809,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   void _showContributePhotosSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    List<File> suggestedPhotos = [];
+    List<XFile> suggestedPhotos = [];
     bool isSubmitting = false;
 
     showModalBottomSheet(
@@ -2876,7 +2877,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       final List<XFile> images = await picker.pickMultiImage();
                       if (images.isNotEmpty) {
                         setModalState(() {
-                          suggestedPhotos.addAll(images.map((img) => File(img.path)));
+                          suggestedPhotos.addAll(images);
                         });
                       }
                     },
@@ -2909,7 +2910,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
-                                  child: Image.file(suggestedPhotos[idx], width: 70, height: 70, fit: BoxFit.cover),
+                                  child: kIsWeb 
+                                      ? Image.network(suggestedPhotos[idx].path, width: 70, height: 70, fit: BoxFit.cover) 
+                                      : Image.file(File(suggestedPhotos[idx].path), width: 70, height: 70, fit: BoxFit.cover),
                                 ),
                                 Positioned(
                                   right: 2,
@@ -2941,60 +2944,29 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: suggestedPhotos.isEmpty || isSubmitting
+                      onPressed: suggestedPhotos.isEmpty
                           ? null
-                          : () async {
-                              setModalState(() => isSubmitting = true);
-                              try {
-                                final supabase = Supabase.instance.client;
-                                List<Map<String, dynamic>> newSuggestions = [];
-
-                                for (var file in suggestedPhotos) {
-                                  final cleanName = file.path.split(RegExp(r'[\\/]')).last.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-                                  final originalBytes = await file.readAsBytes();
-                                  final result = await ImageCompressor.smartCompress(originalBytes);
-                                  final fileName = '${DateTime.now().millisecondsSinceEpoch}_$cleanName.${result.fileExtension}';
-                                  await supabase.storage.from('property_images').uploadBinary(
-                                    fileName,
-                                    result.bytes,
-                                    fileOptions: FileOptions(contentType: result.mimeType),
-                                  );
-                                  final url = supabase.storage.from('property_images').getPublicUrl(fileName);
-                                  newSuggestions.add({
-                                    'url': url,
-                                    'status': 'pending',
-                                    'device_id': _deviceId,
-                                    'date': DateTime.now().toIso8601String().split('T').first,
-                                  });
-                                }
-
-                                final updatedSuggestions = List<dynamic>.from(widget.property.suggestedPhotos)
-                                  ..addAll(newSuggestions);
-
-                                await supabase.rpc(
-                                  'add_suggested_photos',
-                                  params: {'p_property_id': widget.property.id!, 'p_new_suggestions': newSuggestions},
-                                );
-
-                                if (mounted) {
-                                  setState(() {
-                                    widget.property.suggestedPhotos = updatedSuggestions;
-                                  });
-                                }
-
-                                if (context.mounted) {
-                                  Navigator.pop(context);
-                                  AppSnackbar.success(context, 'Photos submitted for approval!');
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  AppSnackbar.error(context, 'Failed to submit photos: ${AppSnackbar.getErrorMessage(e)}');
-                                }
-                              } finally {
-                                if (mounted) {
-                                  setModalState(() => isSubmitting = false);
-                                }
-                              }
+                          : () {
+                              showModalBottomSheet(
+                                context: context,
+                                isDismissible: false,
+                                enableDrag: false,
+                                backgroundColor: Colors.transparent,
+                                isScrollControlled: true,
+                                builder: (context) => ContributePhotosStatusSheet(
+                                  property: widget.property,
+                                  selectedImages: suggestedPhotos,
+                                  deviceId: _deviceId,
+                                  onSuccess: () {
+                                    if (mounted) {
+                                      setState(() {});
+                                    }
+                                  },
+                                  onDismissForm: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              );
                             },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -3002,23 +2974,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         foregroundColor: isDark ? Colors.black : Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
-                      child: isSubmitting
-                          ? SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: isDark ? Colors.black : Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              'Submit Photos (${suggestedPhotos.length})',
-                              style: TextStyle(
-                                color: isDark ? Colors.black : Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                      child: Text(
+                        'Submit Photos (${suggestedPhotos.length})',
+                        style: TextStyle(
+                          color: isDark ? Colors.black : Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

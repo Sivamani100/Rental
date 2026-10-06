@@ -1,55 +1,40 @@
 import 'package:flutter/cupertino.dart';
 import 'dart:async';
-import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:rental/features/settings/presentation/pages/settings_screen.dart';
-import 'package:iconsax/iconsax.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:lottie/lottie.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:rental/core/widgets/app_snackbar.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/utils/image_compressor.dart';
 import 'package:rental/core/models/property_model.dart';
-import 'package:rental/core/widgets/image_cropper_sheet.dart';
-import 'package:rental/features/property_posting/presentation/pages/photo_position_screen.dart';
+
 enum _UploadStatusState { uploading, success, error }
 
-class PropertyPostingStatusSheet extends StatefulWidget {
-  final PropertyModel newProperty;
+class ContributePhotosStatusSheet extends StatefulWidget {
+  final PropertyModel property;
   final List<XFile> selectedImages;
-  final List<String> existingImages;
-  final bool isEditing;
-  final PropertyModel? propertyToEdit;
-  final Future<void> Function(PropertyModel)? onSuccess;
+  final String? deviceId;
+  final VoidCallback? onSuccess;
   final VoidCallback? onDismissForm;
 
-  const PropertyPostingStatusSheet({
+  const ContributePhotosStatusSheet({
     super.key,
-    required this.newProperty,
+    required this.property,
     required this.selectedImages,
-    required this.existingImages,
-    required this.isEditing,
-    this.propertyToEdit,
+    required this.deviceId,
     this.onSuccess,
     this.onDismissForm,
   });
 
   @override
-  State<PropertyPostingStatusSheet> createState() => _PropertyPostingStatusSheetState();
+  State<ContributePhotosStatusSheet> createState() => _ContributePhotosStatusSheetState();
 }
 
-class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet> {
+class _ContributePhotosStatusSheetState extends State<ContributePhotosStatusSheet> {
   _UploadStatusState _statusState = _UploadStatusState.uploading;
-  String _statusMessage = 'Preparing property listing...';
+  String _statusMessage = 'Preparing photos...';
   String _errorMessage = '';
   double _progress = 0.01;
   int _countdownSeconds = 5;
@@ -72,7 +57,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
     if (!mounted) return;
     setState(() {
       _statusState = _UploadStatusState.uploading;
-      _statusMessage = 'Preparing property details...';
+      _statusMessage = 'Preparing photos...';
       _progress = 0.01;
       _errorMessage = '';
       _countdownSeconds = 5;
@@ -80,7 +65,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
 
     try {
       final supabase = Supabase.instance.client;
-      List<String> uploadedUrls = List.from(widget.existingImages);
+      List<Map<String, dynamic>> newSuggestions = [];
 
 
 
@@ -89,83 +74,74 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
       if (mounted) {
         setState(() {
           _statusMessage = totalImages == 1
-              ? 'Compressing & Uploading photo...'
+              ? 'Compressing & Uploading 1 photo...'
               : 'Compressing & Uploading $totalImages photos...';
         });
       }
 
-      final futures = widget.selectedImages.map((file) async {
+      for (int i = 0; i < totalImages; i++) {
+        if (_isCancelled) return;
+        
+        var file = widget.selectedImages[i];
+        final cleanName = file.name.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
         final originalBytes = await file.readAsBytes();
-
-        // Off-thread isolate compression
+        
         final result = await ImageCompressor.smartCompress(
           originalBytes,
         );
-
-        final rawBaseName = file.name.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_$rawBaseName.${result.fileExtension}';
-
+        
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_$cleanName.${result.fileExtension}';
+        
         await supabase.storage.from('property_images').uploadBinary(
           fileName,
           result.bytes,
           fileOptions: FileOptions(contentType: result.mimeType),
         );
-
+        
         final url = supabase.storage.from('property_images').getPublicUrl(fileName);
+        
+        newSuggestions.add({
+          'url': url,
+          'status': 'pending',
+          'device_id': widget.deviceId,
+          'date': DateTime.now().toIso8601String().split('T').first,
+        });
 
         if (mounted && !_isCancelled) {
           setState(() {
             _progress = (_progress + (0.79 / totalImages)).clamp(0.01, 0.80);
           });
         }
-        return url;
-      });
+      }
 
-      final newUrls = await Future.wait(futures);
       if (_isCancelled) return;
-      uploadedUrls.addAll(newUrls);
-
 
       if (mounted) {
         setState(() {
           _progress = 0.85; // Move to 85% after images are done
-          _statusMessage = widget.isEditing ? 'Updating property in database...' : 'Saving property listing...';
+          _statusMessage = 'Updating database...';
         });
       }
 
-      // Merge URLs
-      final propertyJson = widget.newProperty.toJson();
-      if (uploadedUrls.isNotEmpty) {
-        propertyJson['image_urls'] = uploadedUrls;
-      }
-      propertyJson['status'] = widget.isEditing ? widget.propertyToEdit!.status : 'pending';
+      final updatedSuggestions = List<dynamic>.from(widget.property.suggestedPhotos)..addAll(newSuggestions);
 
-      if (widget.isEditing) {
-        await supabase.from('properties').update(propertyJson).eq('id', widget.propertyToEdit!.id!);
-      } else {
-        await supabase.from('properties').insert(propertyJson);
-      }
-
-      // Invalidate property cache and draft cache
-      if (!widget.isEditing) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('cached_properties');
-        await prefs.remove('cached_properties_ts');
-        await prefs.remove('posting_draft_v1');
-      }
-
-  
+      await supabase.rpc(
+        'add_suggested_photos',
+        params: {'p_property_id': widget.property.id!, 'p_new_suggestions': newSuggestions},
+      );
+      
+      widget.property.suggestedPhotos = updatedSuggestions;
 
       if (mounted) {
         setState(() {
           _statusState = _UploadStatusState.success;
           _progress = 1.0;
-          _statusMessage = widget.isEditing ? 'Property updated successfully!' : 'Property submitted successfully!';
+          _statusMessage = 'Photos submitted successfully!';
           _countdownSeconds = 5;
         });
 
-        // Trigger parent callback (clears draft, notifies parent listeners)
-        await widget.onSuccess?.call(widget.newProperty);
+        // Trigger parent callback
+        widget.onSuccess?.call();
 
         // Start live 5-second countdown timer for full-page success screen
         _countdownTimer?.cancel();
@@ -181,14 +157,13 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
               timer.cancel();
               // Dismiss status sheet modal
               Navigator.of(context).pop();
-              // Dismiss underlying post form modal to land cleanly on HomeScreen
+              // Dismiss underlying post form modal
               widget.onDismissForm?.call();
             }
           });
         });
       }
     } catch (e) {
-
       debugPrint('Upload error: $e');
       if (mounted) {
         setState(() {
@@ -255,7 +230,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.isEditing ? 'Updating' : 'Uploading',
+                    'Uploading Photos',
                     style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -265,8 +240,8 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                   ),
                   Text(
                     _statusState == _UploadStatusState.uploading
-                        ? (widget.isEditing ? 'Updating Property...' : 'Uploading Property...')
-                        : (_statusState == _UploadStatusState.success ? (widget.isEditing ? 'Update Complete' : 'Upload Complete') : (widget.isEditing ? 'Update Failed' : 'Upload Failed')),
+                        ? 'Submitting contribution...'
+                        : (_statusState == _UploadStatusState.success ? 'Upload Complete' : 'Upload Failed'),
                     style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 11.5,
                       color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
@@ -393,9 +368,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
           ),
           const SizedBox(height: 3),
           Text(
-            widget.isEditing
-                ? 'Please keep the app open while we update your listing.'
-                : 'Please keep the app open while we upload your listing.',
+            'Please keep the app open while we upload your photos.',
             textAlign: TextAlign.center,
             style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 11.5,
@@ -435,7 +408,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
 
           // Main Headline
           Text(
-            widget.isEditing ? 'Property Updated Successfully!' : 'Property Posted Successfully!',
+            'Photos Submitted Successfully!',
             textAlign: TextAlign.center,
             style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 17.5,
@@ -464,7 +437,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Your post has been sent to admin for review. Once approved, it will go live in the app (usually takes within 3 hours).',
+                    'Your photos have been sent to admin for review. Once approved, they will appear in the gallery.',
                     style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 12.5,
                       fontWeight: FontWeight.w500,
@@ -502,7 +475,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Redirecting to home page in $_countdownSeconds $secondLabel...',
+                  'Closing in $_countdownSeconds $secondLabel...',
                   style: TextStyle(fontFamily: 'ProximaNova', 
                     fontSize: 12,
                     color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade800,
@@ -541,7 +514,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
           const SizedBox(height: 16),
 
           Text(
-            widget.isEditing ? 'Update Failed' : 'Posting Failed',
+            'Upload Failed',
             textAlign: TextAlign.center,
             style: TextStyle(fontFamily: 'ProximaNova', 
               fontSize: 17.5,
@@ -562,7 +535,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
               ),
             ),
             child: Text(
-              _errorMessage.isNotEmpty ? _errorMessage : (widget.isEditing ? 'Unable to update property. Check connection.' : 'Unable to upload property. Check connection.'),
+              _errorMessage.isNotEmpty ? _errorMessage : 'Unable to upload photos. Check connection.',
               textAlign: TextAlign.center,
               style: TextStyle(fontFamily: 'ProximaNova', 
                 fontSize: 12.5,
