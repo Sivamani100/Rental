@@ -50,13 +50,13 @@
                 <data android:scheme="http" android:host="rental.arkio.in" />
             </intent-filter>
 
-            <!-- Intent Filter: Custom App Scheme Deep Link (arkio://rental & rental://property) -->
+            <!-- Intent Filter: Custom App Scheme Deep Link (rental:// and arkio://) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="arkio" android:host="rental" />
-                <data android:scheme="rental" android:host="property" />
+                <data android:scheme="rental" />
+                <data android:scheme="arkio" />
             </intent-filter>
         </activity>
         <activity-alias

@@ -12,6 +12,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rental/core/widgets/app_snackbar.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
+import 'package:rental/core/widgets/property_status_stamp.dart';
 import 'package:rental/core/widgets/rental_app_icon.dart';
 import 'package:rental/features/property_posting/presentation/pages/posting_screen.dart';
 import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
@@ -88,30 +89,73 @@ class PropertyCard extends StatelessWidget {
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
                   ),
-                  child: CachedNetworkImage(
-                    imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
-                    height: 210,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 800,
-                    fadeInDuration: Duration.zero,
-                    fadeOutDuration: Duration.zero,
-                    placeholder: (context, url) => Container(
-                      height: 210,
-                      color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
-                      child: Center(
-                        child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 28),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 210,
-                      color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
-                      child: Center(
-                        child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 28),
+                  child: property.isAvailable
+                      ? CachedNetworkImage(
+                          imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
+                          height: 210,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 800,
+                          fadeInDuration: Duration.zero,
+                          fadeOutDuration: Duration.zero,
+                          placeholder: (context, url) => Container(
+                            height: 210,
+                            color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
+                            child: Center(
+                              child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 28),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            height: 210,
+                            color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
+                            child: Center(
+                              child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 28),
+                            ),
+                          ),
+                        )
+                      : ColorFiltered(
+                          colorFilter: const ColorFilter.matrix([
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0.2126, 0.7152, 0.0722, 0, 0,
+                            0,      0,      0,      1, 0,
+                          ]),
+                          child: CachedNetworkImage(
+                            imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
+                            height: 210,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            memCacheWidth: 800,
+                            fadeInDuration: Duration.zero,
+                            fadeOutDuration: Duration.zero,
+                            placeholder: (context, url) => Container(
+                              height: 210,
+                              color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
+                              child: Center(
+                                child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 28),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              height: 210,
+                              color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
+                              child: Center(
+                                child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 28),
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
+
+                // Status Stamp Overlay (SOLD / OCCUPIED)
+                if (!property.isAvailable)
+                  Positioned.fill(
+                    child: Center(
+                      child: PropertyStatusStamp.fromPropertyType(
+                        propertyType: property.type,
+                        isCompact: false,
                       ),
                     ),
                   ),
-                ),
 
                 // ── Discount / distance badge (bottom-left, Swiggy style) ──
                 Positioned(
@@ -174,7 +218,9 @@ class PropertyCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      property.isAvailable ? 'Available' : 'Unavailable',
+                      property.isAvailable
+                          ? 'Available'
+                          : ((property.type.toLowerCase() == 'buy' || property.type.toLowerCase() == 'sale') ? 'Sold' : 'Occupied'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,

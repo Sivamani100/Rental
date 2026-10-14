@@ -3,19 +3,20 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
   final bool isGrayscale;
+  final String? propertyType;
 
   const FullScreenImageViewer({
     super.key,
     required this.imageUrls,
     this.initialIndex = 0,
     this.isGrayscale = false,
+    this.propertyType,
   });
 
   @override
@@ -75,18 +76,6 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         errorBuilder: (context, error, stackTrace) => const Center(
           child: Icon(CupertinoIcons.photo, size: 64, color: Colors.white54),
         ),
-      );
-    }
-
-    if (widget.isGrayscale) {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix([
-          0.2126, 0.7152, 0.0722, 0, 0,
-          0.2126, 0.7152, 0.0722, 0, 0,
-          0.2126, 0.7152, 0.0722, 0, 0,
-          0,      0,      0,      1, 0,
-        ]),
-        child: imageWidget,
       );
     }
 

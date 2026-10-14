@@ -11,6 +11,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rental/core/widgets/app_snackbar.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
+import 'package:rental/core/widgets/property_status_stamp.dart';
 import 'package:rental/core/widgets/rental_app_icon.dart';
 import 'package:rental/features/property_posting/presentation/pages/posting_screen.dart';
 import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
@@ -62,13 +63,35 @@ class GridPropertyCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Background Image
-            CachedNetworkImage(
-              imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(color: Colors.grey.shade300),
-              errorWidget: (context, url, error) => Container(color: Colors.grey.shade300, child: const Icon(CupertinoIcons.house_fill, color: Colors.grey)),
-            ),
+            // Background Image (Greyscale if Occupied / Sold)
+            property.isAvailable
+                ? CachedNetworkImage(
+                    imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(color: Colors.grey.shade300),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey.shade300,
+                      child: const Icon(CupertinoIcons.house_fill, color: Colors.grey),
+                    ),
+                  )
+                : ColorFiltered(
+                    colorFilter: const ColorFilter.matrix([
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0.2126, 0.7152, 0.0722, 0, 0,
+                      0,      0,      0,      1, 0,
+                    ]),
+                    child: CachedNetworkImage(
+                      imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(color: Colors.grey.shade300),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey.shade300,
+                        child: const Icon(CupertinoIcons.house_fill, color: Colors.grey),
+                      ),
+                    ),
+                  ),
+
             // Gradient Overlay
             Positioned.fill(
               child: DecoratedBox(
@@ -87,6 +110,17 @@ class GridPropertyCard extends StatelessWidget {
                 ),
               ),
             ),
+
+            // Status Stamp Overlay (SOLD / OCCUPIED)
+            if (!property.isAvailable)
+              Positioned.fill(
+                child: Center(
+                  child: PropertyStatusStamp.fromPropertyType(
+                    propertyType: property.type,
+                    isCompact: true,
+                  ),
+                ),
+              ),
             // Content
             Padding(
               padding: const EdgeInsets.all(12.0),

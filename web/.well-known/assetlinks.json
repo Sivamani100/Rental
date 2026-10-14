@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "com.arkiolabs.rental",
       "sha256_cert_fingerprints": [
-        "D3:6D:64:60:63:76:30:6F:35:B8:DD:08:BE:B5:9B:F1:B1:C6:D1:DB:F3:CE:75:0D:22:30:F4:3E:BC:43:09:54"
+        "D3:6D:64:60:63:76:30:6F:35:B8:DD:08:BE:B5:9B:F1:B1:C6:D1:DB:F3:CE:75:0D:22:30:F4:3E:BC:43:09:54",
+        "EB:D0:70:1C:93:C6:94:7B:43:58:28:CA:1C:B7:32:03:1C:F0:61:7F:14:39:91:80:27:89:8D:4F:3E:82:E6:35"
       ]
     }
   }

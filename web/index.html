@@ -1,47 +1,272 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Find your dream rental home, PG, or flat on Arkio Rental.">
+
+  <!-- OpenGraph / Social Sharing Preview -->
+  <meta property="og:title" content="Arkio Rental - Property Listing">
+  <meta property="og:description" content="View property details, photos, and direct owner contact on Arkio Rental.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="icons/Icon-512.png">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Rental app">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Rental">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Rental app</title>
+  <title>Arkio Rental</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Reset & Base */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0d0f12;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Smart App Banner for Mobile */
+    #smart-app-banner {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999999;
+      background: rgba(18, 20, 24, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-100%); }
+      to { transform: translateY(0); }
+    }
+
+    .banner-container {
+      max-width: 600px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .banner-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .app-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: #000;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      flex-shrink: 0;
+    }
+
+    .app-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .app-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .app-sub {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .banner-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .btn-open {
+      background: #FFE082;
+      color: #000000;
+      border: none;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 20px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 10px rgba(255, 224, 130, 0.25);
+    }
+
+    .btn-open:active {
+      transform: scale(0.96);
+    }
+
+    .btn-close {
+      background: transparent;
+      border: none;
+      color: #6b7280;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+  </style>
+
+  <!-- Deep Link Detection & Immediate App Launch Script -->
+  <script>
+    (function() {
+      // 1. Extract property ID from query parameters or URL path
+      function extractPropertyId() {
+        try {
+          var searchParams = new URLSearchParams(window.location.search);
+          var id = searchParams.get('propertyId') || searchParams.get('id') || searchParams.get('property_id');
+          if (id && id.trim()) return id.trim();
+
+          var segments = window.location.pathname.split('/').filter(Boolean);
+          var propIdx = segments.findIndex(function(s) {
+            var l = s.toLowerCase();
+            return l === 'property' || l === 'p' || l === 'listing';
+          });
+          if (propIdx !== -1 && propIdx + 1 < segments.length) {
+            var segId = segments[propIdx + 1].trim();
+            if (segId) return segId;
+          }
+        } catch (e) {}
+        return null;
+      }
+
+      var propertyId = extractPropertyId();
+      var ua = navigator.userAgent || navigator.vendor || window.opera || '';
+      var isAndroid = /android/i.test(ua);
+      var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+      var isMobile = isAndroid || isIOS;
+
+      // Build target URLs
+      var stayUrl = window.location.href + (window.location.href.indexOf('?') >= 0 ? '&' : '?') + 'stay=1';
+      var androidIntentUrl = "";
+      var iosSchemeUrl = "";
+
+      if (propertyId) {
+        androidIntentUrl = "intent://property/" + encodeURIComponent(propertyId) + 
+          "#Intent;scheme=rental;package=com.arkiolabs.rental;S.browser_fallback_url=" + 
+          encodeURIComponent(stayUrl) + ";end";
+        iosSchemeUrl = "rental://property/" + encodeURIComponent(propertyId);
+      } else {
+        androidIntentUrl = "intent://rental#Intent;scheme=arkio;package=com.arkiolabs.rental;S.browser_fallback_url=" + 
+          encodeURIComponent(stayUrl) + ";end";
+        iosSchemeUrl = "rental://home";
+      }
+
+      window._rentalDeepLink = {
+        propertyId: propertyId,
+        isAndroid: isAndroid,
+        isIOS: isIOS,
+        launchApp: function() {
+          if (isAndroid) {
+            window.location.href = androidIntentUrl;
+          } else if (isIOS) {
+            window.location.href = iosSchemeUrl;
+          }
+        }
+      };
+
+      // 2. Automated Redirect for Android/iOS if not explicitly staying
+      var searchParams = new URLSearchParams(window.location.search);
+      var shouldAutoRedirect = isMobile && propertyId && !searchParams.has('stay');
+
+      if (shouldAutoRedirect) {
+        try {
+          if (isAndroid) {
+            // Instant redirect to installed app via Chrome Intent URI
+            window.location.href = androidIntentUrl;
+          } else if (isIOS) {
+            window.location.href = iosSchemeUrl;
+          }
+        } catch (e) {}
+      }
+
+      // 3. Render Top Banner on Mobile
+      window.addEventListener('DOMContentLoaded', function() {
+        if (!isMobile) return;
+
+        var banner = document.getElementById('smart-app-banner');
+        var btnOpen = document.getElementById('btn-open-app');
+        var btnClose = document.getElementById('btn-close-banner');
+
+        if (banner && btnOpen) {
+          banner.style.display = 'block';
+
+          btnOpen.addEventListener('click', function(e) {
+            e.preventDefault();
+            window._rentalDeepLink.launchApp();
+          });
+
+          if (btnClose) {
+            btnClose.addEventListener('click', function(e) {
+              e.preventDefault();
+              banner.style.display = 'none';
+            });
+          }
+        }
+      });
+    })();
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
+  <!-- Smart App Banner: Allows instant 1-tap open in installed app -->
+  <div id="smart-app-banner">
+    <div class="banner-container">
+      <div class="banner-left">
+        <img src="icons/Icon-192.png" alt="Rental App" class="app-icon" onerror="this.style.display='none'">
+        <div class="app-text">
+          <div class="app-name">Arkio Rental</div>
+          <div class="app-sub">Open this property in the app</div>
+        </div>
+      </div>
+      <div class="banner-actions">
+        <a id="btn-open-app" href="#" class="btn-open">Open App</a>
+        <button id="btn-close-banner" class="btn-close" aria-label="Close">&times;</button>
+      </div>
+    </div>
+  </div>
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
-

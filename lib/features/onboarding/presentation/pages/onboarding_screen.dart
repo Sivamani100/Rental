@@ -23,7 +23,7 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
-  // ── Splash / Loading phase ────────────────────────────────────────────────
+  // â”€â”€ Splash / Loading phase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bool _showSplash = true;
 
   // Location state on splash
@@ -32,7 +32,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   String? _locationSubtext;         // e.g. "Palacherla, Andhra Pradesh, India"
   bool _locationDenied = false;     // permission denied
 
-  // ── Onboarding page control ───────────────────────────────────────────────
+  // â”€â”€ Onboarding page control â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   
   Color get accentTextColor {
     final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark;
@@ -49,19 +49,19 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnimation;
 
-  // ── Splash logo bounce / fade ─────────────────────────────────────────────
+  // â”€â”€ Splash logo bounce / fade â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   late final AnimationController _splashLogoController;
   late final Animation<double> _splashLogoScale;
   late final Animation<double> _splashLogoFade;
 
-  // ── Location found: fade-in of city text ─────────────────────────────────
+  // â”€â”€ Location found: fade-in of city text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   late final AnimationController _cityFadeController;
   late final Animation<double> _cityFade;
 
-  // ── "Locating" dot pulse ──────────────────────────────────────────────────
+  // â”€â”€ "Locating" dot pulse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   late final AnimationController _locatingController;
 
-  // ── Icon Cycling ──────────────────────────────────────────────────
+  // â”€â”€ Icon Cycling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Timer? _iconCycleTimer;
   int _iconCycleIndex = 0;
   late AnimationController _iconSlideController;
@@ -80,7 +80,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     'Look at this gorgeous 3BHK home with spacious balcony in Danavaipeta',
     'Thinking of buying a dream house? Gated villa on AV Appa Rao Road',
     'New 2 BHK flat available 650m away near Morampudi Junction',
-    'Rent reduced by ₹2,000! Price dropped on Prakash Nagar home',
+    'Rent reduced by â‚¹2,000! Price dropped on Prakash Nagar home',
     'Deluxe AC room just opened in Tadithota near Kotipalli stand',
   ];
 
@@ -139,7 +139,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
     _iconSlideController.forward();
 
-    // Icon cycling timer — switches icon every 1.1s
+    // Icon cycling timer â€” switches icon every 1.1s
     _iconCycleTimer = Timer.periodic(const Duration(milliseconds: 1100), (_) {
       if (mounted) {
         _iconSlideController.reset();
@@ -396,13 +396,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (_showSplash) return _buildSwiggyStyleSplash();
-    return _buildOnboarding();
+    return _showSplash ? _buildSwiggyStyleSplash() : _buildOnboarding();
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SWIGGY-STYLE SPLASH SCREEN — Yellow bg, icon + location name centered
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // SWIGGY-STYLE SPLASH SCREEN â€” Yellow bg, icon + location name centered
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildSwiggyStyleSplash() {
     return Scaffold(
       body: Container(
@@ -412,12 +411,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         child: SafeArea(
           child: Stack(
             children: [
-              // ── Centered content ───────────────────────────────────
+              // â”€â”€ Centered content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // ── Icon with slide-up + fade-in animation ───────
+                    // â”€â”€ Icon with slide-up + fade-in animation â”€â”€â”€â”€â”€â”€â”€
                     SizedBox(
                       height: 88,
                       child: Center(
@@ -446,7 +445,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ),
                     SizedBox(height: 32),
 
-                    // ── Location text ────────────────────────────────
+                    // â”€â”€ Location text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     if (_isLocating)
                       _buildLocatingText()
                     else
@@ -506,9 +505,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
 
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // ONBOARDING SLIDES
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildOnboarding() {
     final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark;
     
@@ -567,7 +566,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ),
                 ),
 
-                // Dot indicators — Swiggy orange style
+                // Dot indicators â€” Swiggy orange style
                 Padding(
                   padding: const EdgeInsets.only(bottom: 20),
                   child: Row(
@@ -1036,9 +1035,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SWIGGY "S" PIN-DROP LOGO PAINTER
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _SwiggyLogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -1060,8 +1059,8 @@ class _SwiggyLogoPainter extends CustomPainter {
     // Teardrop: semicircle on top + triangle pointing down
     path.addArc(
       Rect.fromCircle(center: Offset(cx, cy), radius: r),
-      3.14, // π  = left side
-      3.14, // π  = top semicircle
+      3.14, // Ï€  = left side
+      3.14, // Ï€  = top semicircle
     );
 
     // Right side of top circle going down to point

@@ -22,6 +22,7 @@ import 'package:rental/core/services/secure_storage_adapter.dart';
 import 'package:rental/core/services/install_tracker.dart';
 import 'package:rental/core/services/app_install_prompt_service.dart';
 import 'package:rental/core/ads/ads_initializer.dart';
+import 'package:rental/core/services/deep_link_service.dart';
 
 
 
@@ -77,6 +78,9 @@ Future<void> main() async {
 
   // Initialize Analytics and Push Notification Service asynchronously in background
   _initAsyncServices();
+
+  // Initialize deep links listener
+  DeepLinkService.instance.init(PushNotificationService.instance.navigatorKey);
 
   // Trigger the web install prompt (shows up to 3 times with 1-min gaps)
   // Wire the navigator key first, then check after a short delay
@@ -139,11 +143,7 @@ class RentalApp extends StatelessWidget {
                 );
               }
 
-              String? propertyId = uri.queryParameters['propertyId'] ?? uri.queryParameters['id'];
-              if (path.startsWith('/property/')) {
-                propertyId = path.replaceFirst('/property/', '').trim();
-              }
-
+              final propertyId = DeepLinkService.extractPropertyId(uri);
               if (propertyId != null && propertyId.isNotEmpty) {
                 return MaterialPageRoute(
                   settings: settings,

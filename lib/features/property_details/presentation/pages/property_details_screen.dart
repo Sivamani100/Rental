@@ -18,6 +18,7 @@ import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/models/property_model.dart';
 import 'package:rental/features/search/presentation/pages/map_screen.dart';
 import 'package:rental/core/widgets/full_screen_image_viewer.dart';
+import 'package:rental/core/widgets/property_status_stamp.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -130,9 +131,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   void _shareProperty() {
     HapticFeedback.selectionClick();
     final propertyId = widget.property.id ?? '';
-    final shareUrl = 'https://rental.arkio.in/?propertyId=$propertyId';
+    final shareUrl = 'https://rental.arkio.in/property/$propertyId';
     final shareText =
-        '🏡 Check out "${widget.property.title}" (${widget.property.type == 'PG' ? 'PG / Hostel' : (widget.property.type == 'Buy' || widget.property.type == 'Sale' ? 'Property for Sale' : 'Rental House')}) for ${widget.property.price} on Arkio Rental!\n\n📱 Open in App:\n$shareUrl';
+        'ðŸ¡ Check out "${widget.property.title}" (${widget.property.type == 'PG' ? 'PG / Hostel' : (widget.property.type == 'Buy' || widget.property.type == 'Sale' ? 'Property for Sale' : 'Rental House')}) for ${widget.property.price} on Arkio Rental!\n\nðŸ“± Open in App:\n$shareUrl';
 
     showModalBottomSheet(
       context: context,
@@ -275,7 +276,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         FutureBuilder<List<TransportPlace>>(
           future: _nearbyTransportFuture,
           builder: (context, snapshot) {
-            // ── Loading ──────────────────────────────────────────
+            // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (snapshot.connectionState == ConnectionState.waiting) {
               return SizedBox(
                 height: 110,
@@ -305,10 +306,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
             final places = snapshot.data ?? [];
 
-            // ── Empty ────────────────────────────────────────────
+            // ── Empty ────────────────────────────────────────────────────────
             if (places.isEmpty) {
               return Container(
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
                 decoration: BoxDecoration(
                   color: isDark ? AppTheme.darkCard : const Color(0xFFF8F8FA),
                   borderRadius: BorderRadius.circular(20),
@@ -324,16 +325,55 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : AppTheme.primaryYellow.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(CupertinoIcons.info_circle_fill, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
+                      child: Icon(CupertinoIcons.location_slash, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
                     ),
-                    SizedBox(width: 14),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: Text(
-                        'Fetching transport data...\nCheck back in a moment.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.5,
-                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'No stations found nearby',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Check live transit on Google Maps',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    BouncingButton(
+                      scaleFactor: 0.92,
+                      onTap: () async {
+                        final transitUrl = Uri.parse(
+                          'https://www.google.com/maps/search/transit/@${widget.property.latitude},${widget.property.longitude},14z',
+                        );
+                        if (await canLaunchUrl(transitUrl)) {
+                          await launchUrl(transitUrl, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.primaryYellow : Colors.black,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          'Open Maps',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -342,7 +382,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               );
             }
 
-            // ── Aggregate by type ────────────────────────────────
+            // ── Aggregate by type ────────────────────────────────────────────
             final Map<String, List<TransportPlace>> grouped = {};
             for (final p in places) {
               grouped.putIfAbsent(p.type, () => []).add(p);
@@ -396,7 +436,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'Tap any category to view all routes and live 360° Street View',
+                  'Tap any category to view stations and get directions from property',
                   style: TextStyle(
                     fontSize: 11.5,
                     color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
@@ -571,6 +611,45 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 
+  Future<void> _openDirectionsToPlace(TransportPlace place) async {
+    final originLat = widget.property.latitude;
+    final originLng = widget.property.longitude;
+    final destLat = place.lat;
+    final destLng = place.lng;
+
+    final dirUrl = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&origin=$originLat,$originLng&destination=$destLat,$destLng&travelmode=driving',
+    );
+
+    try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        final appleMapsUrl = Uri.parse(
+          'http://maps.apple.com/?saddr=$originLat,$originLng&daddr=$destLat,$destLng&dirflg=d',
+        );
+        if (await canLaunchUrl(appleMapsUrl)) {
+          await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
+      if (await canLaunchUrl(dirUrl)) {
+        await launchUrl(dirUrl, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {}
+
+    final fallbackUrl = Uri.parse(
+      'https://www.google.com/maps/dir/$originLat,$originLng/$destLat,$destLng',
+    );
+    if (await canLaunchUrl(fallbackUrl)) {
+      await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        AppSnackbar.error(context, 'Could not open maps application');
+      }
+    }
+  }
+
   void _showTransportBottomSheet(String type, List<TransportPlace> places, bool isDark) {
     final primaryColor = isDark ? AppTheme.primaryYellow : Colors.black;
     final onPrimaryColor = isDark ? Colors.black : Colors.white;
@@ -584,9 +663,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       ),
       builder: (context) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
+          initialChildSize: 0.82,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
           expand: false,
           builder: (context, scrollController) {
             return Container(
@@ -602,169 +681,165 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 ),
               ),
               child: Column(
-              children: [
-                const SizedBox(height: 12),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(4),
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: primaryColor,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(_transportIcon(type), color: onPrimaryColor, size: 20),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Nearby $type',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: isDark ? Colors.white : Colors.black,
-                              ),
-                            ),
-                            Text(
-                              '${places.length} options found within 25km',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(CupertinoIcons.clear, color: isDark ? Colors.white54 : Colors.black54),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Divider(color: isDark ? AppTheme.darkBorder : Colors.grey.shade200, height: 1),
-                Expanded(
-                  child: ListView.separated(
-                    controller: scrollController,
-                    padding: const EdgeInsets.all(20),
-                    itemCount: places.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (context, index) {
-                      final place = places[index];
-                      return BouncingButton(
-                        scaleFactor: 0.97,
-                        onTap: () async {
-                          Navigator.pop(context);
-                          final url = Uri.parse(place.streetViewUrl);
-                          if (await canLaunchUrl(url)) {
-                            await launchUrl(url, mode: LaunchMode.externalApplication);
-                          } else {
-                            final fallbackUrl = Uri.parse(place.googleMapsUrl);
-                            if (await canLaunchUrl(fallbackUrl)) {
-                              await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
-                            } else {
-                              if (context.mounted) {
-                                AppSnackbar.error(context, 'Could not open Google Maps.');
-                              }
-                            }
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF8F8FA),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
-                            ),
+                            color: primaryColor,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Row(
+                          child: Icon(_transportIcon(type), color: onPrimaryColor, size: 20),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppTheme.darkBorder : Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(_transportIcon(type), color: primaryColor, size: 20),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      place.name,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                        color: isDark ? Colors.white : Colors.black,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      place.distanceLabel + ' from property',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
+                              Text(
+                                'Nearby $type',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : Colors.black,
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.05),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      '360°',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: primaryColor,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Icon(CupertinoIcons.forward, size: 10, color: primaryColor),
-                                  ],
+                              Text(
+                                '${places.length} stations found nearby',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
+                        IconButton(
+                          icon: Icon(CupertinoIcons.clear, color: isDark ? Colors.white54 : Colors.black54),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    },
-  );
-}
+                  const SizedBox(height: 16),
+                  Divider(color: isDark ? AppTheme.darkBorder : Colors.grey.shade200, height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+                      itemCount: places.length,
+                      separatorBuilder: (_, index) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final place = places[index];
+                        return BouncingButton(
+                          scaleFactor: 0.98,
+                          onTap: () {
+                            _openDirectionsToPlace(place);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF8F8FA),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: isDark ? AppTheme.darkBorder : Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(_transportIcon(type), color: primaryColor, size: 20),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        place.name,
+                                        style: TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.25,
+                                          color: isDark ? Colors.white : Colors.black,
+                                        ),
+                                        softWrap: true,
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        '${place.distanceLabel} from property',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: primaryColor,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.arrow_turn_up_right,
+                                        size: 13,
+                                        color: onPrimaryColor,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'Direction',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: onPrimaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   // --- Section Header with Theme Badge Layout ---
   Widget _buildSectionHeader(String title, IconData icon) {
@@ -975,6 +1050,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return _buildMobileLayout(context);
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.primaryYellow) == Brightness.dark;
     final accentTextColor = isAccentDark ? Colors.white : Colors.black;
@@ -1014,7 +1093,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   builder: (_) => FullScreenImageViewer(
                                     imageUrls: widget.property.imageUrls,
                                     initialIndex: index,
-                                    isGrayscale: !widget.property.isAvailable,
                                   ),
                                 ),
                               );
@@ -1024,6 +1102,19 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         },
                       ),
                     ),
+
+                    // Stamp overlay when property is occupied / sold
+                    if (!widget.property.isAvailable)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: Center(
+                            child: PropertyStatusStamp.fromPropertyType(
+                              propertyType: widget.property.type,
+                              isLarge: true,
+                            ),
+                          ),
+                        ),
+                      ),
 
                     // Top Scrim Gradient for glass buttons
                     Positioned(
@@ -1138,7 +1229,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                   builder: (_) => FullScreenImageViewer(
                                     imageUrls: widget.property.imageUrls,
                                     initialIndex: _currentImageIndex,
-                                    isGrayscale: !widget.property.isAvailable,
                                   ),
                                 ),
                               );
@@ -1271,7 +1361,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  widget.property.isAvailable ? (isBuy ? 'For Sale' : 'Available') : 'Occupied / Sold',
+                                  widget.property.isAvailable ? (isBuy ? 'For Sale' : 'Available') : (isBuy ? 'Sold' : 'Occupied'),
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -1453,7 +1543,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         ],
                                       ),
                                       Text(
-                                        '₹${widget.property.perDayWithFood}/day',
+                                        'â‚¹${widget.property.perDayWithFood}/day',
                                         style: TextStyle(
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.w700,
@@ -1487,7 +1577,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         ],
                                       ),
                                       Text(
-                                        '₹${widget.property.perDayWithoutFood}/day',
+                                        'â‚¹${widget.property.perDayWithoutFood}/day',
                                         style: TextStyle(
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.w700,
@@ -2460,7 +2550,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             builder: (_) => FullScreenImageViewer(
                               imageUrls: List<String>.from(review['photos']),
                               initialIndex: idx,
-                              isGrayscale: !widget.property.isAvailable,
                             ),
                           ),
                         );
@@ -3389,6 +3478,5 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       ],
     );
   }
+
 }
-
-

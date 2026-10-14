@@ -1,4 +1,5 @@
 import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
+import 'package:rental/core/services/deep_link_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:rental/features/home/presentation/widgets/filter_bottom_sheet.dart';
@@ -47,13 +48,8 @@ import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.d
 import 'package:rental/features/home/presentation/widgets/card_bottom_strip.dart';
 import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
 import 'package:rental/features/home/presentation/widgets/shimmer_effect.dart';
-import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
 import 'package:rental/features/home/presentation/widgets/skeleton_box.dart';
-import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
 import 'package:rental/features/home/presentation/widgets/top_location_logo_switcher.dart';
-import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
-import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
-import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
 import 'package:rental/features/search/presentation/pages/voice_search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -219,9 +215,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (_hasOpenedInitialProperty) return;
     String? targetId = widget.initialPropertyId;
     if (targetId == null && kIsWeb) {
-      targetId =
-          Uri.base.queryParameters['propertyId'] ??
-          Uri.base.queryParameters['id'];
+      targetId = DeepLinkService.extractPropertyId(Uri.base);
     }
 
     if (targetId != null && targetId.isNotEmpty) {
@@ -770,24 +764,204 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     bool matchesFilters(PropertyModel p) {
       double parsedPrice = double.tryParse(p.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
       if (parsedPrice < _filterState.minBudget || parsedPrice > _filterState.maxBudget) return false;
+
+      // 1. Category / Property Type match
       if (_filterState.propertyTypes.isNotEmpty) {
-        if (!_filterState.propertyTypes.contains(p.type)) return false;
+        bool typeMatch = false;
+        final pType = p.type.toLowerCase();
+        for (final t in _filterState.propertyTypes) {
+          final tLower = t.toLowerCase();
+          if (tLower == 'rental') {
+            if (pType == 'rental' || pType == 'house') typeMatch = true;
+          } else if (tLower == 'pg') {
+            if (pType == 'pg' || pType == 'hostel') typeMatch = true;
+          } else if (tLower == 'buy') {
+            if (pType == 'buy' || pType == 'sale' || pType == 'plot' || pType == 'land') typeMatch = true;
+          } else {
+            if (pType == tLower) typeMatch = true;
+          }
+        }
+        if (!typeMatch) return false;
       }
+
+      // 2. Buy Property Sub-type match
+      if (_filterState.buyPropertyTypes.isNotEmpty) {
+        bool match = false;
+        final pType = p.type.toLowerCase();
+        final text = '${p.title} ${p.description ?? ''} ${p.tags.join(' ')}'.toLowerCase();
+        for (final bpt in _filterState.buyPropertyTypes) {
+          final bptLower = bpt.toLowerCase();
+          if (bptLower.contains('plot') || bptLower.contains('land')) {
+            if (pType.contains('plot') || pType.contains('land') || text.contains('plot') || text.contains('land')) match = true;
+          } else if (bptLower.contains('flat') || bptLower.contains('apartment')) {
+            if (text.contains('flat') || text.contains('apartment') || text.contains('bhk')) match = true;
+          } else if (bptLower.contains('villa') || bptLower.contains('house')) {
+            if (pType.contains('house') || text.contains('villa') || text.contains('independent')) match = true;
+          } else if (bptLower.contains('commercial')) {
+            if (text.contains('commercial') || text.contains('shop') || text.contains('office')) match = true;
+          }
+        }
+        if (!match) return false;
+      }
+
+      // 3. Construction Status match
+      if (_filterState.constructionStatus.isNotEmpty) {
+        bool match = false;
+        final desc = '${p.description ?? ''} ${p.tags.join(' ')}'.toLowerCase();
+        for (final cs in _filterState.constructionStatus) {
+          if (desc.contains(cs.toLowerCase())) match = true;
+        }
+        if (!match) return false;
+      }
+
+      // 4. Furnishing match
       if (_filterState.furnishing.isNotEmpty) {
         bool match = false;
-        String pFurnish = p.furnishingStatus ?? '';
+        String pFurnish = (p.furnishingStatus ?? '').toLowerCase();
         for (final f in _filterState.furnishing) {
-          if (pFurnish.toLowerCase().contains(f.toLowerCase())) match = true;
+          if (pFurnish.contains(f.toLowerCase())) match = true;
         }
         if (!match) return false;
       }
+
+      // 5. Occupancy / Sharing match
       if (_filterState.occupancy.isNotEmpty) {
         bool match = false;
+        final occText = '${p.sharingType ?? ''} ${p.tags.join(' ')} ${p.description ?? ''}'.toLowerCase();
         for (final o in _filterState.occupancy) {
-          if (p.tags.any((tag) => tag.toLowerCase().contains(o.toLowerCase()))) match = true;
+          final oClean = o.toLowerCase().replaceAll('sharing', '').replaceAll('room', '').trim();
+          if (occText.contains(oClean)) match = true;
         }
         if (!match) return false;
       }
+
+      // 6. Bathrooms match
+      if (_filterState.bathrooms.isNotEmpty) {
+        bool match = false;
+        String bths = p.baths.toLowerCase();
+        String bType = (p.bathroomType ?? '').toLowerCase();
+        String featuresStr = p.features.join(' ').toLowerCase();
+        for (final b in _filterState.bathrooms) {
+          final bLower = b.toLowerCase();
+          if (bLower.contains('attached') && (bType.contains('attached') || featuresStr.contains('attached'))) match = true;
+          else if (bLower.contains('common') && (bType.contains('common') || featuresStr.contains('common'))) match = true;
+          else if (bths.contains(bLower.replaceAll('+', ''))) match = true;
+        }
+        if (!match) return false;
+      }
+
+      // 7. BHK Type match
+      if (_filterState.bhkTypes.isNotEmpty) {
+        if (p.bhkType != null) {
+          bool match = false;
+          String bhk = p.bhkType!.toLowerCase();
+          for (final b in _filterState.bhkTypes) {
+            final bClean = b.toLowerCase().split('/').first.trim();
+            if (bhk.contains(bClean) || p.tags.any((t) => t.toLowerCase().contains(bClean))) match = true;
+          }
+          if (!match) return false;
+        } else {
+          return false;
+        }
+      }
+
+      // 8. Gender preference match
+      if (_filterState.genderPreference.isNotEmpty) {
+        String gender = (p.genderPreference ?? '').toLowerCase();
+        String tagsStr = p.tags.join(' ').toLowerCase();
+        bool match = false;
+        for (final g in _filterState.genderPreference) {
+          final gLower = g.toLowerCase().replaceAll('only', '').trim();
+          if (gender.contains(gLower) || tagsStr.contains(gLower) || gender.contains('unisex') || gender.contains('co-living')) match = true;
+        }
+        if (!match) return false;
+      }
+
+      // 9. Tenant preference match
+      if (_filterState.tenants.isNotEmpty) {
+        String tenant = (p.tenantPreference ?? '').toLowerCase();
+        bool match = false;
+        for (final t in _filterState.tenants) {
+          final tLower = t.toLowerCase().split('/').first.trim();
+          if (tenant.contains(tLower) || tenant.contains('anyone') || tenant.contains('all')) match = true;
+        }
+        if (!match) return false;
+      }
+
+      // 10. Food preference match
+      if (_filterState.foodPreferences.isNotEmpty) {
+        final foodInfo = '${p.foodDetails ?? ''} ${p.foodQuality ?? ''} ${p.tags.join(' ')} ${p.features.join(' ')} ${p.description ?? ''}'.toLowerCase();
+        bool match = false;
+        for (final fp in _filterState.foodPreferences) {
+          final fpLower = fp.toLowerCase();
+          if (fpLower.contains('with food')) {
+            if (foodInfo.contains('food') || foodInfo.contains('meals') || (p.perDayWithFood != null && p.perDayWithFood!.isNotEmpty)) match = true;
+          } else if (fpLower.contains('without food') || fpLower.contains('self cooking')) {
+            if (foodInfo.contains('without food') || foodInfo.contains('self cooking') || foodInfo.contains('self-cooking') || (p.perDayWithoutFood != null && p.perDayWithoutFood!.isNotEmpty)) match = true;
+          } else if (foodInfo.contains(fpLower.replaceAll('included', '').replaceAll('allowed', '').trim())) {
+            match = true;
+          }
+        }
+        if (!match) return false;
+      }
+
+      // 11. Room / AC / Facilities match
+      if (_filterState.roomTypes.isNotEmpty) {
+        final roomInfo = '${p.acType ?? ''} ${p.bathroomType ?? ''} ${p.tags.join(' ')} ${p.features.join(' ')} ${p.description ?? ''}'.toLowerCase();
+        bool match = false;
+        for (final rt in _filterState.roomTypes) {
+          final rtLower = rt.toLowerCase();
+          if (rtLower.contains('ac room') || rtLower == 'ac') {
+            if (roomInfo.contains('ac') && !roomInfo.contains('non-ac')) match = true;
+          } else if (rtLower.contains('non-ac')) {
+            if (roomInfo.contains('non-ac') || !roomInfo.contains('ac')) match = true;
+          } else if (rtLower.contains('attached')) {
+            if (roomInfo.contains('attached')) match = true;
+          } else if (rtLower.contains('common')) {
+            if (roomInfo.contains('common')) match = true;
+          }
+        }
+        if (!match) return false;
+      }
+
+      // 12. Parking match
+      if (_filterState.parking.isNotEmpty) {
+        final parkInfo = '${p.parkingInfo ?? ''} ${p.features.join(' ')} ${p.description ?? ''}'.toLowerCase();
+        bool match = false;
+        for (final pk in _filterState.parking) {
+          final pkLower = pk.toLowerCase();
+          if (pkLower.contains('car') && parkInfo.contains('car')) match = true;
+          else if (pkLower.contains('bike') && (parkInfo.contains('bike') || parkInfo.contains('two wheeler'))) match = true;
+          else if (pkLower.contains('covered') && parkInfo.contains('covered')) match = true;
+          else if (parkInfo.contains('parking')) match = true;
+        }
+        if (!match) return false;
+      }
+
+      // 13. Curfew / Rules match
+      if (_filterState.rules.isNotEmpty) {
+        final rulesInfo = '${p.gateRules ?? ''} ${p.description ?? ''}'.toLowerCase();
+        bool match = false;
+        for (final r in _filterState.rules) {
+          final rLower = r.toLowerCase();
+          if (rLower.contains('curfew') && (rulesInfo.contains('curfew') || rulesInfo.contains('24/7') || rulesInfo.contains('24x7') || rulesInfo.contains('no timing'))) match = true;
+          else if (rulesInfo.contains(rLower.replaceAll('allowed', '').replaceAll('entry', '').trim())) match = true;
+        }
+        if (!match) return false;
+      }
+
+      // 14. Amenities match
+      if (_filterState.amenities.isNotEmpty) {
+        bool match = false;
+        String feat = p.features.join(' ').toLowerCase();
+        String desc = (p.description ?? '').toLowerCase();
+        for (final a in _filterState.amenities) {
+          final aClean = a.toLowerCase().split('/').first.trim();
+          if (feat.contains(aClean) || desc.contains(aClean)) match = true;
+        }
+        if (!match) return false;
+      }
+
       return true;
     }
 
@@ -998,7 +1172,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
     }
 
-    return PopScope(
+    // ── Build the main mobile scaffold (used on both mobile AND desktop) ──
+    final mobileScaffold = PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
@@ -1036,6 +1211,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ? AppTheme.darkScaffold
             : const Color(0xFFF2F2F7),
         extendBody: true,
+        // Mobile bottom nav
         bottomNavigationBar: AnimatedSlide(
           duration: const Duration(milliseconds: 300),
           offset: (_isScrollUIVisible && !(_searchFocusNode.hasFocus || _searchQuery.isNotEmpty)) ? Offset.zero : const Offset(0, 1),
@@ -1117,6 +1293,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+
+    return mobileScaffold;
   }
 
   Widget _buildExploreMarketplaceView(BuildContext context, bool isDark) {
@@ -3227,15 +3405,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildPropertyList(List<PropertyModel> properties, String typeStr) {
+    const int crossAxisCount = 2;
+    const double aspectRatio = 0.8;
+
     return GridView.builder(
       shrinkWrap: true,
       padding: const EdgeInsets.only(top: 16),
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+        crossAxisCount: crossAxisCount,
         crossAxisSpacing: 14,
         mainAxisSpacing: 16,
-        childAspectRatio: 0.8,
+        childAspectRatio: aspectRatio,
       ),
       itemCount: properties.length,
       itemBuilder: (context, index) {
@@ -3276,12 +3457,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _showSortBottomSheet() {
+    String initialCat = 'Rental';
+    if (_selectedTypeIndex == 1) {
+      initialCat = 'PG';
+    } else if (_selectedTypeIndex == 2) {
+      initialCat = 'Rental';
+    } else if (_selectedTypeIndex == 3) {
+      initialCat = 'Buy';
+    } else if (_filterState.propertyTypes.contains('PG')) {
+      initialCat = 'PG';
+    } else if (_filterState.propertyTypes.contains('Buy') || _filterState.propertyTypes.contains('Sale')) {
+      initialCat = 'Buy';
+    } else if (_filterState.selectedCategory.isNotEmpty) {
+      initialCat = _filterState.selectedCategory;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => FilterBottomSheet(
         initialState: _filterState,
+        initialCategory: initialCat,
         onApply: (newState) {
           setState(() {
             _filterState = newState;
