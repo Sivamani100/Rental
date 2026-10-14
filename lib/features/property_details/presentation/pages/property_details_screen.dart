@@ -11,6 +11,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:rental/features/property_details/presentation/widgets/share_options_sheet.dart';
 import 'package:rental/core/widgets/app_snackbar.dart';
+import 'package:rental/core/widgets/image_cropper_sheet.dart';
 import 'package:rental/features/property_details/presentation/widgets/contribute_photos_status_sheet.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/app/theme/app_theme.dart';
@@ -2930,6 +2931,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   void _showContributePhotosSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     List<XFile> suggestedPhotos = [];
+    bool isProcessingPhotos = false;
 
     showModalBottomSheet(
       context: context,
@@ -2991,18 +2993,34 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
-                    onPressed: () async {
-                      final ImagePicker picker = ImagePicker();
-                      final List<XFile> images = await picker.pickMultiImage();
-                      if (images.isNotEmpty) {
-                        setModalState(() {
-                          suggestedPhotos.addAll(images);
-                        });
-                      }
-                    },
-                    icon: Icon(CupertinoIcons.photo_on_rectangle, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 18),
+                    onPressed: isProcessingPhotos
+                        ? null
+                        : () async {
+                            final ImagePicker picker = ImagePicker();
+                            final List<XFile> images = await picker.pickMultiImage();
+                            if (images.isNotEmpty) {
+                              setModalState(() => isProcessingPhotos = true);
+                              for (final img in images) {
+                                if (!context.mounted) break;
+                                final cropped = await ImageCropperSheet.open(context, img);
+                                if (cropped != null) {
+                                  suggestedPhotos.add(cropped);
+                                }
+                              }
+                              if (context.mounted) {
+                                setModalState(() => isProcessingPhotos = false);
+                              }
+                            }
+                          },
+                    icon: isProcessingPhotos
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(CupertinoIcons.photo_on_rectangle, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 18),
                     label: Text(
-                      'Select Photos from Gallery',
+                      isProcessingPhotos ? 'Cropping & Processing Photos...' : 'Select Photos from Gallery',
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontWeight: FontWeight.w600,
@@ -3018,7 +3036,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   if (suggestedPhotos.isNotEmpty) ...[
                     const SizedBox(height: 14),
                     SizedBox(
-                      height: 70,
+                      height: 76,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         itemCount: suggestedPhotos.length,
@@ -3026,13 +3044,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           return Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: Stack(
+                              clipBehavior: Clip.none,
                               children: [
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
                                   child: kIsWeb 
-                                      ? Image.network(suggestedPhotos[idx].path, width: 70, height: 70, fit: BoxFit.cover) 
-                                      : Image.file(File(suggestedPhotos[idx].path), width: 70, height: 70, fit: BoxFit.cover),
+                                      ? Image.network(suggestedPhotos[idx].path, width: 76, height: 76, fit: BoxFit.cover) 
+                                      : Image.file(File(suggestedPhotos[idx].path), width: 76, height: 76, fit: BoxFit.cover),
                                 ),
+                                // Remove button
                                 Positioned(
                                   right: 2,
                                   top: 2,
@@ -3043,12 +3063,43 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                       });
                                     },
                                     child: Container(
-                                      decoration: const BoxDecoration(
-                                        color: Colors.black54,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.65),
                                         shape: BoxShape.circle,
                                       ),
                                       padding: const EdgeInsets.all(3),
-                                      child: const Icon(CupertinoIcons.clear, color: Colors.white, size: 14),
+                                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 14),
+                                    ),
+                                  ),
+                                ),
+                                // Crop / Re-adjust button
+                                Positioned(
+                                  right: 2,
+                                  bottom: 2,
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      final recropped = await ImageCropperSheet.open(context, suggestedPhotos[idx]);
+                                      if (recropped != null && context.mounted) {
+                                        setModalState(() {
+                                          suggestedPhotos[idx] = recropped;
+                                        });
+                                      }
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.75),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppTheme.primaryYellow,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      padding: const EdgeInsets.all(3),
+                                      child: Icon(
+                                        Iconsax.crop,
+                                        color: AppTheme.primaryYellow,
+                                        size: 13,
+                                      ),
                                     ),
                                   ),
                                 ),
