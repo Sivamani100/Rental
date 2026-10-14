@@ -57,6 +57,11 @@ class PropertyModel {
   final String? petPolicy; // Pets Allowed / No Pets
   final String? parkingInfo; // Covered Car & Bike Parking
 
+  // Partner & Owner Management
+  final String? partnerId;
+  final String? partnerEmail;
+  final String? partnerRole;
+
   PropertyModel({
     this.id,
     required this.title,
@@ -107,6 +112,9 @@ class PropertyModel {
     this.tenantPreference,
     this.petPolicy,
     this.parkingInfo,
+    this.partnerId,
+    this.partnerEmail,
+    this.partnerRole,
     List<dynamic>? reviews,
     List<dynamic>? suggestedPhotos,
   }) : reviews = reviews ?? [],
@@ -134,6 +142,22 @@ class PropertyModel {
   }
 
   factory PropertyModel.fromJson(Map<String, dynamic> json) {
+    String? pEmail = json['partner_email']?.toString();
+    String? pId = json['partner_id']?.toString();
+    String? pRole = json['partner_role']?.toString();
+
+    final tagsList = List<String>.from((json['tags'] ?? []).map((t) => _sanitize(t)));
+    if (pEmail == null || pEmail.isEmpty) {
+      for (var t in tagsList) {
+        if (t.toLowerCase().startsWith('partner:')) {
+          pEmail = t.substring('partner:'.length).trim();
+          pId ??= pEmail;
+        } else if (t.toLowerCase().startsWith('partner_role:')) {
+          pRole ??= t.substring('partner_role:'.length).trim();
+        }
+      }
+    }
+
     return PropertyModel(
       id: json['id'],
       title: _sanitize(json['title']) ?? '',
@@ -142,7 +166,7 @@ class PropertyModel {
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
       imageUrls: List<String>.from(json['image_urls'] ?? []),
-      tags: List<String>.from((json['tags'] ?? []).map((t) => _sanitize(t))),
+      tags: tagsList,
       beds: _sanitize(json['beds']) ?? '',
       baths: _sanitize(json['baths']) ?? '',
       area: _sanitize(json['area']) ?? '',
@@ -186,10 +210,28 @@ class PropertyModel {
       tenantPreference: json['tenant_preference'],
       petPolicy: json['pet_policy'],
       parkingInfo: json['parking_info'],
+      partnerId: pId,
+      partnerEmail: pEmail,
+      partnerRole: pRole,
     );
   }
 
   Map<String, dynamic> toJson() {
+    // If partner details are attached, ensure partner tag is in tags array
+    final outTags = List<String>.from(tags);
+    if (partnerEmail != null && partnerEmail!.isNotEmpty) {
+      final tagVal = 'partner:${partnerEmail!.toLowerCase().trim()}';
+      if (!outTags.any((t) => t.toLowerCase() == tagVal)) {
+        outTags.add(tagVal);
+      }
+      if (partnerRole != null && partnerRole!.isNotEmpty) {
+        final roleVal = 'partner_role:$partnerRole';
+        if (!outTags.any((t) => t.toLowerCase() == roleVal)) {
+          outTags.add(roleVal);
+        }
+      }
+    }
+
     return {
       'title': title,
       'price': price,
@@ -197,7 +239,7 @@ class PropertyModel {
       'latitude': latitude,
       'longitude': longitude,
       'image_urls': imageUrls,
-      'tags': tags,
+      'tags': outTags,
       'beds': beds,
       'baths': baths,
       'area': area,
@@ -243,4 +285,5 @@ class PropertyModel {
       'suggested_photos': suggestedPhotos,
     };
   }
+
 }

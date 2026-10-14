@@ -626,10 +626,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       Position? position;
       try {
+        final cachedLastPos = await Geolocator.getLastKnownPosition();
+        if (cachedLastPos != null && mounted) {
+          _currentPosition = cachedLastPos;
+          if (_manualLocationOverride == null) {
+            _updateGeocodingIfNeeded(cachedLastPos);
+            setState(() {});
+          }
+        }
+      } catch (_) {}
+
+      try {
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.medium,
-            timeLimit: Duration(seconds: 5),
+            timeLimit: Duration(seconds: 4),
           ),
         );
       } catch (_) {
@@ -996,13 +1007,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       searchRadiusKm += 5;
     }
 
-    if (tempFiltered.isEmpty) {
-      // Returning empty list triggers the empty state with our new custom location prompts
-      tempFiltered = [];
+    // Never show an empty feed on opening the app if properties exist!
+    // Fall back to showing all platform properties matching type & filters
+    bool isFallback = false;
+    if (tempFiltered.isEmpty && _searchQuery.isEmpty) {
+      tempFiltered = _allProperties
+          .where((p) => matchesType(p) && matchesFilters(p))
+          .toList();
+      isFallback = true;
     }
 
     tempFiltered.sort((a, b) {
-      if (_filterState.sortBy == 'distance') {
+      if (_filterState.sortBy == 'distance' || isFallback) {
         double distA = Geolocator.distanceBetween(
           currentPos.latitude,
           currentPos.longitude,
@@ -1603,7 +1619,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _buildPropertyList(displayedProperties, 'Explore'),
+                  child: (_isInitialLoading && _allProperties.isEmpty)
+                      ? _buildSkeletonGrid()
+                      : _buildPropertyList(displayedProperties, 'Explore'),
                 ),
               ],
             ),
@@ -1955,9 +1973,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ? constraints.maxHeight - 140
                     : 300,
               ),
-              child: properties.isEmpty
-                  ? Center(child: _buildEmptyState(emptyLabel))
-                  : _buildPropertyList(properties, typeStr),
+              child: (_isInitialLoading && _allProperties.isEmpty)
+                  ? _buildSkeletonGrid()
+                  : (properties.isEmpty
+                      ? Center(child: _buildEmptyState(emptyLabel))
+                      : _buildPropertyList(properties, typeStr)),
             ),
           );
         },
@@ -3402,6 +3422,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final address = result['address'] as String;
       _saveManualLocation(pos, address);
     }
+  }
+
+  Widget _buildSkeletonGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 16,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: 6,
+      itemBuilder: (context, index) => const SkeletonGridCard(),
+    );
   }
 
   Widget _buildPropertyList(List<PropertyModel> properties, String typeStr) {

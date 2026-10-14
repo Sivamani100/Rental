@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -27,6 +26,8 @@ import 'package:rental/features/transport/data/datasources/transport_service.dar
 import 'package:rental/core/services/analytics_service.dart';
 import 'package:rental/core/utils/image_compressor.dart';
 import 'package:rental/core/ads/native_ad_widget.dart';
+import 'package:rental/features/partner/data/services/partner_service.dart';
+import 'package:rental/features/property_posting/presentation/pages/posting_screen.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final PropertyModel property;
@@ -1169,6 +1170,24 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             ),
                             Row(
                               children: [
+                                if (PartnerService.instance.isLoggedIn &&
+                                    PartnerService.instance.myProperties.any((p) => p.id == widget.property.id)) ...[
+                                  _buildGlassIconButton(
+                                    icon: Iconsax.edit_2,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        CupertinoPageRoute(
+                                          builder: (_) => PostingScreen(propertyToEdit: widget.property),
+                                        ),
+                                      ).then((_) {
+                                        if (mounted) setState(() {});
+                                      });
+                                    },
+                                    iconColor: AppTheme.primaryYellow,
+                                  ),
+                                  const SizedBox(width: 10),
+                                ],
                                 _buildGlassIconButton(
                                   icon: CupertinoIcons.share,
                                   onTap: _shareProperty,
@@ -2343,6 +2362,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               'toggle_availability',
                               params: {'p_property_id': widget.property.id!, 'p_is_available': false},
                             );
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.remove('cached_properties');
+                            await prefs.remove('cached_properties_ts');
+                            if (PartnerService.instance.isLoggedIn) {
+                              PartnerService.instance.fetchMyProperties();
+                            }
                           } catch (e) {
                             debugPrint('Error updating availability: $e');
                           }
@@ -2450,6 +2475,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               'toggle_availability',
                               params: {'p_property_id': widget.property.id!, 'p_is_available': true},
                             );
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.remove('cached_properties');
+                            await prefs.remove('cached_properties_ts');
+                            if (PartnerService.instance.isLoggedIn) {
+                              PartnerService.instance.fetchMyProperties();
+                            }
                           } catch (e) {
                             debugPrint('Error updating availability: $e');
                           }
@@ -2899,7 +2930,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   void _showContributePhotosSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     List<XFile> suggestedPhotos = [];
-    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,

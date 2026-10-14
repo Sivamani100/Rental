@@ -1,7 +1,8 @@
-import 'package:flutter/cupertino.dart';
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:rental/features/settings/presentation/pages/settings_screen.dart';
 import 'package:iconsax/iconsax.dart';
@@ -10,7 +11,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lottie/lottie.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:rental/core/widgets/app_snackbar.dart';
@@ -22,6 +22,7 @@ import 'package:rental/core/widgets/image_cropper_sheet.dart';
 import 'package:rental/features/property_posting/presentation/pages/photo_position_screen.dart';
 import 'package:rental/features/property_posting/presentation/widgets/property_posting_status_sheet.dart';
 import 'package:rental/features/property_posting/presentation/pages/area_calculator_map_screen.dart';
+import 'package:rental/features/partner/data/services/partner_service.dart';
 
 class PostingScreen extends StatefulWidget {
   final Position? currentLocation;
@@ -181,6 +182,7 @@ class _PostingScreenState extends State<PostingScreen> {
     }
 
     if (_isEditing) {
+      _currentStep = 2;
       final p = widget.propertyToEdit!;
       _selectedType = p.type;
       _titleController.text = p.title;
@@ -190,7 +192,16 @@ class _PostingScreenState extends State<PostingScreen> {
       _maintenanceController.text =
           p.maintenanceCharges?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
       _addressController.text = p.locationStr;
-      _phoneController.text = p.ownerPhone;
+      
+      final cleanPhone = p.ownerPhone.trim();
+      if (cleanPhone.isNotEmpty && cleanPhone != 'N/A') {
+        _phoneController.text = cleanPhone;
+      } else if (PartnerService.instance.isLoggedIn && PartnerService.instance.currentPartner != null) {
+        _phoneController.text = PartnerService.instance.currentPartner!.phone;
+      } else {
+        _phoneController.text = '';
+      }
+
       _whatsappController.text = p.ownerWhatsapp ?? '';
       _descriptionController.text = p.description ?? '';
       _perDayWithFoodController.text = p.perDayWithFood ?? '';
@@ -745,7 +756,11 @@ class _PostingScreenState extends State<PostingScreen> {
         },
         onDismissForm: () {
           if (mounted) {
-            widget.onDismissForm?.call();
+            if (widget.onDismissForm != null) {
+              widget.onDismissForm!.call();
+            } else if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            }
           }
         },
       ),
@@ -771,15 +786,26 @@ class _PostingScreenState extends State<PostingScreen> {
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(20, 12, 16, 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'Post Property',
-                        style: TextStyle(
+                      if (Navigator.of(context).canPop())
+                        BouncingButton(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.of(context).pop();
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.only(right: 12),
+                            child: Icon(CupertinoIcons.back, color: Colors.black87, size: 24),
+                          ),
+                        ),
+                      Text(
+                        _isEditing ? 'Edit Property' : 'Post Property',
+                        style: const TextStyle(
                           fontFamily: 'ProximaNova',
                           color: Colors.black87,
                           fontSize: 20,
@@ -803,10 +829,10 @@ class _PostingScreenState extends State<PostingScreen> {
                             ),
                           );
                         },
-                        child: const Padding(
+                        child: Padding(
                           padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
-                          child: Icon(
-                            CupertinoIcons.heart,
+                          child: const Icon(
+                            Iconsax.heart,
                             color: Colors.black87,
                             size: 24,
                           ),
@@ -822,9 +848,9 @@ class _PostingScreenState extends State<PostingScreen> {
                             ),
                           );
                         },
-                        child: const Padding(
+                        child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
-                          child: Icon(
+                          child: const Icon(
                             Iconsax.setting_2,
                             color: Colors.black87,
                             size: 24,
@@ -874,7 +900,7 @@ class _PostingScreenState extends State<PostingScreen> {
                   child: Row(
                     children: [
                       const Icon(
-                        CupertinoIcons.exclamationmark_triangle_fill,
+                        Iconsax.warning_2,
                         color: Colors.red,
                         size: 18,
                       ),
@@ -892,7 +918,7 @@ class _PostingScreenState extends State<PostingScreen> {
                       GestureDetector(
                         onTap: () => setState(() => _sheetErrorMessage = null),
                         child: const Icon(
-                          CupertinoIcons.clear,
+                          Icons.close_rounded,
                           color: Colors.red,
                           size: 16,
                         ),
@@ -928,44 +954,52 @@ class _PostingScreenState extends State<PostingScreen> {
                     final isCompleted = stepIndex < _currentStep;
                     final isCurrent = stepIndex == _currentStep;
 
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isCompleted
-                            ? Colors.green
-                            : (isCurrent
-                                ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                                : Colors.transparent),
-                        border: Border.all(
+                    return GestureDetector(
+                      onTap: () {
+                        if (_isEditing || stepIndex <= _currentStep) {
+                          HapticFeedback.selectionClick();
+                          setState(() => _currentStep = stepIndex);
+                        }
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
                           color: isCompleted
                               ? Colors.green
                               : (isCurrent
                                   ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                                  : (isDark ? AppTheme.darkBorder : Colors.grey.shade400)),
-                          width: 1.5,
+                                  : Colors.transparent),
+                          border: Border.all(
+                            color: isCompleted
+                                ? Colors.green
+                                : (isCurrent
+                                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
+                                    : (isDark ? AppTheme.darkBorder : Colors.grey.shade400)),
+                            width: 1.5,
+                          ),
                         ),
-                      ),
-                      child: Center(
-                        child: isCompleted
-                            ? const Icon(
-                                CupertinoIcons.checkmark_alt,
-                                size: 16,
-                                color: Colors.white,
-                              )
-                            : Text(
-                                '$stepIndex',
-                                style: TextStyle(
-                                  fontFamily: 'ProximaNova',
-                                  fontSize: 13,
-                                  fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
-                                  color: isCurrent
-                                      ? (isDark ? Colors.black : Colors.white)
-                                      : (isDark ? Colors.grey.shade400 : Colors.grey.shade500),
+                        child: Center(
+                          child: isCompleted
+                              ? const Icon(
+                                  Icons.check,
+                                  size: 16,
+                                  color: Colors.white,
+                                )
+                              : Text(
+                                  '$stepIndex',
+                                  style: TextStyle(
+                                    fontFamily: 'ProximaNova',
+                                    fontSize: 13,
+                                    fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+                                    color: isCurrent
+                                        ? (isDark ? Colors.black : Colors.white)
+                                        : (isDark ? Colors.grey.shade400 : Colors.grey.shade500),
+                                  ),
                                 ),
-                              ),
+                        ),
                       ),
                     );
                   }),
@@ -995,31 +1029,6 @@ class _PostingScreenState extends State<PostingScreen> {
     );
   }
 
-  String _getStepTitle() {
-    switch (_currentStep) {
-      case 1:
-        return 'Property Type';
-      case 2:
-        return 'Photos & Basic Info';
-      case 3:
-        if (_selectedType == 'PG') return 'Room, Sharing & In-Room Amenities';
-        if (_selectedType == 'Buy') return 'Property Type, Dimensions & Facing';
-        return 'Space, BHK & Physical Condition';
-      case 4:
-        if (_selectedType == 'PG') return 'Food, Mess & Utilities';
-        if (_selectedType == 'Buy')
-          return 'Legal Clearances, Approvals & Access';
-        return 'Water, Metering & Bills';
-      case 5:
-        if (_selectedType == 'PG') return 'Security, Hygiene & Rules';
-        if (_selectedType == 'Buy') return 'Ownership, Amenities & Highlights';
-        return 'Agreement, Policies & Guidelines';
-      case 6:
-        return 'Owner Contact & Review';
-      default:
-        return '';
-    }
-  }
 
   Widget _buildStepContent() {
     switch (_currentStep) {
@@ -1059,10 +1068,12 @@ class _PostingScreenState extends State<PostingScreen> {
       children: [
         if (_currentStep > 1)
           Expanded(
+            flex: 1,
             child: BouncingButton(
               onTap: _isSubmitting
                   ? null
                   : () {
+                      HapticFeedback.selectionClick();
                       setState(() => _currentStep--);
                     },
               child: Container(
@@ -1077,8 +1088,9 @@ class _PostingScreenState extends State<PostingScreen> {
                 child: Text(
                   'Back',
                   style: TextStyle(
+                    fontFamily: 'ProximaNova',
                     color: isDark ? Colors.white : Colors.black87,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1087,11 +1099,12 @@ class _PostingScreenState extends State<PostingScreen> {
           ),
         if (_currentStep > 1) const SizedBox(width: 12),
         Expanded(
-          flex: 2,
+          flex: _currentStep > 1 ? 2 : 1,
           child: BouncingButton(
             onTap: _isSubmitting
                 ? null
                 : () {
+                    HapticFeedback.selectionClick();
                     if (_currentStep < _totalSteps) {
                       setState(() => _currentStep++);
                     } else {
@@ -1123,8 +1136,9 @@ class _PostingScreenState extends State<PostingScreen> {
                           child: Text(
                             _uploadStatusMessage.isNotEmpty
                                 ? _uploadStatusMessage
-                                : 'Posting Property...',
+                                : (_isEditing ? 'Updating Property...' : 'Posting Property...'),
                             style: TextStyle(
+                              fontFamily: 'ProximaNova',
                               color: isDark ? Colors.black : Colors.white,
                               fontSize: 13.5,
                               fontWeight: FontWeight.bold,
@@ -1137,11 +1151,12 @@ class _PostingScreenState extends State<PostingScreen> {
                     )
                   : Text(
                       _currentStep == _totalSteps
-                          ? 'Post Property'
+                          ? (_isEditing ? 'Update Property' : 'Post Property')
                           : 'Next Step',
                       style: TextStyle(
+                        fontFamily: 'ProximaNova',
                         color: isDark ? Colors.black : Colors.white,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -1190,7 +1205,7 @@ class _PostingScreenState extends State<PostingScreen> {
                 subtitle: 'Flats, villas & apartments',
                 typeKey: 'Rental',
                 lottiePath: 'assets/animations/rental.json',
-                icon: CupertinoIcons.house_fill,
+                icon: Iconsax.home_2,
                 lottieHeight: 110,
                 lottieScale: 1.55,
               ),
@@ -1203,7 +1218,7 @@ class _PostingScreenState extends State<PostingScreen> {
                 subtitle: 'Rooms with food & Wi-Fi',
                 typeKey: 'PG',
                 lottiePath: 'assets/animations/hostel.json',
-                icon: CupertinoIcons.building_2_fill,
+                icon: Iconsax.building_4,
                 lottieHeight: 85,
                 lottieScale: 1.05,
               ),
@@ -1220,7 +1235,7 @@ class _PostingScreenState extends State<PostingScreen> {
               'List independent houses, villas, flats, commercial spaces or plots.',
           typeKey: 'Buy',
           lottiePath: 'assets/animations/buy_or_sell.json',
-          icon: CupertinoIcons.tag_fill,
+          icon: Iconsax.tag,
         ),
         const SizedBox(height: 12),
       ],
@@ -1350,7 +1365,7 @@ class _PostingScreenState extends State<PostingScreen> {
                   ),
                   child: isSelected
                       ? Icon(
-                          CupertinoIcons.checkmark_alt,
+                          Icons.check,
                           size: 14,
                           color: isDark ? Colors.black : Colors.white,
                         )
@@ -1668,7 +1683,7 @@ class _PostingScreenState extends State<PostingScreen> {
                 ),
                 child: isSelected
                     ? Icon(
-                        CupertinoIcons.checkmark_alt,
+                        Icons.check,
                         size: 15,
                         color: isDark ? Colors.black : Colors.white,
                       )
@@ -1691,7 +1706,7 @@ class _PostingScreenState extends State<PostingScreen> {
       key: const ValueKey(2),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Upload Photos', CupertinoIcons.camera_fill),
+        _buildSectionHeader('Upload Photos', Iconsax.camera),
         const SizedBox(height: 8),
         _selectedImages.isEmpty && _existingImages.isEmpty
             ? GestureDetector(
@@ -1713,7 +1728,7 @@ class _PostingScreenState extends State<PostingScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        CupertinoIcons.camera_fill,
+                        Iconsax.camera,
                         size: 36,
                         color: isDark
                             ? AppTheme.darkTextSecondary
@@ -1773,8 +1788,8 @@ class _PostingScreenState extends State<PostingScreen> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             icon: Icon(
-                              CupertinoIcons.arrow_2_circlepath_circle,
-                              size: 15,
+                              Icons.swap_vert_rounded,
+                              size: 16,
                               color: isDark
                                   ? AppTheme.primaryYellow
                                   : Colors.black,
@@ -1802,7 +1817,7 @@ class _PostingScreenState extends State<PostingScreen> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             icon: Icon(
-                              CupertinoIcons.photo_on_rectangle,
+                              Iconsax.gallery_add,
                               size: 15,
                               color: isDark
                                   ? AppTheme.primaryYellow
@@ -1922,7 +1937,7 @@ class _PostingScreenState extends State<PostingScreen> {
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
-                                      CupertinoIcons.clear,
+                                      Icons.close_rounded,
                                       color: Colors.white,
                                       size: 13,
                                     ),
@@ -1961,7 +1976,7 @@ class _PostingScreenState extends State<PostingScreen> {
                                         ),
                                       ),
                                       child: Icon(
-                                        CupertinoIcons.crop,
+                                        Iconsax.crop,
                                         color: AppTheme.primaryYellow,
                                         size: 12,
                                       ),
@@ -1981,7 +1996,7 @@ class _PostingScreenState extends State<PostingScreen> {
           _selectedType == 'Buy'
               ? 'Selling Price & Location'
               : 'Basic Pricing & Location',
-          CupertinoIcons.creditcard_fill,
+          Iconsax.card,
         ),
         const SizedBox(height: 12),
         _buildCustomInput(
@@ -2061,7 +2076,7 @@ class _PostingScreenState extends State<PostingScreen> {
         const SizedBox(height: 20),
         _buildSectionHeader(
           'Location & Address',
-          CupertinoIcons.location_solid,
+          Iconsax.location,
         ),
         const SizedBox(height: 10),
         _locationAddress.isEmpty
@@ -2081,7 +2096,7 @@ class _PostingScreenState extends State<PostingScreen> {
                           ),
                         )
                       : Icon(
-                          CupertinoIcons.location_solid,
+                          Iconsax.location,
                           color: isDark ? AppTheme.primaryYellow : Colors.black,
                           size: 18,
                         ),
@@ -2123,7 +2138,7 @@ class _PostingScreenState extends State<PostingScreen> {
                 child: Row(
                   children: [
                     Icon(
-                      CupertinoIcons.location_solid,
+                      Iconsax.location,
                       color: isDark ? AppTheme.primaryYellow : Colors.green,
                       size: 20,
                     ),
@@ -2144,7 +2159,7 @@ class _PostingScreenState extends State<PostingScreen> {
                         _addressController.clear();
                       }),
                       child: const Icon(
-                        CupertinoIcons.clear_circled_solid,
+                        Icons.close_rounded,
                         color: Colors.redAccent,
                         size: 18,
                       ),
@@ -2202,7 +2217,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Occupancy & Gender Preference',
           subtitle: 'Select who can stay in this PG / Hostel',
-          icon: CupertinoIcons.person_2_fill,
+          icon: Iconsax.profile_2user,
           child: _buildSingleSelectGroup(
             options: ['Boys Only', 'Girls Only', 'Co-Living (Unisex)'],
             selected: _pgGender,
@@ -2212,7 +2227,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Room Sharing Type',
           subtitle: 'Number of beds / occupants sharing per room',
-          icon: CupertinoIcons.square_grid_2x2_fill,
+          icon: Iconsax.grid_2,
           child: _buildSingleSelectGroup(
             options: ['Single Room', '2 Sharing', '3 Sharing', '4+ Sharing'],
             selected: _pgSharing,
@@ -2222,7 +2237,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Air Conditioning / Climate',
           subtitle: 'Cooling provision provided in rooms',
-          icon: CupertinoIcons.wind,
+          icon: Iconsax.wind_2,
           child: _buildSingleSelectGroup(
             options: ['AC Room', 'Non-AC Room', 'Air Cooler Provided'],
             selected: _pgAcType,
@@ -2232,7 +2247,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Bathroom Setup',
           subtitle: 'Washroom attachment and privacy level',
-          icon: CupertinoIcons.drop_fill,
+          icon: Iconsax.drop,
           child: _buildSingleSelectGroup(
             options: ['Attached Bathroom', 'Common Bathroom (Cleaned Daily)'],
             selected: _pgBathroom,
@@ -2242,7 +2257,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Toilet Fixture Type',
           subtitle: 'Commode or pan type installed in washrooms',
-          icon: CupertinoIcons.settings,
+          icon: Iconsax.setting_2,
           child: _buildSingleSelectGroup(
             options: ['Western Toilet', 'Indian Toilet', 'Both Available'],
             selected: _pgToiletType,
@@ -2252,7 +2267,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'In-Room Furnishings & Essentials',
           subtitle: 'Tap all items available inside the room',
-          icon: CupertinoIcons.lightbulb_fill,
+          icon: Iconsax.lamp_on,
           child: _buildMultiSelectChips(
             options: [
               'Bed & Mattress',
@@ -2282,7 +2297,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'BHK Configuration',
           subtitle: 'Select house or apartment layout type',
-          icon: CupertinoIcons.house_fill,
+          icon: Iconsax.home_2,
           child: _buildSingleSelectGroup(
             options: ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4+ BHK / Villa'],
             selected: _rentalBhk,
@@ -2304,7 +2319,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Furnishing Status',
           subtitle: 'Degree of furniture & fixtures included',
-          icon: CupertinoIcons.cube_box_fill,
+          icon: Iconsax.box_1,
           child: _buildSingleSelectGroup(
             options: ['Unfurnished', 'Semi-Furnished', 'Fully-Furnished'],
             selected: _rentalFurnishing,
@@ -2314,7 +2329,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Carpet Area & Built-up Space',
           subtitle: 'Total usable floor area in square feet',
-          icon: CupertinoIcons.fullscreen,
+          icon: Iconsax.maximize_4,
           child: _buildCustomInput(
             controller: _rentalAreaController,
             label: 'Carpet Area (sqft)',
@@ -2322,7 +2337,7 @@ class _PostingScreenState extends State<PostingScreen> {
             keyboardType: TextInputType.number,
             onChanged: (val) => _rentalArea = val,
             suffixIcon: IconButton(
-              icon: const Icon(Icons.map_outlined),
+              icon: const Icon(Iconsax.map_1),
               tooltip: 'Calculate via Map',
               onPressed: () async {
                 final result = await Navigator.push(
@@ -2348,7 +2363,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Bedrooms & Bathrooms Count',
           subtitle: 'Total count of private bedrooms and washrooms',
-          icon: CupertinoIcons.building_2_fill,
+          icon: Iconsax.building_4,
           child: Row(
             children: [
               Expanded(
@@ -2374,7 +2389,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Floor & Building Level',
           subtitle: 'Specific floor number and total building floors',
-          icon: CupertinoIcons.square_stack_3d_up_fill,
+          icon: Iconsax.layer,
           child: Row(
             children: [
               Expanded(
@@ -2400,7 +2415,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Physical Inspection Checklist',
           subtitle: 'Highlight confirmed verified features',
-          icon: CupertinoIcons.shield_fill,
+          icon: Iconsax.shield_tick,
           child: _buildMultiSelectChips(
             options: [
               'All Taps & Showers Tested',
@@ -2432,7 +2447,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Property Type / Category',
           subtitle: 'Select the exact nature of property for sale',
-          icon: CupertinoIcons.building_2_fill,
+          icon: Iconsax.building_4,
           child: _buildSingleSelectGroup(
             options: [
               'Independent House / Villa',
@@ -2448,7 +2463,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'BHK Configuration',
           subtitle: 'Select number of bedrooms / layout setup',
-          icon: CupertinoIcons.house_fill,
+          icon: Iconsax.home_2,
           child: _buildSingleSelectGroup(
             options: [
               '1 BHK',
@@ -2483,7 +2498,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Property Entrance Facing',
           subtitle: 'Main entrance or gate facing direction',
-          icon: CupertinoIcons.arrow_swap,
+          icon: Iconsax.direct_normal,
           child: _buildSingleSelectGroup(
             options: [
               'East Facing',
@@ -2500,7 +2515,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Plot & Built-up Dimensions',
           subtitle: 'Total land area and constructed usable carpet area',
-          icon: CupertinoIcons.fullscreen,
+          icon: Iconsax.maximize_4,
           child: Row(
             children: [
               Expanded(
@@ -2510,7 +2525,7 @@ class _PostingScreenState extends State<PostingScreen> {
                   hint: 'e.g. 150 Sq.Yds / 3.5 Cents',
                   onChanged: (val) => _buyPlotArea = val,
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.map_outlined),
+                    icon: const Icon(Iconsax.map_1),
                     tooltip: 'Calculate via Map',
                     onPressed: () async {
                       final result = await Navigator.push(
@@ -2542,7 +2557,7 @@ class _PostingScreenState extends State<PostingScreen> {
                   keyboardType: TextInputType.number,
                   onChanged: (val) => _buyBuiltUpArea = val,
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.map_outlined),
+                    icon: const Icon(Iconsax.map_1),
                     tooltip: 'Calculate via Map',
                     onPressed: () async {
                       final result = await Navigator.push(
@@ -2571,7 +2586,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Construction Age & Status',
           subtitle: 'Current physical development status of property',
-          icon: CupertinoIcons.timer,
+          icon: Iconsax.timer_1,
           child: _buildSingleSelectGroup(
             options: [
               'Ready to Move (Brand New 0-1 yr)',
@@ -2588,7 +2603,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Furnishing & Interior Level',
           subtitle: 'Interior work and woodworking done on property',
-          icon: CupertinoIcons.cube_box_fill,
+          icon: Iconsax.box_1,
           child: _buildSingleSelectGroup(
             options: [
               'Unfurnished / Raw Shell',
@@ -2614,7 +2629,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Meal Plan Included',
           subtitle: 'Select daily meal schedule provided to residents',
-          icon: CupertinoIcons.circle_grid_hex,
+          icon: Iconsax.coffee,
           child: _buildSingleSelectGroup(
             options: [
               '3 Meals Included (Breakfast, Lunch, Dinner)',
@@ -2629,7 +2644,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Food Quality & Dietary Type',
           subtitle: 'Dietary preferences and preparation style',
-          icon: CupertinoIcons.heart,
+          icon: Iconsax.heart,
           child: _buildSingleSelectGroup(
             options: [
               'Pure Veg Food',
@@ -2644,7 +2659,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Drinking Water Facility',
           subtitle: 'Water purification and dispensing setup',
-          icon: CupertinoIcons.drop_fill,
+          icon: Iconsax.drop,
           child: _buildSingleSelectGroup(
             options: [
               'RO Purified + Cool Water Dispenser',
@@ -2658,7 +2673,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'General Water Supply',
           subtitle: 'Availability schedule for daily utility use',
-          icon: CupertinoIcons.drop_fill,
+          icon: Iconsax.drop,
           child: _buildSingleSelectGroup(
             options: [
               '24/7 Continuous Water Supply',
@@ -2671,7 +2686,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Power Supply & Backup',
           subtitle: 'Electricity reliability and inverter/generator support',
-          icon: CupertinoIcons.bolt_fill,
+          icon: Iconsax.flash_1,
           child: _buildSingleSelectGroup(
             options: [
               'Full Inverter Power Backup',
@@ -2685,7 +2700,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Shared Appliances & Common Amenities',
           subtitle: 'Check all appliances available for common use',
-          icon: CupertinoIcons.desktopcomputer,
+          icon: Iconsax.devices_1,
           child: _buildMultiSelectChips(
             options: [
               'High-Speed Wi-Fi',
@@ -2715,7 +2730,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Electricity Meter & Power',
           subtitle: 'Billing method for tenant electrical consumption',
-          icon: CupertinoIcons.bolt_fill,
+          icon: Iconsax.flash_1,
           child: _buildSingleSelectGroup(
             options: [
               'Dedicated EB Digital Meter',
@@ -2729,7 +2744,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Water Supply & Charges',
           subtitle: 'Water connection and billing arrangement',
-          icon: CupertinoIcons.drop_fill,
+          icon: Iconsax.drop,
           child: _buildSingleSelectGroup(
             options: [
               'Included in Maintenance',
@@ -2743,7 +2758,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Parking Facility',
           subtitle: 'Vehicle parking space inside the premises',
-          icon: CupertinoIcons.car_detailed,
+          icon: Iconsax.car,
           child: _buildSingleSelectGroup(
             options: [
               'Covered Car & Bike Parking',
@@ -2758,7 +2773,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Utilities & Maintenance Checklist',
           subtitle: 'Select all features verified for this unit',
-          icon: CupertinoIcons.checkmark_alt,
+          icon: Iconsax.tick_circle,
           child: _buildMultiSelectChips(
             options: [
               '24/7 Municipal & Borewell Water',
@@ -2788,7 +2803,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Legal Clearances & Approvals',
           subtitle: 'Title legitimacy, sanction plans and approved authority',
-          icon: CupertinoIcons.doc_text_fill,
+          icon: Iconsax.document_text,
           child: _buildSingleSelectGroup(
             options: [
               'Freehold 100% Clear Title',
@@ -2804,7 +2819,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Front Road Width & Access',
           subtitle: 'Connecting approach road width in front of property',
-          icon: CupertinoIcons.arrow_swap,
+          icon: Iconsax.routing_2,
           child: _buildSingleSelectGroup(
             options: [
               '30 Feet Blacktop Road',
@@ -2820,7 +2835,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Water Supply & Underground Drainage',
           subtitle: 'Borewell yield, municipal connection and drainage status',
-          icon: CupertinoIcons.drop_fill,
+          icon: Iconsax.drop,
           child: _buildSingleSelectGroup(
             options: [
               '24/7 Deep Borewell + Municipal Water Connection',
@@ -2835,7 +2850,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Floors & Structure Level',
           subtitle: 'Total number of floors built on site',
-          icon: CupertinoIcons.square_stack_3d_up_fill,
+          icon: Iconsax.layer,
           child: _buildSingleSelectGroup(
             options: [
               'Ground Floor Only',
@@ -2863,7 +2878,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Cleanliness & Housekeeping',
           subtitle: 'Frequency of room and washroom sanitization',
-          icon: CupertinoIcons.paintbrush_fill,
+          icon: Iconsax.brush_1,
           child: _buildSingleSelectGroup(
             options: [
               'Daily Room & Bathroom Cleaning',
@@ -2877,7 +2892,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Owner & Warden Presence',
           subtitle: 'Management and supervision available on premises',
-          icon: CupertinoIcons.person_fill,
+          icon: Iconsax.user,
           child: _buildSingleSelectGroup(
             options: [
               'Owner on site & Resident Warden',
@@ -2891,7 +2906,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Gate Timings & Curfew Rules',
           subtitle: 'Night entry deadline or 24/7 access',
-          icon: CupertinoIcons.clock_fill,
+          icon: Iconsax.clock,
           child: _buildSingleSelectGroup(
             options: [
               '10:30 PM Gate Close',
@@ -2906,7 +2921,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Notice Period for Vacating',
           subtitle: 'Prior notice required before leaving the accommodation',
-          icon: CupertinoIcons.calendar,
+          icon: Iconsax.calendar,
           child: _buildSingleSelectGroup(
             options: ['15 Days', '1 Month', 'No Lock-in'],
             selected: _pgNotice,
@@ -2916,7 +2931,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Security & Verification Norms',
           subtitle: 'Safety rules and guest policies enforced',
-          icon: CupertinoIcons.shield_fill,
+          icon: Iconsax.shield_tick,
           child: _buildMultiSelectChips(
             options: [
               '24/7 CCTV & Security',
@@ -2944,7 +2959,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Rental Agreement Duration',
           subtitle: 'Standard tenure for the rent agreement',
-          icon: CupertinoIcons.doc_text_fill,
+          icon: Iconsax.document_text,
           child: _buildSingleSelectGroup(
             options: [
               '11 Months Standard',
@@ -2958,7 +2973,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Notice Period for Vacating',
           subtitle: 'Advance notice required before moving out',
-          icon: CupertinoIcons.calendar,
+          icon: Iconsax.calendar,
           child: _buildSingleSelectGroup(
             options: ['1 Month', '2 Months', '15 Days'],
             selected: _rentalNotice,
@@ -2968,7 +2983,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Tenant Preference',
           subtitle: 'Eligible resident profiles accepted by owner',
-          icon: CupertinoIcons.person_2_fill,
+          icon: Iconsax.profile_2user,
           child: _buildSingleSelectGroup(
             options: [
               'Family & Working Professionals',
@@ -2983,7 +2998,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Pet Policy',
           subtitle: 'Are household pets permitted on the property?',
-          icon: CupertinoIcons.heart,
+          icon: Iconsax.heart,
           child: _buildSingleSelectGroup(
             options: ['Pets Allowed', 'No Pets Allowed'],
             selected: _rentalPetPolicy,
@@ -2993,7 +3008,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'House Rules & Society Norms',
           subtitle: 'Guidelines for tenants regarding noise, diet & visitors',
-          icon: CupertinoIcons.info_circle_fill,
+          icon: Iconsax.info_circle,
           child: _buildMultiSelectChips(
             options: [
               'Non-Veg Allowed',
@@ -3020,7 +3035,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Ownership & Seller Profile',
           subtitle: 'Who is selling this property?',
-          icon: CupertinoIcons.person_fill,
+          icon: Iconsax.user,
           child: _buildSingleSelectGroup(
             options: [
               'Direct Owner (Zero Brokerage)',
@@ -3035,7 +3050,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Price Negotiability',
           subtitle: 'Flexibility on the quoted asking price',
-          icon: CupertinoIcons.tag_fill,
+          icon: Iconsax.tag,
           child: _buildSingleSelectGroup(
             options: [
               'Price Negotiable for Serious Buyers',
@@ -3049,7 +3064,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Parking Infrastructure',
           subtitle: 'Parking space allocated inside boundaries',
-          icon: CupertinoIcons.car_detailed,
+          icon: Iconsax.car,
           child: _buildSingleSelectGroup(
             options: [
               'Covered Car + 2-Wheeler Parking',
@@ -3064,7 +3079,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildQuestionSection(
           title: 'Key Highlights & Property Features',
           subtitle: 'Select confirmed features to highlight for buyers',
-          icon: CupertinoIcons.checkmark_alt,
+          icon: Iconsax.tick_circle,
           child: _buildMultiSelectChips(
             options: [
               'Good Ventilation & Natural Sunlight',
@@ -3094,13 +3109,18 @@ class _PostingScreenState extends State<PostingScreen> {
   Widget _buildStep6ContactAndReview() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final allPhotos = [
+      ..._existingImages.map((url) => {'isNetwork': true, 'path': url}),
+      ..._selectedImages.map((file) => {'isNetwork': false, 'path': file.path}),
+    ];
+
     return Column(
       key: const ValueKey(6),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
           'Owner / Caretaker Contact',
-          CupertinoIcons.phone_fill,
+          Iconsax.call,
         ),
         const SizedBox(height: 12),
         _buildCustomInput(
@@ -3127,144 +3147,625 @@ class _PostingScreenState extends State<PostingScreen> {
         const SizedBox(height: 20),
         _buildSectionHeader(
           'Listing Summary Preview',
-          CupertinoIcons.eye_solid,
+          Iconsax.eye,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
+
+        // FULL PREVIEW CARD WITH PHOTOS & COMPLETE SPECS
         Container(
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isDark ? AppTheme.darkCard : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      _titleController.text.isNotEmpty
-                          ? _titleController.text
-                          : 'Property Title',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.primaryYellow : Colors.black,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _selectedType,
-                      style: TextStyle(
-                        color: isDark ? Colors.black : Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _selectedType == 'Buy'
-                    ? 'Total Asking Price: ₹${_priceController.text.isNotEmpty ? _priceController.text : '0'}${_buyPriceNegotiable.isNotEmpty ? " • $_buyPriceNegotiable" : ""}'
-                    : '₹${_priceController.text.isNotEmpty ? _priceController.text : '0'}/month${_depositController.text.isNotEmpty ? " • Deposit: ₹${_depositController.text}" : ""}',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppTheme.primaryYellow : Colors.green,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _addressController.text.isNotEmpty
-                    ? _addressController.text
-                    : (_locationAddress.isNotEmpty
-                          ? _locationAddress
-                          : 'Location Pinned'),
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isDark
-                      ? AppTheme.darkTextSecondary
-                      : Colors.grey.shade700,
-                ),
-              ),
-              Divider(height: 20, color: isDark ? AppTheme.darkBorder : null),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children:
-                    (_selectedType == 'PG'
-                            ? [
-                                _pgGender,
-                                _pgSharing,
-                                _pgFoodPlan,
-                                _pgAcType,
-                                ..._pgSelectedAmenities.take(3),
-                              ]
-                            : (_selectedType == 'Buy'
-                                  ? [
-                                      _buyPropertyType,
-                                      _buyBhk,
-                                      _buyFacing,
-                                      _buyConstructionStatus,
-                                      _buyOwnershipType,
-                                      ..._buySelectedFeatures.take(3),
-                                    ]
-                                  : [
-                                      _rentalBhk,
-                                      _rentalFurnishing,
-                                      _rentalEbMeter,
-                                      ..._rentalSelectedFeatures.take(3),
-                                    ]))
-                        .where((item) => item.isNotEmpty)
-                        .map(
-                          (item) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? AppTheme.darkCardElevated
-                                  : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isDark
-                                    ? AppTheme.darkBorder
-                                    : Colors.grey.shade300,
-                              ),
-                            ),
-                            child: Text(
-                              item,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: isDark
-                                    ? AppTheme.darkTextSecondary
-                                    : Colors.black87,
-                              ),
+              // 1. Photos Section
+              _buildPreviewPhotoSection(allPhotos, isDark),
+
+              // 2. Info & Specs Details
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title & Property Type Tag
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _titleController.text.trim().isNotEmpty
+                                ? _titleController.text.trim()
+                                : (_isEditing ? widget.propertyToEdit!.title : 'Untitled Listing'),
+                            style: TextStyle(
+                              fontFamily: 'DMSans',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : Colors.black,
                             ),
                           ),
-                        )
-                        .toList(),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppTheme.primaryYellow : Colors.black,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _selectedType,
+                            style: TextStyle(
+                              fontFamily: 'ProximaNova',
+                              color: isDark ? Colors.black : Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Price Line
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          _selectedType == 'Buy'
+                              ? '₹${_priceController.text.trim().isNotEmpty ? _priceController.text.trim() : '0'}'
+                              : '₹${_priceController.text.trim().isNotEmpty ? _priceController.text.trim() : '0'}',
+                          style: TextStyle(
+                            fontFamily: 'DMSans',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: isDark ? AppTheme.primaryYellow : AppTheme.swiggyGreen,
+                          ),
+                        ),
+                        if (_selectedType != 'Buy')
+                          Text(
+                            ' /month',
+                            style: TextStyle(
+                              fontFamily: 'ProximaNova',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                            ),
+                          ),
+                        if (_depositController.text.trim().isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text(
+                            '• Deposit: ₹${_depositController.text.trim()}',
+                            style: TextStyle(
+                              fontFamily: 'ProximaNova',
+                              fontSize: 12.5,
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (_maintenanceController.text.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          'Maintenance: ₹${_maintenanceController.text.trim()}/mo',
+                          style: TextStyle(
+                            fontFamily: 'ProximaNova',
+                            fontSize: 12,
+                            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                    if (_selectedType == 'PG' &&
+                        (_perDayWithFoodController.text.isNotEmpty || _perDayWithoutFoodController.text.isNotEmpty))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Daily: ' +
+                              (_perDayWithFoodController.text.isNotEmpty ? '₹${_perDayWithFoodController.text} (Food)' : '') +
+                              (_perDayWithFoodController.text.isNotEmpty && _perDayWithoutFoodController.text.isNotEmpty ? ' • ' : '') +
+                              (_perDayWithoutFoodController.text.isNotEmpty ? '₹${_perDayWithoutFoodController.text} (No Food)' : ''),
+                          style: TextStyle(
+                            fontFamily: 'ProximaNova',
+                            fontSize: 12,
+                            color: AppTheme.swiggyOrange,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+
+                    const SizedBox(height: 10),
+
+                    // Location Line
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Iconsax.location5, color: AppTheme.swiggyOrange, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _addressController.text.trim().isNotEmpty
+                                ? _addressController.text.trim()
+                                : (_locationAddress.isNotEmpty ? _locationAddress : 'Location Pinned'),
+                            style: TextStyle(
+                              fontFamily: 'ProximaNova',
+                              fontSize: 13,
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+                    Divider(height: 1, color: isDark ? AppTheme.darkBorder : Colors.grey.shade200),
+                    const SizedBox(height: 14),
+
+                    // Specifications Section
+                    _buildPreviewSpecsSection(isDark),
+
+                    const SizedBox(height: 14),
+                    Divider(height: 1, color: isDark ? AppTheme.darkBorder : Colors.grey.shade200),
+                    const SizedBox(height: 14),
+
+                    // Contact & Description Preview
+                    _buildPreviewContactSection(isDark),
+                  ],
+                ),
               ),
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildPreviewPhotoSection(List<Map<String, dynamic>> allPhotos, bool isDark) {
+    if (allPhotos.isEmpty) {
+      return Container(
+        height: 130,
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF3F4F6),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Iconsax.gallery, size: 34, color: Colors.grey.shade400),
+              const SizedBox(height: 6),
+              Text(
+                'No Photos Uploaded',
+                style: TextStyle(
+                  fontFamily: 'ProximaNova',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              GestureDetector(
+                onTap: () => setState(() => _currentStep = 2),
+                child: Text(
+                  'Tap to Add Photos (Step 2)',
+                  style: TextStyle(
+                    fontFamily: 'ProximaNova',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.swiggyOrange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final firstPhoto = allPhotos.first;
+    final isNetwork = firstPhoto['isNetwork'] as bool;
+    final path = firstPhoto['path'] as String;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Stack(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              child: SizedBox(
+                height: 180,
+                width: double.infinity,
+                child: isNetwork
+                    ? CachedNetworkImage(
+                        imageUrl: path,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(color: Colors.grey.shade300),
+                        errorWidget: (_, __, ___) => Container(
+                          color: Colors.grey.shade300,
+                          child: const Icon(Iconsax.gallery, size: 40, color: Colors.grey),
+                        ),
+                      )
+                    : (kIsWeb
+                        ? Image.network(path, fit: BoxFit.cover)
+                        : Image.file(File(path), fit: BoxFit.cover)),
+              ),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.3),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.6),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 12,
+              bottom: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Iconsax.star, size: 12, color: AppTheme.primaryYellow),
+                    SizedBox(width: 4),
+                    Text(
+                      'Cover Photo',
+                      style: TextStyle(
+                        fontFamily: 'ProximaNova',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              right: 12,
+              bottom: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Iconsax.gallery, size: 12, color: Colors.white),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${allPhotos.length} Photo${allPhotos.length > 1 ? 's' : ''}',
+                      style: const TextStyle(
+                        fontFamily: 'ProximaNova',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (allPhotos.length > 1)
+          Container(
+            height: 62,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF9FAFB),
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: allPhotos.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, idx) {
+                final photo = allPhotos[idx];
+                final isNet = photo['isNetwork'] as bool;
+                final p = photo['path'] as String;
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: idx == 0 ? AppTheme.primaryYellow : Colors.transparent,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: isNet
+                        ? CachedNetworkImage(
+                            imageUrl: p,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(color: Colors.grey.shade300),
+                            errorWidget: (_, __, ___) => Container(color: Colors.grey.shade300),
+                          )
+                        : (kIsWeb
+                            ? Image.network(p, fit: BoxFit.cover)
+                            : Image.file(File(p), fit: BoxFit.cover)),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPreviewSpecsSection(bool isDark) {
+    if (_selectedType == 'PG') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'PG & Room Specifications',
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: isDark ? AppTheme.primaryYellow : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildPreviewSpecRow('Sharing', _pgSharing, Iconsax.profile_2user, isDark),
+          _buildPreviewSpecRow('Gender Suitability', _pgGender, Iconsax.user, isDark),
+          _buildPreviewSpecRow('Air Conditioning', _pgAcType, Iconsax.wind_2, isDark),
+          _buildPreviewSpecRow(
+            'Washroom',
+            _pgBathroom.isNotEmpty ? '$_pgBathroom${_pgToiletType.isNotEmpty ? " ($_pgToiletType)" : ""}' : '',
+            Iconsax.drop,
+            isDark,
+          ),
+          _buildPreviewSpecRow('Food Plan', _pgFoodPlan, Iconsax.coffee, isDark),
+          _buildPreviewSpecRow('Dietary Type', _pgFoodType, Iconsax.heart, isDark),
+          if (_pgFoodMenu.isNotEmpty)
+            _buildPreviewSpecRow('Food Menu', 'Weekly Menu Added (${_pgFoodMenu.length} Days)', Iconsax.calendar, isDark),
+          _buildPreviewSpecRow('Gate Curfew', _pgCurfew, Iconsax.clock, isDark),
+          _buildPreviewSpecRow('Notice Period', _pgNotice, Iconsax.calendar, isDark),
+          _buildPreviewSpecRow('Power Backup', _pgPowerBackup, Iconsax.flash_1, isDark),
+          _buildPreviewSpecRow('Water Supply', _pgWaterSupply, Iconsax.drop, isDark),
+          _buildPreviewSpecRow('Drinking Water', _pgDrinkingWater, Iconsax.drop, isDark),
+          _buildPreviewSpecRow('Daily Cleaning', _pgCleaning, Iconsax.brush_1, isDark),
+          _buildPreviewSpecRow('Management', _pgManagement, Iconsax.shield_tick, isDark),
+          _buildPreviewAmenitiesWrap(_pgSelectedAmenities, isDark),
+        ],
+      );
+    } else if (_selectedType == 'Buy') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Property Specifications',
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: isDark ? AppTheme.primaryYellow : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildPreviewSpecRow('Property Type', _buyPropertyType, Iconsax.building_4, isDark),
+          _buildPreviewSpecRow('BHK / Layout', _buyBhk, Iconsax.home_2, isDark),
+          _buildPreviewSpecRow('Facing Direction', _buyFacing, Iconsax.direct_normal, isDark),
+          _buildPreviewSpecRow('Construction Status', _buyConstructionStatus, Iconsax.timer_1, isDark),
+          _buildPreviewSpecRow('Ownership Type', _buyOwnershipType, Iconsax.document_text, isDark),
+          _buildPreviewSpecRow('Plot Area', _buyPlotArea.isNotEmpty ? '$_buyPlotArea sq.yds' : '', Iconsax.maximize_4, isDark),
+          _buildPreviewSpecRow('Built-up Area', _buyBuiltUpArea.isNotEmpty ? '$_buyBuiltUpArea sq.ft' : '', Iconsax.map_1, isDark),
+          _buildPreviewSpecRow('Total Floors', _buyTotalFloors, Iconsax.layer, isDark),
+          _buildPreviewSpecRow('Legal Clearances', _buyApprovals, Iconsax.shield_tick, isDark),
+          _buildPreviewSpecRow('Road Width', _buyRoadWidth, Iconsax.routing_2, isDark),
+          _buildPreviewSpecRow('Water & Power', _buyWaterElectricity, Iconsax.flash_1, isDark),
+          _buildPreviewSpecRow('Parking', _buyParking, Iconsax.car, isDark),
+          _buildPreviewSpecRow('Price Negotiability', _buyPriceNegotiable, Iconsax.tag, isDark),
+          _buildPreviewAmenitiesWrap(_buySelectedFeatures, isDark),
+        ],
+      );
+    } else {
+      // Rental
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Rental Specifications',
+            style: TextStyle(
+              fontFamily: 'DMSans',
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: isDark ? AppTheme.primaryYellow : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildPreviewSpecRow('BHK Configuration', _rentalBhk, Iconsax.home_2, isDark),
+          _buildPreviewSpecRow('Furnishing Status', _rentalFurnishing, Iconsax.box_1, isDark),
+          _buildPreviewSpecRow('Built-up Area', _rentalArea.isNotEmpty ? '$_rentalArea sq.ft' : '', Iconsax.maximize_4, isDark),
+          _buildPreviewSpecRow(
+            'Floor',
+            _rentalFloor.isNotEmpty ? 'Floor $_rentalFloor${_rentalTotalFloors.isNotEmpty ? " of $_rentalTotalFloors" : ""}' : '',
+            Iconsax.layer,
+            isDark,
+          ),
+          _buildPreviewSpecRow('Bathrooms', _rentalBaths, Iconsax.drop, isDark),
+          _buildPreviewSpecRow('Bedrooms', _rentalBeds, Iconsax.home_2, isDark),
+          _buildPreviewSpecRow('EB Meter', _rentalEbMeter, Iconsax.flash_1, isDark),
+          _buildPreviewSpecRow('Water Charges & Supply', _rentalWaterBill, Iconsax.card, isDark),
+          _buildPreviewSpecRow('Parking Facility', _rentalParking, Iconsax.car, isDark),
+          _buildPreviewSpecRow('Preferred Tenants', _rentalTenantPref, Iconsax.user, isDark),
+          _buildPreviewSpecRow('Agreement Duration', _rentalAgreement, Iconsax.document_text, isDark),
+          _buildPreviewSpecRow('Notice Period', _rentalNotice, Iconsax.clock, isDark),
+          _buildPreviewSpecRow('Pet Policy', _rentalPetPolicy, Iconsax.shield_tick, isDark),
+          _buildPreviewAmenitiesWrap(_rentalSelectedFeatures, isDark),
+        ],
+      );
+    }
+  }
+
+  Widget _buildPreviewSpecRow(String label, String value, IconData icon, bool isDark) {
+    if (value.trim().isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3.5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: isDark ? AppTheme.primaryYellow : const Color(0xFF4B5563)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontFamily: 'ProximaNova',
+                  fontSize: 13,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                children: [
+                  TextSpan(
+                    text: '$label: ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                    ),
+                  ),
+                  TextSpan(
+                    text: value,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreviewAmenitiesWrap(Set<String> amenities, bool isDark) {
+    if (amenities.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        Text(
+          'Amenities & Highlights (${amenities.length}):',
+          style: TextStyle(
+            fontFamily: 'ProximaNova',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: amenities.map((a) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isDark ? AppTheme.darkBorder : const Color(0xFFE5E7EB),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Iconsax.tick_circle, size: 12, color: AppTheme.swiggyGreen),
+                  const SizedBox(width: 4),
+                  Text(
+                    a,
+                    style: TextStyle(
+                      fontFamily: 'ProximaNova',
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreviewContactSection(bool isDark) {
+    final phone = _phoneController.text.trim();
+    final whatsapp = _whatsappController.text.trim();
+    final desc = _descriptionController.text.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Contact & Notes Preview',
+          style: TextStyle(
+            fontFamily: 'DMSans',
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: isDark ? AppTheme.primaryYellow : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildPreviewSpecRow('Phone', phone.isNotEmpty ? phone : 'Not Provided', Iconsax.call, isDark),
+        _buildPreviewSpecRow('WhatsApp', whatsapp.isNotEmpty ? whatsapp : (phone.isNotEmpty ? '$phone (Same)' : 'Not Provided'), Iconsax.messages_2, isDark),
+        if (desc.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Description:',
+            style: TextStyle(
+              fontFamily: 'ProximaNova',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: isDark ? AppTheme.darkBorder : Colors.grey.shade200),
+            ),
+            child: Text(
+              desc,
+              style: TextStyle(
+                fontFamily: 'ProximaNova',
+                fontSize: 12.5,
+                color: isDark ? Colors.white70 : Colors.black87,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -3504,8 +4005,8 @@ class _PostingScreenState extends State<PostingScreen> {
               children: [
                 Icon(
                   isSelected
-                      ? CupertinoIcons.checkmark_alt
-                      : CupertinoIcons.circle,
+                      ? Iconsax.tick_circle
+                      : Icons.circle_outlined,
                   size: 15,
                   color: isSelected
                       ? (isDark ? AppTheme.primaryYellow : Colors.black)
@@ -3586,8 +4087,8 @@ class _PostingScreenState extends State<PostingScreen> {
               children: [
                 Icon(
                   isSelected
-                      ? CupertinoIcons.checkmark_alt
-                      : CupertinoIcons.add_circled,
+                      ? Iconsax.tick_circle
+                      : Iconsax.add_circle,
                   color: isSelected
                       ? (isDark ? AppTheme.primaryYellow : Colors.black)
                       : (isDark
@@ -3639,7 +4140,7 @@ class _PostingScreenState extends State<PostingScreen> {
           child: Row(
             children: [
               Icon(
-                CupertinoIcons.calendar,
+                Iconsax.calendar,
                 color: isSet ? Colors.green : (isDark ? Colors.white70 : Colors.black54),
               ),
               const SizedBox(width: 12),
@@ -3668,7 +4169,7 @@ class _PostingScreenState extends State<PostingScreen> {
                 ),
               ),
               Icon(
-                CupertinoIcons.right_chevron,
+                Iconsax.arrow_right_3,
                 size: 16,
                 color: isDark ? Colors.white54 : Colors.black54,
               ),
@@ -3798,7 +4299,7 @@ class _WeeklyFoodMenuSheetState extends State<_WeeklyFoodMenuSheet> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close_rounded, color: isDark ? Colors.white70 : Colors.black87, size: 26),
+                    icon: Icon(Icons.close_rounded, color: isDark ? Colors.white70 : Colors.black87, size: 24),
                     onPressed: () => Navigator.pop(context),
                   )
                 ],

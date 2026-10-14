@@ -1,26 +1,14 @@
-import 'package:flutter/cupertino.dart';
 import 'dart:async';
-import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:rental/features/settings/presentation/pages/settings_screen.dart';
-import 'package:iconsax/iconsax.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:lottie/lottie.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:rental/core/widgets/app_snackbar.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/utils/image_compressor.dart';
 import 'package:rental/core/models/property_model.dart';
-import 'package:rental/core/widgets/image_cropper_sheet.dart';
-import 'package:rental/features/property_posting/presentation/pages/photo_position_screen.dart';
+import 'package:rental/features/partner/data/services/partner_service.dart';
 enum _UploadStatusState { uploading, success, error }
 
 class PropertyPostingStatusSheet extends StatefulWidget {
@@ -140,17 +128,44 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
       }
       propertyJson['status'] = widget.isEditing ? widget.propertyToEdit!.status : 'pending';
 
+      // If user is currently authenticated as a Partner, automatically link the property!
+      if (PartnerService.instance.isLoggedIn && PartnerService.instance.currentPartner != null) {
+        final partner = PartnerService.instance.currentPartner!;
+        final pEmail = partner.email.toLowerCase().trim();
+        final currentTags = List<String>.from(propertyJson['tags'] ?? []);
+        if (!currentTags.any((t) => t.toLowerCase() == 'partner:$pEmail')) {
+          currentTags.add('partner:$pEmail');
+        }
+        if (!currentTags.any((t) => t.toLowerCase() == 'partner_role:${partner.role}')) {
+          currentTags.add('partner_role:${partner.role}');
+        }
+        propertyJson['tags'] = currentTags;
+      }
+
       if (widget.isEditing) {
-        await supabase.from('properties').update(propertyJson).eq('id', widget.propertyToEdit!.id!);
+        try {
+          await supabase.rpc('update_property_listing', params: {
+            'p_property_id': widget.propertyToEdit!.id!,
+            'p_data': propertyJson,
+          });
+        } catch (rpcErr) {
+          debugPrint('update_property_listing RPC error: $rpcErr, falling back to direct update');
+          await supabase.from('properties').update(propertyJson).eq('id', widget.propertyToEdit!.id!);
+        }
       } else {
         await supabase.from('properties').insert(propertyJson);
       }
 
-      // Invalidate property cache and draft cache
+      // If user is partner, refresh their property list
+      if (PartnerService.instance.isLoggedIn) {
+        await PartnerService.instance.fetchMyProperties();
+      }
+
+      // Invalidate property cache so updated details appear immediately across the app
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('cached_properties');
+      await prefs.remove('cached_properties_ts');
       if (!widget.isEditing) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('cached_properties');
-        await prefs.remove('cached_properties_ts');
         await prefs.remove('posting_draft_v1');
       }
 
@@ -244,7 +259,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
                   height: 36,
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => const Icon(
-                    CupertinoIcons.house_fill,
+                    Iconsax.building_4,
                     color: Colors.black,
                     size: 24,
                   ),
@@ -425,7 +440,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
             ),
             child: const Center(
               child: Icon(
-                CupertinoIcons.checkmark_alt,
+                Iconsax.tick_circle,
                 color: Colors.white,
                 size: 44,
               ),
@@ -460,11 +475,13 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(CupertinoIcons.info_circle_fill, color: Color(0xFFD97706), size: 18),
+                const Icon(Iconsax.info_circle, color: Color(0xFFD97706), size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Your post has been sent to admin for review. Once approved, it will go live in the app (usually takes within 3 hours).',
+                    widget.isEditing
+                        ? 'Your listing changes have been saved and updated successfully in the live database.'
+                        : 'Your post has been sent to admin for review. Once approved, it will go live in the app (usually takes within 3 hours).',
                     style: TextStyle(fontFamily: 'ProximaNova', 
                       fontSize: 12.5,
                       fontWeight: FontWeight.w500,
@@ -532,7 +549,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
             ),
             child: const Center(
               child: Icon(
-                CupertinoIcons.clear,
+                Icons.close_rounded,
                 color: Colors.white,
                 size: 44,
               ),

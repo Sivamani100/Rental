@@ -32,6 +32,10 @@ class AppSnackbar {
     }
   }
 
+  static void show(BuildContext context, String message) {
+    _display(context, message, _successDuration, true, isInfo: false);
+  }
+
   static void success(BuildContext context, String message, {Duration duration = _successDuration}) {
     _display(context, message, duration, true, isInfo: false);
   }

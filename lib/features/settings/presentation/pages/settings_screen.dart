@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rental/app/theme/theme_provider.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:rental/features/partner/presentation/pages/partner_entry_handler.dart';
+import 'package:rental/features/partner/data/services/partner_service.dart';
 
 // ─────────────────────────────────────────────────────────────
 // SETTINGS SCREEN
@@ -23,7 +25,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _pushNotifications = true;
-  bool _emailAlerts = false;
   bool _locationServices = true;
 
   Color _selectedLogoColor = ThemeController.instance.appColor;
@@ -45,9 +46,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _pushNotifications = prefs.getBool('push_notifications') ?? true;
-      _emailAlerts = prefs.getBool('email_alerts') ?? false;
       _locationServices = prefs.getBool('location_services') ?? true;
     });
+    // Ensure partner session is active and properties are loaded
+    PartnerService.instance.init();
   }
 
   Future<void> _savePreference(String key, bool value) async {
@@ -57,12 +59,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final backgroundColor = colorScheme.surface;
-    final cardColor = Theme.of(context).cardColor;
-    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
-    final borderColor = Theme.of(context).dividerColor;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -236,15 +234,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             _buildSwitchTile(
-              icon: _iconBox(Colors.orange, CupertinoIcons.mail_solid),
-              label: 'Email Alerts',
-              value: _emailAlerts,
-              onChanged: (val) {
-                setState(() => _emailAlerts = val);
-                _savePreference('email_alerts', val);
-              },
-            ),
-            _buildSwitchTile(
               icon: _iconBox(Colors.green, CupertinoIcons.location_solid),
               label: 'Location Services',
               value: _locationServices,
@@ -254,6 +243,76 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
           ]),
+          const SizedBox(height: 24),
+
+          // ── Partner & Property Owners ─────────────────────────
+          _buildSectionHeader('YOUR PROPERTY'),
+          AnimatedBuilder(
+            animation: PartnerService.instance,
+            builder: (context, _) {
+              final isPartner = PartnerService.instance.isLoggedIn;
+              final partner = PartnerService.instance.currentPartner;
+
+              return _buildTileGroup([
+                _buildNavTile(
+                  icon: _iconBox(AppTheme.primaryYellow, isPartner ? Iconsax.crown5 : Iconsax.building_4),
+                  label: 'Your Property',
+                  subtitle: isPartner
+                      ? '${partner?.email ?? ''} • ${PartnerService.instance.myProperties.length} properties'
+                      : 'For Property Owners, Landlords & Dealers',
+                  trailing: isPartner
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Iconsax.verify5, size: 13, color: Color(0xFF10B981)),
+                              SizedBox(width: 4),
+                              Text(
+                                'ACTIVE',
+                                style: TextStyle(
+                                  fontFamily: 'ProximaNova',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryYellow.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppTheme.primaryYellow.withValues(alpha: 0.4)),
+                          ),
+                          child: Text(
+                            'OWNERS',
+                            style: TextStyle(
+                              fontFamily: 'ProximaNova',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? AppTheme.primaryYellow : Colors.black87,
+                            ),
+                          ),
+                        ),
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.push(
+                      context,
+                      CupertinoPageRoute(builder: (_) => const PartnerEntryHandler()),
+                    );
+                  },
+                ),
+              ]);
+            },
+          ),
           const SizedBox(height: 24),
 
           // ── Support & About ───────────────────────────────────
@@ -413,6 +472,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildNavTile({
     required Widget icon,
     required String label,
+    String? subtitle,
+    Widget? trailing,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -425,16 +486,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon,
             const SizedBox(width: 14),
             Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontFamily: 'ProximaNova',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontFamily: 'ProximaNova',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontFamily: 'ProximaNova',
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
               ),
             ),
+            if (trailing != null) ...[
+              trailing,
+              const SizedBox(width: 8),
+            ],
             const Icon(CupertinoIcons.chevron_right, size: 16, color: Color(0xFFC7C7CC)),
           ],
         ),

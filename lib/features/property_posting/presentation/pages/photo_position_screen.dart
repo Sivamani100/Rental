@@ -1,8 +1,8 @@
-import 'package:flutter/cupertino.dart';
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:rental/app/theme/app_theme.dart';
@@ -150,11 +150,16 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
         backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
         elevation: 0.5,
         leading: IconButton(
+          splashRadius: 22,
           icon: Icon(
-            CupertinoIcons.chevron_left,
+            CupertinoIcons.back,
+            size: 24,
             color: isDark ? Colors.white : Colors.black87,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            Navigator.pop(context);
+          },
         ),
         title: Text(
           'Position & Reorder Photos',
@@ -198,7 +203,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    CupertinoIcons.photo,
+                    Iconsax.gallery,
                     size: 56,
                     color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400,
                   ),
@@ -222,7 +227,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                   SizedBox(height: 20),
                   ElevatedButton.icon(
                     onPressed: _addMorePhotos,
-                    icon: Icon(CupertinoIcons.add, size: 18),
+                    icon: Icon(Iconsax.add, size: 18),
                     label: Text('Add Photos'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryYellow,
@@ -242,7 +247,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                   color: isDark ? AppTheme.darkCardElevated : const Color(0xFFFFFDE7),
                   child: Row(
                     children: [
-                      const Icon(CupertinoIcons.info_circle_fill, size: 16, color: Color(0xFFF59E0B)),
+                      const Icon(Iconsax.info_circle, size: 16, color: Color(0xFFF59E0B)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -292,7 +297,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    _selectedIndex == 0 ? CupertinoIcons.star_fill : CupertinoIcons.photo,
+                                    _selectedIndex == 0 ? Iconsax.star : Iconsax.gallery,
                                     size: 15,
                                     color: _selectedIndex == 0 ? Colors.black : Colors.white,
                                   ),
@@ -337,7 +342,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                     tooltip: 'Move Left',
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(CupertinoIcons.chevron_left, size: 18),
+                                    icon: const Icon(Iconsax.arrow_left_2, size: 18),
                                     onPressed: _selectedIndex > 0
                                         ? () => _movePhoto(_selectedIndex, _selectedIndex - 1)
                                         : null,
@@ -369,7 +374,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         const Icon(
-                                          CupertinoIcons.checkmark_alt,
+                                          Iconsax.tick_circle,
                                           size: 14,
                                           color: Color(0xFF10B981),
                                         ),
@@ -388,7 +393,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                     tooltip: 'Move Right',
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(CupertinoIcons.chevron_right, size: 18),
+                                    icon: const Icon(Iconsax.arrow_right_3, size: 18),
                                     onPressed: _selectedIndex < _photos.length - 1
                                         ? () => _movePhoto(_selectedIndex, _selectedIndex + 1)
                                         : null,
@@ -397,14 +402,14 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                     tooltip: 'Crop Photo',
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(CupertinoIcons.crop, size: 18),
+                                    icon: const Icon(Iconsax.crop, size: 18),
                                     onPressed: () => _cropPhoto(_selectedIndex),
                                   ),
                                   IconButton(
                                     tooltip: 'Delete',
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(),
-                                    icon: const Icon(CupertinoIcons.trash, size: 18, color: Colors.redAccent),
+                                    icon: const Icon(Iconsax.trash, size: 18, color: Colors.redAccent),
                                     onPressed: () => _deletePhoto(_selectedIndex),
                                   ),
                                 ],
@@ -443,7 +448,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                           TextButton.icon(
                             onPressed: _addMorePhotos,
                             icon: Icon(
-                              CupertinoIcons.photo_on_rectangle,
+                              Iconsax.gallery_add,
                               size: 16,
                               color: isDark ? AppTheme.primaryYellow : Colors.black,
                             ),
@@ -553,7 +558,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Icon(
-                                              CupertinoIcons.clear,
+                                              Icons.close_rounded,
                                               color: Colors.white,
                                               size: 11,
                                             ),
