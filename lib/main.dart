@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_web_plugins/url_strategy.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rental/features/home/presentation/pages/home_screen.dart';
 import 'package:rental/features/onboarding/presentation/pages/onboarding_screen.dart';
@@ -13,6 +12,7 @@ import 'package:rental/core/services/analytics_service.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/app/theme/theme_provider.dart';
 import 'package:rental/app/config/env.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:rental/core/services/push_notification_service.dart';
 import 'package:rental/core/services/in_app_update_service.dart';
@@ -24,76 +24,145 @@ import 'package:rental/core/services/app_install_prompt_service.dart';
 import 'package:rental/core/ads/ads_initializer.dart';
 import 'package:rental/core/services/deep_link_service.dart';
 
-
-
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // If you're going to use other Firebase services in the background, such as Firestore,
-  // make sure you call `initializeApp` before using other Firebase services.
-  print("Handling a background message: ${message.messageId}");
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
+  } catch (_) {}
+  debugPrint("Handling a background message: ${message.messageId}");
 }
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
 
+  // Catch unhandled Flutter framework errors safely
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter error caught: ${details.exceptionAsString()}');
+  };
+
   // Enable edge-to-edge rendering so the app draws behind
   // the status bar AND the Android 3-button/gesture navigation bar.
-  // SafeArea widgets in each screen then push content up/down correctly
-  // regardless of whether the phone uses gestures or 3-button navigation.
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  try {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  } catch (e) {
+    debugPrint('SystemUiMode error: $e');
+  }
 
   // Turbocharge Flutter ImageCache for instant photo rendering
-  PaintingBinding.instance.imageCache.maximumSize = 1000;
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 250 << 20; // 250 MB
+  try {
+    PaintingBinding.instance.imageCache.maximumSize = 1000;
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 250 << 20; // 250 MB
+  } catch (_) {}
 
-  await ThemeController.instance.init();
-  await SavedPropertiesService.instance.init();
+  // Safe initialization of local controllers and storage
+  try {
+    await ThemeController.instance.init();
+  } catch (e) {
+    debugPrint('ThemeController init error: $e');
+  }
 
-  await Supabase.initialize(
-    url: Env.supabaseUrl,
-    anonKey: Env.supabaseAnonKey,
-    authOptions: const FlutterAuthClientOptions(
-      localStorage: SecureLocalStorage(),
-    ),
-  );
+  try {
+    await SavedPropertiesService.instance.init();
+  } catch (e) {
+    debugPrint('SavedPropertiesService init error: $e');
+  }
+
+  // Initialize Supabase safely
+  try {
+    await Supabase.initialize(
+      url: Env.supabaseUrl,
+      anonKey: Env.supabaseAnonKey,
+      authOptions: const FlutterAuthClientOptions(
+        localStorage: SecureLocalStorage(),
+      ),
+    );
+  } catch (e) {
+    debugPrint('Supabase initialize error: $e');
+  }
+
+  // Initialize Firebase before registering onBackgroundMessage
+  try {
+    if (Firebase.apps.isEmpty) {
+      if (kIsWeb) {
+        await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: 'AIzaSyBxP9pherG9E44m0Nzqm-eQmA066kvUG28',
+            appId: '1:1045370324281:android:55dc0aca49e69a1bcdd4e8',
+            messagingSenderId: '1045370324281',
+            projectId: 'rental-67032',
+            storageBucket: 'rental-67032.firebasestorage.app',
+          ),
+        );
+      } else {
+        await Firebase.initializeApp();
+      }
+    }
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    }
+  } catch (e) {
+    debugPrint('Firebase init error: $e');
+  }
 
   // Track unique installations anonymously in the background
-  InstallTracker.initAndTrack();
-
-  final prefs = await SharedPreferences.getInstance();
+  try {
+    InstallTracker.initAndTrack();
+  } catch (e) {
+    debugPrint('InstallTracker error: $e');
+  }
 
   // Pre-load AI Assistant local chat history and settings instantly
-  AiAssistantService.instance.init();
-
-  // Set up Firebase Messaging background handler (mobile only)
-  if (!kIsWeb) {
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  try {
+    AiAssistantService.instance.init();
+  } catch (e) {
+    debugPrint('AiAssistantService error: $e');
   }
 
   // Launch UI INSTANTLY — 0ms blank screen delay
   runApp(const RentalApp());
 
   // Initialize AdMob SDK non-blocking after first frame (never delays UI).
-  AdsInitializer.init();
+  try {
+    AdsInitializer.init();
+  } catch (e) {
+    debugPrint('AdsInitializer error: $e');
+  }
 
   // Initialize Analytics and Push Notification Service asynchronously in background
   _initAsyncServices();
 
   // Initialize deep links listener
-  DeepLinkService.instance.init(PushNotificationService.instance.navigatorKey);
+  try {
+    DeepLinkService.instance.init(PushNotificationService.instance.navigatorKey);
+  } catch (e) {
+    debugPrint('DeepLinkService error: $e');
+  }
 
-  // Trigger the web install prompt (shows up to 3 times with 1-min gaps)
-  // Wire the navigator key first, then check after a short delay
-  AppInstallPromptService.instance.navigatorKey =
-      PushNotificationService.instance.navigatorKey;
-  Future.delayed(const Duration(seconds: 3), () {
-    AppInstallPromptService.instance.checkAndShowPrompt();
-  });
+  // Trigger the web install prompt on web only
+  if (kIsWeb) {
+    AppInstallPromptService.instance.navigatorKey =
+        PushNotificationService.instance.navigatorKey;
+    Future.delayed(const Duration(seconds: 3), () {
+      AppInstallPromptService.instance.checkAndShowPrompt();
+    });
+  }
 }
 
 void _initAsyncServices() async {
-  await AnalyticsService.instance.init();
-  await PushNotificationService.instance.init();
+  try {
+    await AnalyticsService.instance.init();
+  } catch (e) {
+    debugPrint('AnalyticsService init error: $e');
+  }
+  try {
+    await PushNotificationService.instance.init();
+  } catch (e) {
+    debugPrint('PushNotificationService init error: $e');
+  }
 }
 
 class RentalApp extends StatelessWidget {
@@ -104,19 +173,17 @@ class RentalApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: ThemeController.instance,
       builder: (context, _) {
-        final isDark = false;
-
         return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle(
+          value: const SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
             // Fully transparent so the edge-to-edge app draws behind the nav bar.
             // SafeArea handles the actual content padding for all nav styles
             // (gesture bar, 2-button, 3-button).
             systemNavigationBarColor: Colors.transparent,
             systemNavigationBarDividerColor: Colors.transparent,
-            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness: Brightness.dark,
           ),
           child: MaterialApp(
             navigatorKey: PushNotificationService.instance.navigatorKey,
