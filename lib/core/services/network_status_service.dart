@@ -56,10 +56,17 @@ class NetworkStatusService with ChangeNotifier, WidgetsBindingObserver {
   Future<bool> checkConnectivity() async {
     if (kIsWeb) {
       try {
-        final res = await http.head(Uri.parse('https://dns.google')).timeout(const Duration(seconds: 3));
-        return res.statusCode > 0;
+        final pingUri = Uri.base.resolve('favicon.png?_t=${DateTime.now().millisecondsSinceEpoch}');
+        final res = await http.head(pingUri).timeout(const Duration(seconds: 3));
+        return res.statusCode >= 200 && res.statusCode < 400;
       } catch (_) {
-        return false;
+        try {
+          final pingUri = Uri.base.resolve('favicon.png');
+          final res = await http.get(pingUri).timeout(const Duration(seconds: 3));
+          return res.statusCode >= 200 && res.statusCode < 400;
+        } catch (_) {
+          return false;
+        }
       }
     } else {
       try {
