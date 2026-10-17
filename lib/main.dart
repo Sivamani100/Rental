@@ -23,6 +23,7 @@ import 'package:rental/core/services/install_tracker.dart';
 import 'package:rental/core/services/app_install_prompt_service.dart';
 import 'package:rental/core/ads/ads_initializer.dart';
 import 'package:rental/core/services/deep_link_service.dart';
+import 'package:rental/core/widgets/network_status_bar.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -42,6 +43,12 @@ Future<void> main() async {
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
     debugPrint('Flutter error caught: ${details.exceptionAsString()}');
+  };
+
+  // Catch unhandled asynchronous errors safely
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Async error caught: $error');
+    return true;
   };
 
   // Enable edge-to-edge rendering so the app draws behind
@@ -194,7 +201,11 @@ class RentalApp extends StatelessWidget {
             themeMode: ThemeMode.light,
             builder: (context, child) {
               final appContent = ReviewTriggerWrapper(
-                child: InAppUpdateWrapper(child: child ?? const SizedBox.shrink()),
+                child: InAppUpdateWrapper(
+                  child: GlobalNetworkStatusBarWrapper(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
               );
               return appContent;
             },

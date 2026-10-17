@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'ad_config.dart';
 
+import 'package:rental/app/theme/app_theme.dart';
+
 /// Displays a square (1:1) native image ad on the Property Detail page.
 ///
 /// Behaviour:
 ///  - Loads once on first build; never reloads on rebuild.
 ///  - Shows a subtle shimmer placeholder while loading.
-///  - Collapses completely (zero height) on load failure or when ads are off.
+///  - On web or fallback, displays a high-fidelity native sponsored card.
 ///  - Disposes the [NativeAd] when removed from the tree.
 class PropertyNativeAdWidget extends StatefulWidget {
   const PropertyNativeAdWidget({super.key});
@@ -20,9 +22,9 @@ class PropertyNativeAdWidget extends StatefulWidget {
 class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
   NativeAd? _nativeAd;
 
-  /// true  = ad loaded and ready to show
+  /// true  = ad ready (real ad or web card)
   /// false = still loading (show shimmer)
-  /// null  = collapsed (failed or disabled)
+  /// null  = collapsed
   bool? _adReady;
 
   bool _loadStarted = false;
@@ -37,9 +39,21 @@ class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
     if (_loadStarted) return;
     _loadStarted = true;
 
+    if (!adsEnabled) {
+      if (mounted) setState(() => _adReady = null);
+      return;
+    }
+
+    if (kIsWeb) {
+      // On Web, AdMob mobile native plugin is unsupported.
+      // Show responsive native sponsored card.
+      if (mounted) setState(() => _adReady = true);
+      return;
+    }
+
     final unitId = nativeAdUnitId;
     if (unitId == null) {
-      // Ads disabled or real ID not set — stay collapsed.
+      if (mounted) setState(() => _adReady = true);
       return;
     }
 
@@ -47,15 +61,14 @@ class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
 
     _nativeAd = NativeAd(
       adUnitId: unitId,
-      // factoryId must match the id registered in MainActivity.kt
       factoryId: 'rentalSquareNative',
       request: const AdRequest(),
       nativeAdOptions: NativeAdOptions(
-        mediaAspectRatio: MediaAspectRatio.landscape, // Better for videos
+        mediaAspectRatio: MediaAspectRatio.any,
         adChoicesPlacement: AdChoicesPlacement.topRightCorner,
         videoOptions: VideoOptions(
           startMuted: true,
-          customControlsRequested: true,
+          customControlsRequested: false,
         ),
       ),
       listener: NativeAdListener(
@@ -65,13 +78,12 @@ class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
         },
         onAdFailedToLoad: (ad, error) {
           if (kDebugMode) {
-            debugPrint('[AdMob] Native ad failed: code=${error.code} '
-                'message=${error.message}');
+            debugPrint('[AdMob] Native ad failed: code=${error.code} message=${error.message}');
           }
           ad.dispose();
           _nativeAd = null;
-          // Collapse the slot — do NOT retry in a loop.
-          if (mounted) setState(() => _adReady = null);
+          // Fall back to sponsored native ad card so ads are always visible when adsEnabled is true
+          if (mounted) setState(() => _adReady = true);
         },
         onAdImpression: (ad) {
           if (kDebugMode) debugPrint('[AdMob] Native ad impression.');
@@ -91,20 +103,128 @@ class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Collapsed: failed, disabled, or not yet triggered
+    if (!adsEnabled) return const SizedBox.shrink();
     if (_adReady == null) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // While loading — square shimmer placeholder so the page does not jump
     if (_adReady == false) {
       return _AdShimmer(isDark: isDark);
     }
 
-    // Ad is ready — render in a square container
+    if (kIsWeb || _nativeAd == null) {
+      return _buildWebAdCard(isDark);
+    }
+
     return _AdContainer(
       isDark: isDark,
       child: AdWidget(ad: _nativeAd!),
+    );
+  }
+
+  Widget _buildWebAdCard(bool isDark) {
+    return _AdContainer(
+      isDark: isDark,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryYellow.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.verified_rounded,
+                      color: Color(0xFFE5A900),
+                      size: 28,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryYellow,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Ad',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Rental Verified Plus',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Direct owner listings with zero brokerage and verified security deposit safety.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                          height: 1.25,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryYellow,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                'Explore Zero Brokerage Deals',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

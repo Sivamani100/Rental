@@ -16,7 +16,7 @@ plugins {
 
 android {
     namespace = "com.arkiolabs.rental"
-    compileSdk = 37
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -66,4 +66,5 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.3.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-messaging")
+    implementation("androidx.work:work-runtime:2.9.1")
 }

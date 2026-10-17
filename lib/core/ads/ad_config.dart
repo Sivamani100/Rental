@@ -9,14 +9,14 @@
 import 'package:flutter/foundation.dart';
 
 /// Kill-switch: set to false to hide every ad slot across the whole app.
-const bool adsEnabled = false;
+const bool adsEnabled = true;
 
 // ---------------------------------------------------------------------------
 // Native Ad Unit IDs
 // ---------------------------------------------------------------------------
 
-/// Official Google test native ad unit ID (Advanced Video).
-const String _testNativeUnitId = 'ca-app-pub-3940256099942544/1044960115';
+/// Official Google test native ad unit ID (Native Advanced).
+const String _testNativeUnitId = 'ca-app-pub-3940256099942544/2247696110';
 
 /// Placeholder for your real native ad unit ID.
 /// Release builds check for this sentinel and skip loading if it is still set.

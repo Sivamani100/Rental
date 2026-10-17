@@ -42,6 +42,7 @@ import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.d
 import 'package:rental/features/home/presentation/widgets/grid_property_card.dart';
 import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
 import 'package:rental/features/home/presentation/widgets/property_card.dart';
+import 'package:rental/core/services/network_status_service.dart';
 import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
 import 'package:rental/features/home/presentation/widgets/skeleton_property_card.dart';
 import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
@@ -548,24 +549,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _allProperties = freshList;
           _isInitialLoading = false; // Dismiss spinner once we have real data
         });
+        NetworkStatusService.instance.reportSuccess();
         _precachePropertyImages(freshList);
         _checkAndOpenInitialProperty();
       }
     } catch (e) {
+      NetworkStatusService.instance.reportFailure();
       if (mounted) {
         // Dismiss loading spinner even on failure so UI doesn't stay stuck
         if (_isInitialLoading) setState(() => _isInitialLoading = false);
-        if (_allProperties.isNotEmpty) {
-          AppSnackbar.error(
-            context,
-            'Offline mode: Showing cached properties.',
-          );
-        } else {
-          AppSnackbar.error(
-            context,
-            'Failed to load properties. Check connection.',
-          );
-        }
       }
     }
   }

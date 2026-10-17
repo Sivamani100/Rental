@@ -184,7 +184,14 @@ class _PostingScreenState extends State<PostingScreen> {
     if (_isEditing) {
       _currentStep = 2;
       final p = widget.propertyToEdit!;
-      _selectedType = p.type;
+      final normalizedType = p.type.trim().toUpperCase();
+      if (normalizedType == 'PG' || normalizedType == 'HOSTEL') {
+        _selectedType = 'PG';
+      } else if (normalizedType == 'BUY' || normalizedType == 'SALE') {
+        _selectedType = 'Buy';
+      } else {
+        _selectedType = 'Rental';
+      }
       _titleController.text = p.title;
       _priceController.text = p.price.replaceAll(RegExp(r'[^0-9]'), '');
       _depositController.text =
@@ -210,7 +217,7 @@ class _PostingScreenState extends State<PostingScreen> {
       _latitude = p.latitude;
       _longitude = p.longitude;
 
-      if (p.type == 'PG') {
+      if (_selectedType == 'PG') {
         _pgGender = p.genderPreference ?? _pgGender;
         _pgSharing = p.sharingType ?? _pgSharing;
         _pgAcType = p.acType ?? _pgAcType;
@@ -227,7 +234,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _pgFoodMenu = p.foodMenu != null ? Map<String, dynamic>.from(p.foodMenu!) : {};
         _pgSelectedAmenities.clear();
         _pgSelectedAmenities.addAll(p.features);
-      } else if (p.type == 'Buy' || p.type == 'Sale') {
+      } else if (_selectedType == 'Buy') {
         _buyBhk = p.bhkType ?? _buyBhk;
         _buyFurnishing = p.furnishingStatus ?? _buyFurnishing;
         _buyBeds = p.beds.isNotEmpty ? p.beds : _buyBeds;
@@ -772,6 +779,7 @@ class _PostingScreenState extends State<PostingScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
@@ -786,7 +794,7 @@ class _PostingScreenState extends State<PostingScreen> {
           child: SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(24, 12, 16, 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -832,7 +840,7 @@ class _PostingScreenState extends State<PostingScreen> {
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
                           child: const Icon(
-                            Iconsax.heart,
+                            CupertinoIcons.heart,
                             color: Colors.black87,
                             size: 24,
                           ),
@@ -867,10 +875,7 @@ class _PostingScreenState extends State<PostingScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context)
-                .viewInsets
-                .bottom, // Removed manual offset so buttons stick to bottom nav bar
+          padding: const EdgeInsets.only(
             left: 16,
             right: 16,
             top: 24,
@@ -1009,6 +1014,7 @@ class _PostingScreenState extends State<PostingScreen> {
               // Scrollable Content
               Expanded(
                 child: SingleChildScrollView(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: AnimatedSwitcher(

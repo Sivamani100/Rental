@@ -2049,8 +2049,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       // ==========================================
                       // Only shown on Android/iOS (AdMob is not available on web).
                       // The widget collapses itself when the ad fails to load
-                      // or when ads are disabled in ad_config.dart.
-                      if (!kIsWeb) const PropertyNativeAdWidget(),
+                      const PropertyNativeAdWidget(),
 
                       // ==========================================
                       // 8b. NEARBY TRANSPORT SECTION
