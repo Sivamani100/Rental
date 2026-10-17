@@ -135,16 +135,10 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <!--
-            ============================================================
-            ADMOB APPLICATION ID
-            TEST  : ca-app-pub-3940256099942544~3347511713  (current)
-            REAL  : REPLACE_REAL_APP_ID_HERE (fill this before release)
-            ============================================================
-        -->
+        <!-- Real AdMob Application ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-3326150138582962~5421807439" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="high_importance_channel" />

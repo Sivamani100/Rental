@@ -18,9 +18,8 @@ const bool adsEnabled = true;
 /// Official Google test native ad unit ID (Native Advanced).
 const String _testNativeUnitId = 'ca-app-pub-3940256099942544/2247696110';
 
-/// Placeholder for your real native ad unit ID.
-/// Release builds check for this sentinel and skip loading if it is still set.
-const String _realNativeUnitId = 'REPLACE_ME';
+/// Real native ad unit ID from AdMob dashboard.
+const String _realNativeUnitId = 'ca-app-pub-3326150138582962/1941280317';
 
 /// Returns the correct native ad unit ID for the current build mode.
 /// In release mode, returns null if the real ID has not been filled in yet
