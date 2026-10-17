@@ -4,6 +4,14 @@
   "framework": null,
   "routes": [
     {
+      "src": "/app-ads.txt",
+      "dest": "/app-ads.txt",
+      "headers": {
+        "content-type": "text/plain; charset=utf-8",
+        "cache-control": "public, max-age=3600"
+      }
+    },
+    {
       "handle": "filesystem"
     },
     {
