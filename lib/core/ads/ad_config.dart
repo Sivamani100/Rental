@@ -27,15 +27,11 @@ const String _realNativeUnitId = 'ca-app-pub-3326150138582962/1941280317';
 String? get nativeAdUnitId {
   if (!adsEnabled) return null;
 
-  if (kReleaseMode) {
-    if (_realNativeUnitId == 'REPLACE_ME') {
-      // Real ID not set yet — skip loading to avoid empty/broken ads in prod.
-      return null;
-    }
+  if (_realNativeUnitId != 'REPLACE_ME' && _realNativeUnitId.isNotEmpty) {
     return _realNativeUnitId;
   }
 
-  // Debug / profile mode — always use the test ID.
+  // Fallback to official Google test ID if real ID is not configured
   return _testNativeUnitId;
 }
 
