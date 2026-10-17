@@ -367,7 +367,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Padding(
               padding: const EdgeInsets.only(bottom: 32, top: 8),
               child: Text(
-                'Rental v1.1.14  •  Made with ♥ in India',
+                'Rental v1.1.16 (26)  •  Made with ♥ in India',
                 style: TextStyle(
                   fontFamily: 'ProximaNova',
                   fontSize: 12,
