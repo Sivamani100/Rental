@@ -28,6 +28,7 @@ import 'package:rental/core/services/analytics_service.dart';
 import 'package:rental/core/utils/image_compressor.dart';
 import 'package:rental/core/ads/native_ad_widget.dart';
 import 'package:rental/features/partner/data/services/partner_service.dart';
+import 'package:rental/features/property_details/data/services/property_analytics_service.dart';
 import 'package:rental/features/property_posting/presentation/pages/posting_screen.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
@@ -54,10 +55,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   // Transport facilities
   late Future<List<TransportPlace>> _nearbyTransportFuture;
 
+  late int _liveViewsCount;
+  final DateTime _pageOpenTime = DateTime.now();
+
   @override
   void initState() {
     super.initState();
+    _liveViewsCount = widget.property.viewsCount;
     _checkIfReviewed();
+    _trackAndIncrementViews();
     // Use preloaded Future if available (started on card tap for zero wait time)
     _nearbyTransportFuture = widget.preloadedTransportFuture ??
         TransportService.getNearby(
@@ -69,6 +75,30 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     if (widget.property.id != null) {
       AnalyticsService.instance.logPropertyView(widget.property.id!, widget.property.type);
     }
+  }
+
+  Future<void> _trackAndIncrementViews() async {
+    if (widget.property.id == null) return;
+    final updated = await PropertyAnalyticsService.instance.recordView(
+      widget.property.id!,
+      partnerEmail: widget.property.partnerEmail,
+    );
+    if (updated != null && mounted) {
+      setState(() => _liveViewsCount = updated);
+    }
+  }
+
+  @override
+  void dispose() {
+    final spentSeconds = DateTime.now().difference(_pageOpenTime).inSeconds;
+    if (widget.property.id != null && spentSeconds >= 1) {
+      PropertyAnalyticsService.instance.recordTimeSpent(
+        widget.property.id!,
+        spentSeconds,
+        partnerEmail: widget.property.partnerEmail,
+      );
+    }
+    super.dispose();
   }
 
   Future<void> _checkIfReviewed() async {
@@ -107,6 +137,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Future<void> _launchWhatsApp(String phone) async {
+    if (widget.property.id != null) {
+      PropertyAnalyticsService.instance.recordClick(
+        widget.property.id!,
+        'whatsapp_click',
+        partnerEmail: widget.property.partnerEmail,
+      );
+    }
     final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
     final url = Uri.parse('https://wa.me/$cleanPhone');
     if (await canLaunchUrl(url)) {
@@ -119,6 +156,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Future<void> _launchPhone(String phone) async {
+    if (widget.property.id != null) {
+      PropertyAnalyticsService.instance.recordClick(
+        widget.property.id!,
+        'call_click',
+        partnerEmail: widget.property.partnerEmail,
+      );
+    }
     final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
     final url = Uri.parse('tel:$cleanPhone');
     if (await canLaunchUrl(url)) {
@@ -132,10 +176,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   void _shareProperty() {
     HapticFeedback.selectionClick();
+    if (widget.property.id != null) {
+      PropertyAnalyticsService.instance.recordClick(
+        widget.property.id!,
+        'share_click',
+        partnerEmail: widget.property.partnerEmail,
+      );
+    }
     final propertyId = widget.property.id ?? '';
     final shareUrl = 'https://rental.arkio.in/property/$propertyId';
     final shareText =
-        'ðŸ¡ Check out "${widget.property.title}" (${widget.property.type == 'PG' ? 'PG / Hostel' : (widget.property.type == 'Buy' || widget.property.type == 'Sale' ? 'Property for Sale' : 'Rental House')}) for ${widget.property.price} on Arkio Rental!\n\nðŸ“± Open in App:\n$shareUrl';
+        'ðŸ ¡ Check out "${widget.property.title}" (${widget.property.type == 'PG' ? 'PG / Hostel' : (widget.property.type == 'Buy' || widget.property.type == 'Sale' ? 'Property for Sale' : 'Rental House')}) for ${widget.property.price} on Arkio Rental!\n\nðŸ“± Open in App:\n$shareUrl';
 
     showModalBottomSheet(
       context: context,
@@ -1299,93 +1350,141 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Badges Row (Category, Rating, Status)
+                      // Badges Row (Category, Rating, Status on left ... Live Views right-aligned in clean Orange)
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryYellow,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  isPg ? CupertinoIcons.building_2_fill : (isBuy ? CupertinoIcons.tag_fill : CupertinoIcons.house_fill),
-                                  size: 13,
-                                  color: accentTextColor,
-                                ),
-                                SizedBox(width: 5),
-                                Text(
-                                  isPg ? 'PG / Hostel' : (isBuy ? 'For Sale (Buy)' : 'Rental House / Flat'),
-                                  style: TextStyle(
-                                    color: accentTextColor,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (widget.property.reviewCount > 0) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withValues(alpha: isDark ? 0.18 : 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-                              ),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(CupertinoIcons.star_fill, color: Colors.amber, size: 13),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    widget.property.averageRating.toStringAsFixed(1),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      color: isDark ? Colors.white : Colors.black87,
+                                  // Category Badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryYellow,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          isPg ? CupertinoIcons.building_2_fill : (isBuy ? CupertinoIcons.tag_fill : CupertinoIcons.house_fill),
+                                          size: 13,
+                                          color: accentTextColor,
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          isPg ? 'PG / Hostel' : (isBuy ? 'For Sale' : 'Rental'),
+                                          style: TextStyle(
+                                            color: accentTextColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  Text(
-                                    ' (${widget.property.reviewCount})',
-                                    style: TextStyle(
-                                      color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
-                                      fontSize: 11,
+                                  const SizedBox(width: 8),
+                                  // Rating Badge
+                                  if (widget.property.reviewCount > 0) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.withValues(alpha: isDark ? 0.18 : 0.12),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(CupertinoIcons.star_fill, color: Colors.amber, size: 13),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            widget.property.averageRating.toStringAsFixed(1),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 12,
+                                              color: isDark ? Colors.white : Colors.black87,
+                                            ),
+                                          ),
+                                          Text(
+                                            ' (${widget.property.reviewCount})',
+                                            style: TextStyle(
+                                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  // Status Badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: (widget.property.isAvailable ? Colors.green : Colors.red).withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: BoxDecoration(
+                                            color: widget.property.isAvailable ? Colors.green : Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          widget.property.isAvailable ? (isBuy ? 'For Sale' : 'Available') : (isBuy ? 'Sold' : 'Occupied'),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: widget.property.isAvailable ? Colors.green : Colors.red,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                          ],
+                          ),
+                          const SizedBox(width: 8),
+                          // Right-Aligned Live Views Badge in vibrant clean Orange
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
                             decoration: BoxDecoration(
-                              color: (widget.property.isAvailable ? Colors.green : Colors.red).withValues(alpha: 0.12),
+                              color: const Color(0xFFFF5722).withValues(alpha: isDark ? 0.16 : 0.09),
                               borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFFF5722).withValues(alpha: 0.35),
+                                width: 1,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: widget.property.isAvailable ? Colors.green : Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
+                                const Icon(
+                                  CupertinoIcons.eye_fill,
+                                  size: 13.5,
+                                  color: Color(0xFFFF5722),
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
-                                  widget.property.isAvailable ? (isBuy ? 'For Sale' : 'Available') : (isBuy ? 'Sold' : 'Occupied'),
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: widget.property.isAvailable ? Colors.green : Colors.red,
+                                  '$_liveViewsCount views',
+                                  style: const TextStyle(
+                                    fontFamily: 'ProximaNova',
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFFFF5722),
+                                    letterSpacing: 0.2,
                                   ),
                                 ),
                               ],

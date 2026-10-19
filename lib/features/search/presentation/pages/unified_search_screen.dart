@@ -13,6 +13,9 @@ import 'package:rental/features/property_details/presentation/pages/property_det
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:rental/features/search/presentation/pages/voice_search_screen.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rental/features/partner/data/models/partner_promotion_model.dart';
+
 // Top-level isolate helper for JSON parsing
 List<PropertyModel> _parsePropertiesIsolate(String jsonStr) {
   final decoded = jsonDecode(jsonStr) as List;
@@ -39,16 +42,40 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
   bool _isSearchingLocations = false;
   
   List<PropertyModel> _allProperties = [];
-  bool _isLoadingProperties = true;
+
+  final _supabase = Supabase.instance.client;
+  Map<String, PartnerPromotionModel> _activePromotions = {};
 
   @override
   void initState() {
     super.initState();
     _loadCachedProperties();
+    _fetchActivePromotions();
     // Auto-focus the search field
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchFocusNode.requestFocus();
     });
+  }
+
+  Future<void> _fetchActivePromotions() async {
+    try {
+      final res = await _supabase
+          .from('property_promotions')
+          .select()
+          .or('status.eq.approved,status.eq.active');
+      final Map<String, PartnerPromotionModel> map = {};
+      for (var row in (res as List)) {
+        final promo = PartnerPromotionModel.fromJson(Map<String, dynamic>.from(row));
+        if (promo.isActive && promo.propertyId.isNotEmpty) {
+          map[promo.propertyId] = promo;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _activePromotions = map;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -68,15 +95,10 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
         if (mounted) {
           setState(() {
             _allProperties = cachedList;
-            _isLoadingProperties = false;
           });
         }
-      } else {
-        if (mounted) setState(() => _isLoadingProperties = false);
       }
-    } catch (_) {
-      if (mounted) setState(() => _isLoadingProperties = false);
-    }
+    } catch (_) {}
   }
 
   void _onSearchChanged(String val) {
@@ -224,9 +246,23 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
     final query = _searchQuery.toLowerCase();
     final matchedProperties = _allProperties.where((p) => 
         p.title.toLowerCase().contains(query) || 
-        p.locationStr.toLowerCase().contains(query)).take(10).toList();
+        p.locationStr.toLowerCase().contains(query) ||
+        p.tags.join(' ').toLowerCase().contains(query)).toList();
+
+    matchedProperties.sort((a, b) {
+      final promoA = a.id != null ? _activePromotions[a.id] : null;
+      final promoB = b.id != null ? _activePromotions[b.id] : null;
+      if (promoA != null && promoB == null) return -1;
+      if (promoA == null && promoB != null) return 1;
+      if (promoA != null && promoB != null) {
+        return promoA.priorityPosition.compareTo(promoB.priorityPosition);
+      }
+      return 0;
+    });
+
+    final displayProperties = matchedProperties.take(15).toList();
         
-    final hasNoResults = matchedProperties.isEmpty && _locationSuggestions.isEmpty && !_isSearchingLocations;
+    final hasNoResults = displayProperties.isEmpty && _locationSuggestions.isEmpty && !_isSearchingLocations;
     
     if (hasNoResults) {
       return Center(
@@ -261,7 +297,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        if (matchedProperties.isNotEmpty) ...[
+        if (displayProperties.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.only(left: 16, top: 12, bottom: 8),
             child: Text(
@@ -275,46 +311,84 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
               ),
             ),
           ),
-          ...matchedProperties.map((p) => Material(
-            color: isDark ? AppTheme.darkScaffold : Colors.white,
-            child: ListTile(
-              leading: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryYellow.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
+          ...displayProperties.map((p) {
+            return Material(
+              color: isDark ? AppTheme.darkScaffold : Colors.white,
+              child: ListTile(
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryYellow.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: p.imageUrls.isNotEmpty 
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(
+                          imageUrl: p.imageUrls.first,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => Icon(CupertinoIcons.building_2_fill, color: AppTheme.primaryYellow, size: 20),
+                        ),
+                      )
+                    : Icon(CupertinoIcons.building_2_fill, color: AppTheme.primaryYellow, size: 20),
                 ),
-                child: p.imageUrls.isNotEmpty 
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: p.imageUrls.first,
-                        fit: BoxFit.cover,
-                        errorWidget: (context, url, error) => Icon(CupertinoIcons.building_2_fill, color: AppTheme.primaryYellow, size: 20),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        p.title, 
+                        maxLines: 1, 
+                        overflow: TextOverflow.ellipsis, 
+                        style: TextStyle(fontFamily: 'ProximaNova', fontWeight: FontWeight.w600, fontSize: 15, color: isDark ? Colors.white : Colors.black87)
                       ),
-                    )
-                  : Icon(CupertinoIcons.building_2_fill, color: AppTheme.primaryYellow, size: 20),
+                    ),
+                    if (p.viewsCount > 0) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF5722).withValues(alpha: isDark ? 0.16 : 0.09),
+                          borderRadius: BorderRadius.circular(5),
+                          border: Border.all(
+                            color: const Color(0xFFFF5722).withValues(alpha: 0.3),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(CupertinoIcons.eye_fill, size: 10, color: Color(0xFFFF5722)),
+                            const SizedBox(width: 3),
+                            Text(
+                              '${p.viewsCount} views',
+                              style: const TextStyle(
+                                fontFamily: 'ProximaNova',
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFFF5722),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                subtitle: Text(
+                  p.locationStr, 
+                  maxLines: 1, 
+                  overflow: TextOverflow.ellipsis, 
+                  style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: isDark ? Colors.grey.shade400 : Colors.black54)
+                ),
+                trailing: Icon(CupertinoIcons.chevron_right, size: 16, color: isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                onTap: () {
+                  _searchFocusNode.unfocus();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => PropertyDetailsScreen(property: p)));
+                },
               ),
-              title: Text(
-                p.title, 
-                maxLines: 1, 
-                overflow: TextOverflow.ellipsis, 
-                style: TextStyle(fontFamily: 'ProximaNova', fontWeight: FontWeight.w600, fontSize: 15, color: isDark ? Colors.white : Colors.black87)
-              ),
-              subtitle: Text(
-                p.locationStr, 
-                maxLines: 1, 
-                overflow: TextOverflow.ellipsis, 
-                style: TextStyle(fontFamily: 'ProximaNova', fontSize: 13, color: isDark ? Colors.grey.shade400 : Colors.black54)
-              ),
-              trailing: Icon(CupertinoIcons.chevron_right, size: 16, color: isDark ? Colors.grey.shade600 : Colors.grey.shade400),
-              onTap: () {
-                _searchFocusNode.unfocus();
-                Navigator.push(context, MaterialPageRoute(builder: (_) => PropertyDetailsScreen(property: p)));
-              },
-            ),
-          )),
+            );
+          }),
         ],
         
         if (_locationSuggestions.isNotEmpty || _isSearchingLocations) ...[

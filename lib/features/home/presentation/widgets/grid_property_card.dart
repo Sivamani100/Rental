@@ -35,12 +35,14 @@ import 'package:rental/core/models/property_model.dart';
 class GridPropertyCard extends StatelessWidget {
   final PropertyModel property;
   final double? distanceInMeters;
+  final bool isPromoted;
   final VoidCallback onTap;
 
   const GridPropertyCard({
     super.key,
     required this.property,
     this.distanceInMeters,
+    this.isPromoted = false,
     required this.onTap,
   });
 

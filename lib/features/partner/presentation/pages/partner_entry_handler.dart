@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/features/partner/data/services/partner_service.dart';
 import 'package:rental/features/partner/presentation/pages/partner_auth_screen.dart';
 import 'package:rental/features/partner/presentation/pages/partner_dashboard_screen.dart';
@@ -30,15 +31,26 @@ class _PartnerEntryHandlerState extends State<PartnerEntryHandler> {
   @override
   Widget build(BuildContext context) {
     if (_isChecking) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Scaffold(
+        backgroundColor: isDark ? const Color(0xFF000000) : const Color(0xFFF7F7F9),
+        body: Center(
+          child: CircularProgressIndicator(color: AppTheme.primaryYellow),
+        ),
       );
     }
 
-    if (!PartnerService.instance.isLoggedIn) {
-      return const PartnerAuthScreen();
-    }
+    return AnimatedBuilder(
+      animation: PartnerService.instance,
+      builder: (context, _) {
+        // Only show Dashboard (home page & all tabs) after partner logs in
+        if (PartnerService.instance.isLoggedIn) {
+          return const PartnerDashboardScreen();
+        }
 
-    return const PartnerDashboardScreen();
+        // Otherwise show Partner Login Screen
+        return const PartnerAuthScreen(isEmbeddedInEntryHandler: true);
+      },
+    );
   }
 }

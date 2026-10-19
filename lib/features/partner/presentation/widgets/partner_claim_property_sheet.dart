@@ -184,7 +184,7 @@ class _PartnerClaimPropertySheetState extends State<PartnerClaimPropertySheet> {
                         Text(
                           'Ask Admin / Handover',
                           style: TextStyle(
-                            fontFamily: 'DMSans',
+                            fontFamily: 'ProximaNova',
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                             color: textColor,
@@ -284,7 +284,7 @@ class _PartnerClaimPropertySheetState extends State<PartnerClaimPropertySheet> {
                   : ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       itemCount: _filteredProperties.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      separatorBuilder: (context, index) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final p = _filteredProperties[index];
                         final thumb = p.imageUrls.isNotEmpty ? p.imageUrls.first : null;
@@ -314,7 +314,7 @@ class _PartnerClaimPropertySheetState extends State<PartnerClaimPropertySheet> {
                                         ? CachedNetworkImage(
                                             imageUrl: thumb,
                                             fit: BoxFit.cover,
-                                            errorWidget: (_, __, ___) => const Icon(Iconsax.gallery, size: 24, color: Colors.grey),
+                                            errorWidget: (context, url, error) => const Icon(Iconsax.gallery, size: 24, color: Colors.grey),
                                           )
                                         : const Icon(Iconsax.gallery, size: 24, color: Colors.grey),
                                   ),
@@ -330,7 +330,7 @@ class _PartnerClaimPropertySheetState extends State<PartnerClaimPropertySheet> {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
-                                          fontFamily: 'DMSans',
+                                          fontFamily: 'ProximaNova',
                                           fontSize: 14.5,
                                           fontWeight: FontWeight.w800,
                                           color: textColor,
@@ -439,7 +439,7 @@ class _PartnerClaimPropertySheetState extends State<PartnerClaimPropertySheet> {
                         ? CachedNetworkImage(
                             imageUrl: thumb,
                             fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => const Icon(Iconsax.gallery, size: 24, color: Colors.grey),
+                            errorWidget: (context, url, error) => const Icon(Iconsax.gallery, size: 24, color: Colors.grey),
                           )
                         : const Icon(Iconsax.gallery, size: 24, color: Colors.grey),
                   ),
@@ -454,7 +454,7 @@ class _PartnerClaimPropertySheetState extends State<PartnerClaimPropertySheet> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontFamily: 'DMSans',
+                          fontFamily: 'ProximaNova',
                           fontSize: 14.5,
                           fontWeight: FontWeight.w800,
                           color: textColor,
@@ -596,7 +596,7 @@ class _PartnerClaimPropertySheetState extends State<PartnerClaimPropertySheet> {
                           Text(
                             'Send Handover Claim to Admin',
                             style: TextStyle(
-                              fontFamily: 'DMSans',
+                              fontFamily: 'ProximaNova',
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: Colors.black,
@@ -659,7 +659,7 @@ class _PartnerClaimPropertySheetState extends State<PartnerClaimPropertySheet> {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'DMSans',
+                fontFamily: 'ProximaNova',
                 fontSize: 13.5,
                 fontWeight: FontWeight.w800,
                 color: isSelected ? (isDark ? Colors.white : Colors.black) : Colors.grey.shade400,

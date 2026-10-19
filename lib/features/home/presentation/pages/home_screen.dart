@@ -38,6 +38,7 @@ import 'package:rental/core/services/analytics_service.dart';
 import 'package:rental/features/transport/data/datasources/transport_service.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:rental/core/models/property_model.dart';
+import 'package:rental/features/partner/data/models/partner_promotion_model.dart';
 import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
 import 'package:rental/features/home/presentation/widgets/grid_property_card.dart';
 import 'package:rental/features/home/presentation/widgets/yellow_splash_screen.dart';
@@ -124,6 +125,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _manualLocationOverride ?? _currentPosition;
   String _mapFilter = 'All';
   List<PropertyModel> _allProperties = [];
+  Map<String, PartnerPromotionModel> _activePromotions = {};
   int _currentSearchRadiusKm = 5;
 
   final _supabase = Supabase.instance.client;
@@ -456,21 +458,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _refreshLocationFast(updateFeed: false);
   }
 
-  /// Supabase realtime: auto-refresh feed when admin approves a new property.
+  /// Supabase realtime: auto-refresh feed and promotions when admin approves promotions or properties.
   void _subscribeToRealtimeUpdates() {
     try {
       _propertiesChannel = _supabase
           .channel('home-properties-feed')
           .onPostgresChanges(
-            event: PostgresChangeEvent.update,
+            event: PostgresChangeEvent.all,
             schema: 'public',
             table: 'properties',
             callback: (payload) {
-              // Only react to status becoming 'approved'
-              final newStatus = payload.newRecord['status'];
-              if (newStatus == 'approved') {
-                _fetchProperties();
-              }
+              _fetchProperties(forceRefresh: true);
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'property_promotions',
+            callback: (payload) {
+              _fetchActivePromotions();
+              _fetchProperties(forceRefresh: true);
             },
           )
           .subscribe();
@@ -506,23 +513,51 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // Restart stream in case it was paused by OS
       _startLocationStream();
+      _fetchActivePromotions();
       _fetchProperties();
     } else if (state == AppLifecycleState.paused) {
       _locationStream?.cancel();
     }
   }
 
-  Future<void> _fetchProperties() async {
+  /// Fetches active approved in-app promotions independently from cache
+  Future<void> _fetchActivePromotions() async {
+    try {
+      final promoRows = await _supabase
+          .from('property_promotions')
+          .select()
+          .or('status.eq.approved,status.eq.active');
+      final Map<String, PartnerPromotionModel> promoMap = {};
+      for (var row in (promoRows as List)) {
+        final promo = PartnerPromotionModel.fromJson(Map<String, dynamic>.from(row));
+        if (promo.isActive && promo.propertyId.isNotEmpty) {
+          promoMap[promo.propertyId] = promo;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _activePromotions = promoMap;
+        });
+      }
+    } catch (pe) {
+      debugPrint('Note fetching promotions in home: $pe');
+    }
+  }
+
+  Future<void> _fetchProperties({bool forceRefresh = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Cache freshness check — skip network if cache is <5 minutes old
+      // Always fetch latest promotions independently so active promotions are immediately updated
+      _fetchActivePromotions();
+
+      // Cache freshness check — skip network if cache is <5 minutes old and not forceRefresh
       final cachedTs = prefs.getInt('cached_properties_ts');
       final isCacheFresh =
           cachedTs != null &&
           (DateTime.now().millisecondsSinceEpoch - cachedTs) < 5 * 60 * 1000;
 
-      if (isCacheFresh && _allProperties.isNotEmpty) {
+      if (!forceRefresh && isCacheFresh && _allProperties.isNotEmpty) {
         // Cache is fresh enough — no network call needed right now
         return;
       }
@@ -970,9 +1005,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final currentPos = _effectivePosition;
     if (currentPos == null) {
-      return _allProperties
+      final list = _allProperties
           .where((p) => matchesType(p) && matchesSearch(p) && matchesFilters(p))
           .toList();
+      list.sort((a, b) {
+        final promoA = a.id != null ? _activePromotions[a.id] : null;
+        final promoB = b.id != null ? _activePromotions[b.id] : null;
+        final bool isBoostedA = promoA != null;
+        final bool isBoostedB = promoB != null;
+        if (isBoostedA && !isBoostedB) return -1;
+        if (!isBoostedA && isBoostedB) return 1;
+        if (isBoostedA && isBoostedB) {
+          final posComp = promoA.priorityPosition.compareTo(promoB.priorityPosition);
+          if (posComp != 0) return posComp;
+        }
+        return 0;
+      });
+      return list;
     }
 
     int searchRadiusKm = 5;
@@ -1010,19 +1059,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     tempFiltered.sort((a, b) {
+      double distA = Geolocator.distanceBetween(
+        currentPos.latitude,
+        currentPos.longitude,
+        a.latitude,
+        a.longitude,
+      );
+      double distB = Geolocator.distanceBetween(
+        currentPos.latitude,
+        currentPos.longitude,
+        b.latitude,
+        b.longitude,
+      );
+
+      // In-App Promotion 5km Priority Boost
+      final promoA = a.id != null ? _activePromotions[a.id] : null;
+      final promoB = b.id != null ? _activePromotions[b.id] : null;
+      
+      final bool isLocMatchA = _searchQuery.isNotEmpty && (a.locationStr.toLowerCase().contains(_searchQuery.toLowerCase()) || a.title.toLowerCase().contains(_searchQuery.toLowerCase()));
+      final bool isLocMatchB = _searchQuery.isNotEmpty && (b.locationStr.toLowerCase().contains(_searchQuery.toLowerCase()) || b.title.toLowerCase().contains(_searchQuery.toLowerCase()));
+
+      final bool isBoostedA = promoA != null && (distA <= (promoA.radiusKm * 1000) || isLocMatchA);
+      final bool isBoostedB = promoB != null && (distB <= (promoB.radiusKm * 1000) || isLocMatchB);
+
+      if (isBoostedA && !isBoostedB) {
+        return -1; // Promoted within 5km goes first (#1)
+      } else if (!isBoostedA && isBoostedB) {
+        return 1;  // Promoted within 5km goes first (#1)
+      } else if (isBoostedA && isBoostedB) {
+        final posComp = promoA.priorityPosition.compareTo(promoB.priorityPosition);
+        if (posComp != 0) return posComp;
+        return distA.compareTo(distB);
+      }
+
       if (_filterState.sortBy == 'distance' || isFallback) {
-        double distA = Geolocator.distanceBetween(
-          currentPos.latitude,
-          currentPos.longitude,
-          a.latitude,
-          a.longitude,
-        );
-        double distB = Geolocator.distanceBetween(
-          currentPos.latitude,
-          currentPos.longitude,
-          b.latitude,
-          b.longitude,
-        );
         return distA.compareTo(distB);
       } else if (_filterState.sortBy == 'price_asc' || _filterState.sortBy == 'price_desc') {
         double priceA = double.tryParse(a.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
@@ -1429,14 +1499,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         controller: _searchController,
                         readOnly: true,
                         textAlignVertical: TextAlignVertical.center,
-                        onTap: () {
+                        onTap: () async {
                           HapticFeedback.selectionClick();
-                          Navigator.push(
+                          final result = await Navigator.push(
                             context,
                             CupertinoPageRoute(
                               builder: (context) => const UnifiedSearchScreen(),
                             ),
                           );
+                          if (result != null && result is Position) {
+                            _manualLocationOverride = result;
+                            _searchQuery = '';
+                            _searchController.clear();
+                            setState(() {});
+                            await _updateGeocodingIfNeeded(result, force: true);
+                            _fetchProperties(forceRefresh: true);
+                          }
                         },
                         style: TextStyle(
                           fontFamily: 'ProximaNova',
@@ -2172,14 +2250,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         cursorColor: Colors.black87,
                         cursorWidth: 2.0,
                         cursorHeight: 20.0,
-                        onTap: () {
+                        onTap: () async {
                           HapticFeedback.selectionClick();
-                          Navigator.push(
+                          final result = await Navigator.push(
                             context,
                             CupertinoPageRoute(
                               builder: (context) => const UnifiedSearchScreen(),
                             ),
                           );
+                          if (result != null && result is Position) {
+                            _manualLocationOverride = result;
+                            _searchQuery = '';
+                            _searchController.clear();
+                            setState(() {});
+                            await _updateGeocodingIfNeeded(result, force: true);
+                            _fetchProperties(forceRefresh: true);
+                          }
                         },
                         style: TextStyle(
                           fontFamily: 'ProximaNova',
@@ -3459,9 +3545,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             prop.longitude,
           );
         }
+        final promo = prop.id != null ? _activePromotions[prop.id] : null;
+        final bool isPromoted = promo != null && (distance == null || distance <= (promo.radiusKm * 1000));
         return GridPropertyCard(
           property: prop,
           distanceInMeters: distance,
+          isPromoted: isPromoted,
           onTap: () {
             final transportFuture = TransportService.getNearby(
               prop.latitude,

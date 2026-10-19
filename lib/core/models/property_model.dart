@@ -61,6 +61,7 @@ class PropertyModel {
   final String? partnerId;
   final String? partnerEmail;
   final String? partnerRole;
+  final int viewsCount;
 
   PropertyModel({
     this.id,
@@ -115,6 +116,7 @@ class PropertyModel {
     this.partnerId,
     this.partnerEmail,
     this.partnerRole,
+    this.viewsCount = 0,
     List<dynamic>? reviews,
     List<dynamic>? suggestedPhotos,
   }) : reviews = reviews ?? [],
@@ -159,13 +161,13 @@ class PropertyModel {
     }
 
     return PropertyModel(
-      id: json['id'],
+      id: json['id']?.toString(),
       title: _sanitize(json['title']) ?? '',
       price: _sanitize(json['price']) ?? '',
       locationStr: _sanitize(json['location_str']) ?? '',
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      imageUrls: List<String>.from(json['image_urls'] ?? []),
+      latitude: (json['latitude'] as num?)?.toDouble() ?? double.tryParse(json['latitude']?.toString() ?? '') ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? double.tryParse(json['longitude']?.toString() ?? '') ?? 0.0,
+      imageUrls: (json['image_urls'] as List?)?.map((e) => e?.toString() ?? '').where((e) => e.isNotEmpty).toList() ?? [],
       tags: tagsList,
       beds: _sanitize(json['beds']) ?? '',
       baths: _sanitize(json['baths']) ?? '',
@@ -173,46 +175,47 @@ class PropertyModel {
       type: _sanitize(json['type']) ?? 'Rental',
       ownerPhone: _sanitize(json['owner_phone']) ?? '',
       ownerWhatsapp: _sanitize(json['owner_whatsapp']) ?? '',
-      features: List<String>.from(json['features'] ?? []),
+      features: (json['features'] as List?)?.map((e) => e?.toString() ?? '').where((e) => e.isNotEmpty).toList() ?? [],
       isAvailable: json['is_available'] ?? true,
-      status: json['status'] ?? 'pending',
+      status: json['status']?.toString() ?? 'pending',
       securityDeposit: _sanitize(json['security_deposit']),
-      maintenanceCharges: json['maintenance_charges'],
+      maintenanceCharges: _sanitize(json['maintenance_charges']),
       reviews: json['reviews'] != null ? List<dynamic>.from(json['reviews']) : [],
       suggestedPhotos: json['suggested_photos'] != null ? List<dynamic>.from(json['suggested_photos']) : [],
-      noticePeriod: json['notice_period'],
-      agreementDuration: json['agreement_duration'],
+      noticePeriod: _sanitize(json['notice_period']),
+      agreementDuration: _sanitize(json['agreement_duration']),
       description: _sanitize(json['description']) ?? '',
       perDayWithFood: _sanitize(json['per_day_with_food']),
       perDayWithoutFood: _sanitize(json['per_day_without_food']),
       foodMenu: json['food_menu'] != null ? Map<String, dynamic>.from(json['food_menu']) : null,
-      genderPreference: json['gender_preference'],
-      sharingType: json['sharing_type'],
-      foodDetails: json['food_details'],
-      foodQuality: json['food_quality'],
-      drinkingWater: json['drinking_water'],
-      waterSupply: json['water_supply'],
-      powerBackup: json['power_backup'],
-      acType: json['ac_type'],
-      bathroomType: json['bathroom_type'],
-      cleanlinessInfo: json['cleanliness_info'],
-      securityInfo: json['security_info'],
-      verificationPolicy: json['verification_policy'],
-      managementInfo: json['management_info'],
-      gateRules: json['gate_rules'],
-      bhkType: json['bhk_type'],
-      furnishingStatus: json['furnishing_status'],
-      plumbingStatus: json['plumbing_status'],
-      seepageStatus: json['seepage_status'],
-      electricalStatus: json['electrical_status'],
-      meterStatus: json['meter_status'],
-      billsInfo: json['bills_info'],
-      tenantPreference: json['tenant_preference'],
-      petPolicy: json['pet_policy'],
-      parkingInfo: json['parking_info'],
+      genderPreference: _sanitize(json['gender_preference']),
+      sharingType: _sanitize(json['sharing_type']),
+      foodDetails: _sanitize(json['food_details']),
+      foodQuality: _sanitize(json['food_quality']),
+      drinkingWater: _sanitize(json['drinking_water']),
+      waterSupply: _sanitize(json['water_supply']),
+      powerBackup: _sanitize(json['power_backup']),
+      acType: _sanitize(json['ac_type']),
+      bathroomType: _sanitize(json['bathroom_type']),
+      cleanlinessInfo: _sanitize(json['cleanliness_info']),
+      securityInfo: _sanitize(json['security_info']),
+      verificationPolicy: _sanitize(json['verification_policy']),
+      managementInfo: _sanitize(json['management_info']),
+      gateRules: _sanitize(json['gate_rules']),
+      bhkType: _sanitize(json['bhk_type']),
+      furnishingStatus: _sanitize(json['furnishing_status']),
+      plumbingStatus: _sanitize(json['plumbing_status']),
+      seepageStatus: _sanitize(json['seepage_status']),
+      electricalStatus: _sanitize(json['electrical_status']),
+      meterStatus: _sanitize(json['meter_status']),
+      billsInfo: _sanitize(json['bills_info']),
+      tenantPreference: _sanitize(json['tenant_preference']),
+      petPolicy: _sanitize(json['pet_policy']),
+      parkingInfo: _sanitize(json['parking_info']),
       partnerId: pId,
       partnerEmail: pEmail,
       partnerRole: pRole,
+      viewsCount: (json['views_count'] as num?)?.toInt() ?? (json['views'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -283,7 +286,20 @@ class PropertyModel {
       'parking_info': parkingInfo,
       'reviews': reviews,
       'suggested_photos': suggestedPhotos,
+      'views_count': viewsCount,
     };
   }
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! PropertyModel) return false;
+    if (id != null && other.id != null) {
+      return id == other.id;
+    }
+    return title == other.title && price == other.price && locationStr == other.locationStr;
+  }
+
+  @override
+  int get hashCode => (id != null) ? id.hashCode : Object.hash(title, price, locationStr);
 }

@@ -158,7 +158,7 @@ class _PartnerPropertyEditSheetState extends State<PartnerPropertyEditSheet> {
                     Text(
                       'Edit Property Details',
                       style: TextStyle(
-                        fontFamily: 'DMSans',
+                        fontFamily: 'ProximaNova',
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: textColor,
@@ -196,12 +196,7 @@ class _PartnerPropertyEditSheetState extends State<PartnerPropertyEditSheet> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.primaryYellow.withValues(alpha: isDark ? 0.25 : 0.2),
-                            AppTheme.primaryYellow.withValues(alpha: isDark ? 0.1 : 0.05),
-                          ],
-                        ),
+                        color: AppTheme.primaryYellow.withValues(alpha: isDark ? 0.2 : 0.12),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: AppTheme.primaryYellow.withValues(alpha: 0.5),
@@ -225,7 +220,7 @@ class _PartnerPropertyEditSheetState extends State<PartnerPropertyEditSheet> {
                                 Text(
                                   'Complete Property Editor',
                                   style: TextStyle(
-                                    fontFamily: 'DMSans',
+                                    fontFamily: 'ProximaNova',
                                     fontSize: 13.5,
                                     fontWeight: FontWeight.w800,
                                     color: textColor,
@@ -281,7 +276,7 @@ class _PartnerPropertyEditSheetState extends State<PartnerPropertyEditSheet> {
                                 Text(
                                   _isAvailable ? 'Property is AVAILABLE' : 'Property is OCCUPIED / SOLD',
                                   style: TextStyle(
-                                    fontFamily: 'DMSans',
+                                    fontFamily: 'ProximaNova',
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
                                     color: _isAvailable ? AppTheme.swiggyGreen : AppTheme.swiggyRed,
@@ -402,7 +397,7 @@ class _PartnerPropertyEditSheetState extends State<PartnerPropertyEditSheet> {
                             : const Text(
                                 'Save Changes',
                                 style: TextStyle(
-                                  fontFamily: 'DMSans',
+                                  fontFamily: 'ProximaNova',
                                   fontSize: 15.5,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.black,

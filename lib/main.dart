@@ -45,6 +45,44 @@ Future<void> main() async {
     debugPrint('Flutter error caught: ${details.exceptionAsString()}');
   };
 
+  // Prevent any unhandled UI build error from displaying a red screen
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Material(
+      color: Colors.transparent,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.refresh_rounded, size: 36, color: Color(0xFFFFB800)),
+              const SizedBox(height: 10),
+              const Text(
+                'Something unexpected occurred. Pull or tap to refresh.',
+                style: TextStyle(
+                  fontFamily: 'ProximaNova',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (kDebugMode) ...[
+                const SizedBox(height: 6),
+                Text(
+                  details.exceptionAsString(),
+                  style: const TextStyle(fontSize: 10, color: Colors.red),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  };
+
   // Catch unhandled asynchronous errors safely
   PlatformDispatcher.instance.onError = (error, stack) {
     debugPrint('Async error caught: $error');

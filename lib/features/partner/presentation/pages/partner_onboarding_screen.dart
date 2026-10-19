@@ -125,7 +125,7 @@ class _PartnerOnboardingScreenState extends State<PartnerOnboardingScreen> {
                     child: Text(
                       'Skip',
                       style: TextStyle(
-                        fontFamily: 'DMSans',
+                        fontFamily: 'ProximaNova',
                         fontWeight: FontWeight.w700,
                         fontSize: 14.5,
                         color: isDark ? Colors.white70 : Colors.black87,
@@ -156,14 +156,7 @@ class _PartnerOnboardingScreenState extends State<PartnerOnboardingScreen> {
                             width: 110,
                             height: 110,
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  slide.accentColor.withValues(alpha: 0.22),
-                                  slide.accentColor.withValues(alpha: 0.04),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
+                              color: slide.accentColor.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: slide.accentColor.withValues(alpha: 0.35),
@@ -212,7 +205,7 @@ class _PartnerOnboardingScreenState extends State<PartnerOnboardingScreen> {
                         Text(
                           slide.title,
                           style: TextStyle(
-                            fontFamily: 'DMSans',
+                            fontFamily: 'ProximaNova',
                             fontSize: 28,
                             fontWeight: FontWeight.w900,
                             height: 1.15,
@@ -317,7 +310,7 @@ class _PartnerOnboardingScreenState extends State<PartnerOnboardingScreen> {
                                 ? 'Get Started'
                                 : 'Next',
                             style: const TextStyle(
-                              fontFamily: 'DMSans',
+                              fontFamily: 'ProximaNova',
                               fontSize: 14.5,
                               fontWeight: FontWeight.w800,
                               color: Colors.black,

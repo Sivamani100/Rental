@@ -6,6 +6,8 @@ import 'package:uuid/uuid.dart';
 
 import 'package:rental/core/models/property_model.dart';
 import 'package:rental/features/partner/data/models/partner_handover_request.dart';
+import 'package:rental/features/partner/data/models/partner_promotion_model.dart';
+import 'package:rental/features/property_details/data/services/property_analytics_service.dart';
 
 class AuthResult {
   final bool success;
@@ -36,6 +38,12 @@ class PartnerService extends ChangeNotifier {
   List<PartnerHandoverRequest> _myRequests = [];
   List<PartnerHandoverRequest> get myRequests => _myRequests;
 
+  List<PartnerPromotionModel> _myPromotions = [];
+  List<PartnerPromotionModel> get myPromotions => _myPromotions;
+
+  PartnerAnalyticsData? _analytics;
+  PartnerAnalyticsData? get analytics => _analytics;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -43,15 +51,45 @@ class PartnerService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _hasCompletedOnboarding = true;
 
+    // Seed default demo owner in local accounts if not present
+    final accounts = _loadLocalAccounts(prefs);
+    if (!accounts.containsKey('owner@rentalecosystem.com')) {
+      accounts['owner@rentalecosystem.com'] = {
+        'id': 'owner_default',
+        'email': 'owner@rentalecosystem.com',
+        'password': 'password123',
+        'role': 'Direct Property Owner',
+        'name': 'Property Owner',
+        'phone': '+91 98765 43210',
+        'created_at': DateTime.now().toIso8601String(),
+      };
+      await prefs.setString('partner_accounts_db', jsonEncode(accounts));
+    }
+
+    final manualLoginDone = prefs.getBool('partner_manual_login_done') ?? false;
     final partnerJson = prefs.getString('current_partner_profile');
-    if (partnerJson != null) {
+
+    if (partnerJson != null && manualLoginDone) {
       try {
         _currentPartner = PartnerProfile.fromJson(jsonDecode(partnerJson));
-        await fetchMyProperties();
-        await fetchMyRequests();
       } catch (e) {
         debugPrint('Error restoring partner profile: $e');
+        _currentPartner = null;
       }
+    } else {
+      _currentPartner = null;
+      await prefs.remove('current_partner_profile');
+    }
+
+    if (_currentPartner != null) {
+      await fetchMyProperties();
+      await fetchMyRequests();
+      await fetchMyPromotions();
+      await fetchAnalytics();
+    } else {
+      _myProperties.clear();
+      _myRequests.clear();
+      _myPromotions.clear();
     }
     notifyListeners();
   }
@@ -122,6 +160,7 @@ class PartnerService extends ChangeNotifier {
     // 5. Save active session
     _currentPartner = profile;
     await prefs.setString('current_partner_profile', jsonEncode(profile.toJson()));
+    await prefs.setBool('partner_manual_login_done', true);
     await prefs.setBool('partner_onboarding_completed', true);
     _hasCompletedOnboarding = true;
 
@@ -153,7 +192,7 @@ class PartnerService extends ChangeNotifier {
       if (savedPass != password) {
         _isLoading = false;
         notifyListeners();
-        return AuthResult.fail('Incorrect password. Please try again.');
+        return AuthResult.fail('Invalid login credentials. Please check your email and password.');
       }
 
       final profile = PartnerProfile(
@@ -167,6 +206,7 @@ class PartnerService extends ChangeNotifier {
 
       _currentPartner = profile;
       await prefs.setString('current_partner_profile', jsonEncode(profile.toJson()));
+      await prefs.setBool('partner_manual_login_done', true);
       await prefs.setBool('partner_onboarding_completed', true);
       _hasCompletedOnboarding = true;
 
@@ -175,6 +215,7 @@ class PartnerService extends ChangeNotifier {
 
       await fetchMyProperties();
       await fetchMyRequests();
+      await fetchMyPromotions();
       return AuthResult.ok();
     }
 
@@ -208,6 +249,7 @@ class PartnerService extends ChangeNotifier {
 
         _currentPartner = profile;
         await prefs.setString('current_partner_profile', jsonEncode(profile.toJson()));
+        await prefs.setBool('partner_manual_login_done', true);
         await prefs.setBool('partner_onboarding_completed', true);
         _hasCompletedOnboarding = true;
 
@@ -216,15 +258,32 @@ class PartnerService extends ChangeNotifier {
 
         await fetchMyProperties();
         await fetchMyRequests();
+        await fetchMyPromotions();
         return AuthResult.ok();
       }
+    } on AuthException catch (e) {
+      debugPrint('Supabase signIn AuthException: ${e.message}');
+      _isLoading = false;
+      notifyListeners();
+      final msg = e.message.toLowerCase();
+      if (msg.contains('invalid') ||
+          msg.contains('credentials') ||
+          msg.contains('wrong') ||
+          msg.contains('password')) {
+        return AuthResult.fail('Invalid login credentials. Please check your email and password.');
+      } else if (msg.contains('email not confirmed')) {
+        return AuthResult.fail('Please verify your email address before signing in.');
+      } else if (msg.contains('not found') || msg.contains('no user')) {
+        return AuthResult.fail('No account found for "$cleanEmail". Please create an account.');
+      }
+      return AuthResult.fail(e.message);
     } catch (e) {
       debugPrint('Supabase signInWithPassword note: $e');
     }
 
     _isLoading = false;
     notifyListeners();
-    return AuthResult.fail('No partner account found for "$cleanEmail". Please create an account.');
+    return AuthResult.fail('Invalid login credentials. Please check your email and password.');
   }
 
   Map<String, dynamic> _loadLocalAccounts(SharedPreferences prefs) {
@@ -241,8 +300,10 @@ class PartnerService extends ChangeNotifier {
     _currentPartner = null;
     _myProperties.clear();
     _myRequests.clear();
+    _myPromotions.clear();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('current_partner_profile');
+    await prefs.setBool('partner_manual_login_done', false);
     try {
       await _supabase.auth.signOut();
     } catch (_) {}
@@ -258,6 +319,21 @@ class PartnerService extends ChangeNotifier {
     try {
       final partnerEmail = _currentPartner!.email.toLowerCase().trim();
       final partnerId = _currentPartner!.id;
+      final partnerPhone = _currentPartner!.phone.replaceAll(RegExp(r'[^0-9]'), '');
+      final authUser = _supabase.auth.currentUser;
+      final authEmail = authUser?.email?.toLowerCase().trim();
+      final authId = authUser?.id;
+
+      // Collect approved handover request property IDs and active promotion property IDs
+      final approvedRequestPropIds = _myRequests
+          .where((r) => r.status.toLowerCase() == 'approved')
+          .map((r) => r.propertyId)
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      final myPromotionPropIds = _myPromotions
+          .map((pr) => pr.propertyId)
+          .where((id) => id.isNotEmpty)
+          .toSet();
 
       // Query real properties directly from Supabase
       final res = await _supabase
@@ -265,7 +341,7 @@ class PartnerService extends ChangeNotifier {
           .select()
           .order('created_at', ascending: false);
 
-      final List<PropertyModel> list = [];
+      final Map<String, PropertyModel> uniqueProps = {};
       for (var row in (res as List)) {
         final p = PropertyModel.fromJson(Map<String, dynamic>.from(row));
 
@@ -274,28 +350,69 @@ class PartnerService extends ChangeNotifier {
           final low = t.toLowerCase().trim();
           return low == 'partner:$partnerEmail' ||
               low.startsWith('partner:$partnerEmail') ||
-              low == 'partner_id:$partnerId';
+              low == 'partner_id:$partnerId' ||
+              (authEmail != null && (low == 'partner:$authEmail' || low.startsWith('partner:$authEmail'))) ||
+              (authId != null && low == 'partner_id:$authId');
         });
 
         // 2. Direct partner email or ID match
-        final hasEmailMatch = p.partnerEmail != null &&
-            p.partnerEmail!.toLowerCase().trim() == partnerEmail;
-        final hasIdMatch = p.partnerId != null && p.partnerId == partnerId;
+        final hasEmailMatch = (p.partnerEmail != null &&
+                p.partnerEmail!.toLowerCase().trim() == partnerEmail) ||
+            (authEmail != null &&
+                p.partnerEmail != null &&
+                p.partnerEmail!.toLowerCase().trim() == authEmail);
+        final hasIdMatch = (p.partnerId != null && p.partnerId == partnerId) ||
+            (authId != null && p.partnerId != null && p.partnerId == authId);
 
-        // 3. Owner phone is partner email (fallback)
-        final hasPhoneMatch = p.ownerPhone.toLowerCase().trim() == partnerEmail;
+        // 3. Owner phone match (if partner provided a registered phone)
+        bool hasPhoneMatch = p.ownerPhone.toLowerCase().trim() == partnerEmail;
+        if (!hasPhoneMatch && partnerPhone.length >= 10) {
+          final cleanOwnerPhone = p.ownerPhone.replaceAll(RegExp(r'[^0-9]'), '');
+          if (cleanOwnerPhone.isNotEmpty &&
+              (cleanOwnerPhone == partnerPhone ||
+                  cleanOwnerPhone.endsWith(partnerPhone) ||
+                  partnerPhone.endsWith(cleanOwnerPhone))) {
+            hasPhoneMatch = true;
+          }
+        }
 
-        if (hasPartnerTag || hasEmailMatch || hasIdMatch || hasPhoneMatch) {
-          list.add(p);
+        // 4. Approved handover / claim match
+        final hasApprovedClaim = p.id != null && approvedRequestPropIds.contains(p.id);
+
+        // 5. Promotion associated with this partner
+        final hasMyPromotion = p.id != null && myPromotionPropIds.contains(p.id);
+
+        if (hasPartnerTag || hasEmailMatch || hasIdMatch || hasPhoneMatch || hasApprovedClaim || hasMyPromotion) {
+          final key = p.id ?? p.title;
+          uniqueProps[key] = p;
         }
       }
 
-      _myProperties = list;
+      _myProperties = uniqueProps.values.toList();
+      await fetchAnalytics();
     } catch (e) {
       debugPrint('Error fetching partner properties: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Live Analytics Sync for Current Partner
+  Future<void> fetchAnalytics() async {
+    if (_currentPartner == null) return;
+    try {
+      final partnerEmail = _currentPartner!.email.toLowerCase().trim();
+      final propIds = _myProperties.map((p) => p.id).whereType<String>().toList();
+      final knownViewsSum = _myProperties.fold<int>(0, (sum, p) => sum + p.viewsCount);
+      _analytics = await PropertyAnalyticsService.instance.fetchPartnerAnalytics(
+        partnerEmail: partnerEmail,
+        propertyIds: propIds,
+        knownPropertiesViewsSum: knownViewsSum,
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error syncing partner analytics: $e');
     }
   }
 
@@ -555,6 +672,141 @@ class PartnerService extends ChangeNotifier {
           .map((r) => PartnerHandoverRequest.fromJson(Map<String, dynamic>.from(r)))
           .toList();
       notifyListeners();
+    }
+  }
+
+  // ── Promotions Management ─────────────────────────────────────
+  Future<void> fetchMyPromotions() async {
+    if (_currentPartner == null) return;
+    try {
+      final partnerEmail = _currentPartner!.email.toLowerCase().trim();
+      final res = await _supabase
+          .from('property_promotions')
+          .select()
+          .eq('partner_email', partnerEmail)
+          .order('created_at', ascending: false);
+
+      _myPromotions = (res as List)
+          .map((p) => PartnerPromotionModel.fromJson(Map<String, dynamic>.from(p)))
+          .toList();
+      await _saveLocalPromotions();
+      notifyListeners();
+      return;
+    } catch (e) {
+      debugPrint('Error fetching live promotions from Supabase: $e');
+    }
+    await _loadLocalPromotions();
+  }
+
+  Future<bool> createPromotion({
+    required PropertyModel property,
+    required String type, // 'in_app' or 'external'
+    required String packageName,
+    required int durationDays,
+    required String price,
+    List<String> channels = const [],
+  }) async {
+    if (_currentPartner == null) return false;
+
+    try {
+      final now = DateTime.now();
+      final promoId = _uuid.v4();
+      final partnerEmail = _currentPartner!.email.toLowerCase().trim();
+
+      final payload = {
+        'id': promoId,
+        'property_id': property.id,
+        'partner_email': partnerEmail,
+        'partner_name': _currentPartner!.name,
+        'partner_phone': _currentPartner!.phone,
+        'property_title': property.title,
+        'property_location': property.locationStr,
+        'property_image': property.imageUrls.isNotEmpty ? property.imageUrls.first : null,
+        'property_lat': property.latitude,
+        'property_lng': property.longitude,
+        'promotion_type': type,
+        'package_name': packageName,
+        'duration_days': durationDays,
+        'price': price,
+        'status': 'pending', // Awaiting admin approval
+        'priority_position': 1,
+        'radius_km': 5.0,
+        'created_at': now.toIso8601String(),
+        'impressions_count': 0,
+        'clicks_count': 0,
+        'inquiries_count': 0,
+      };
+
+      try {
+        await _supabase.from('property_promotions').insert(payload);
+      } catch (e) {
+        debugPrint('Supabase property_promotions insert error: $e');
+      }
+
+      await fetchMyPromotions();
+      return true;
+    } catch (e) {
+      debugPrint('Error creating promotion: $e');
+      return false;
+    }
+  }
+
+  Future<void> cancelPromotion(String promotionId) async {
+    try {
+      await _supabase
+          .from('property_promotions')
+          .update({'status': 'completed'})
+          .eq('id', promotionId);
+    } catch (e) {
+      debugPrint('Error cancelling promotion in Supabase: $e');
+    }
+    final idx = _myPromotions.indexWhere((p) => p.id == promotionId);
+    if (idx != -1) {
+      final old = _myPromotions[idx];
+      _myPromotions[idx] = PartnerPromotionModel(
+        id: old.id,
+        propertyId: old.propertyId,
+        propertyTitle: old.propertyTitle,
+        propertyLocation: old.propertyLocation,
+        propertyImage: old.propertyImage,
+        type: old.type,
+        packageName: old.packageName,
+        durationDays: old.durationDays,
+        price: old.price,
+        startDate: old.startDate,
+        endDate: DateTime.now(),
+        impressions: old.impressions,
+        clicks: old.clicks,
+        inquiries: old.inquiries,
+        status: 'completed',
+        channels: old.channels,
+      );
+      await _saveLocalPromotions();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _saveLocalPromotions() async {
+    if (_currentPartner == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = _myPromotions.map((p) => p.toJson()).toList();
+    await prefs.setString('partner_promotions_${_currentPartner!.email}', jsonEncode(jsonList));
+  }
+
+  Future<void> _loadLocalPromotions() async {
+    if (_currentPartner == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final str = prefs.getString('partner_promotions_${_currentPartner!.email}');
+    if (str != null) {
+      try {
+        final list = jsonDecode(str) as List;
+        _myPromotions = list
+            .map((p) => PartnerPromotionModel.fromJson(Map<String, dynamic>.from(p)))
+            .toList();
+        notifyListeners();
+      } catch (e) {
+        debugPrint('Error loading local promotions: $e');
+      }
     }
   }
 }

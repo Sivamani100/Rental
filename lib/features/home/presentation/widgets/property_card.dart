@@ -36,12 +36,14 @@ import 'package:rental/core/models/property_model.dart';
 class PropertyCard extends StatelessWidget {
   final PropertyModel property;
   final double? distanceInMeters;
+  final bool isPromoted;
   final VoidCallback onTap;
 
   const PropertyCard({
     super.key,
     required this.property,
     this.distanceInMeters,
+    this.isPromoted = false,
     required this.onTap,
   });
 
@@ -239,7 +241,7 @@ class PropertyCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Location row (at the top now)
+                  // Location row with right-aligned orange views indicator
                   Row(
                     children: [
                       Icon(
@@ -262,6 +264,36 @@ class PropertyCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (property.viewsCount > 0) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF5722).withValues(alpha: isDark ? 0.16 : 0.09),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFFFF5722).withValues(alpha: 0.3),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(CupertinoIcons.eye_fill, size: 11, color: Color(0xFFFF5722)),
+                              const SizedBox(width: 3.5),
+                              Text(
+                                '${property.viewsCount} views',
+                                style: const TextStyle(
+                                  fontFamily: 'ProximaNova',
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFFF5722),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 8),

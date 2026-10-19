@@ -11,7 +11,15 @@ import 'package:rental/features/partner/presentation/pages/partner_dashboard_scr
 
 class PartnerAuthScreen extends StatefulWidget {
   final bool initialIsSignUp;
-  const PartnerAuthScreen({super.key, this.initialIsSignUp = false});
+  final bool isEmbeddedInEntryHandler;
+  final VoidCallback? onSuccess;
+
+  const PartnerAuthScreen({
+    super.key,
+    this.initialIsSignUp = false,
+    this.isEmbeddedInEntryHandler = false,
+    this.onSuccess,
+  });
 
   @override
   State<PartnerAuthScreen> createState() => _PartnerAuthScreenState();
@@ -99,10 +107,15 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
             ? 'Account created successfully! Welcome to Partner Hub.'
             : 'Welcome back to Partner Hub!',
       );
-      Navigator.pushReplacement(
-        context,
-        CupertinoPageRoute(builder: (_) => const PartnerDashboardScreen()),
-      );
+
+      if (widget.onSuccess != null) {
+        widget.onSuccess!();
+      } else if (!widget.isEmbeddedInEntryHandler) {
+        Navigator.pushReplacement(
+          context,
+          CupertinoPageRoute(builder: (_) => const PartnerDashboardScreen()),
+        );
+      }
     } else {
       AppSnackbar.show(
         context,
@@ -124,12 +137,12 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppTheme.primaryYellow,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
           splashRadius: 22,
-          icon: Icon(CupertinoIcons.back, size: 24, color: textColor),
+          icon: const Icon(CupertinoIcons.back, size: 24, color: Colors.black),
           onPressed: () {
             HapticFeedback.selectionClick();
             Navigator.pop(context);
@@ -137,43 +150,29 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
         ),
         title: Text(
           _isSignUp ? 'Partner Sign Up' : 'Partner Sign In',
-          style: TextStyle(
-            fontFamily: 'DMSans',
-            fontSize: 17,
+          style: const TextStyle(
+            fontFamily: 'ProximaNova',
+            fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: textColor,
+            color: Colors.black,
           ),
         ),
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header Icon & Title
               Center(
                 child: Container(
-                  width: 68,
-                  height: 68,
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.primaryYellow,
-                        const Color(0xFFFFB300),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: AppTheme.primaryYellow,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryYellow.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: const Center(
                     child: Icon(
@@ -184,19 +183,19 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Center(
                 child: Text(
                   _isSignUp ? 'Create Partner Account' : 'Welcome Back, Partner',
                   style: TextStyle(
-                    fontFamily: 'DMSans',
+                    fontFamily: 'ProximaNova',
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: textColor,
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Center(
                 child: Text(
                   _isSignUp
@@ -204,20 +203,20 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
                       : 'Sign in to access your properties, edit details & toggle status',
                   style: TextStyle(
                     fontFamily: 'ProximaNova',
-                    fontSize: 12.5,
+                    fontSize: 13,
                     color: subtextColor,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
 
-              // Sign Up / Sign In Segmented Switch
+              // Segmented Switch (Sign In / Create Account)
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF12141A) : const Color(0xFFEDEFF3),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: borderColor),
                 ),
                 child: Row(
@@ -233,22 +232,13 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             color: !_isSignUp ? cardColor : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: !_isSignUp
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    )
-                                  ]
-                                : null,
+                            borderRadius: BorderRadius.circular(9),
                           ),
                           child: Center(
                             child: Text(
                               'Sign In',
                               style: TextStyle(
-                                fontFamily: 'DMSans',
+                                fontFamily: 'ProximaNova',
                                 fontWeight: FontWeight.w800,
                                 fontSize: 13,
                                 color: !_isSignUp ? textColor : subtextColor,
@@ -269,22 +259,13 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             color: _isSignUp ? cardColor : Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: _isSignUp
-                                ? [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    )
-                                  ]
-                                : null,
+                            borderRadius: BorderRadius.circular(9),
                           ),
                           child: Center(
                             child: Text(
                               'Create Account',
                               style: TextStyle(
-                                fontFamily: 'DMSans',
+                                fontFamily: 'ProximaNova',
                                 fontWeight: FontWeight.w800,
                                 fontSize: 13,
                                 color: _isSignUp ? textColor : subtextColor,
@@ -297,7 +278,76 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+
+              // Quick Auto-Fill Demo Chip (Sign In Mode)
+              if (!_isSignUp) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E222B) : const Color(0xFFFFF9E6),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.primaryYellow.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Iconsax.flash_15, size: 18, color: Color(0xFFE5A000)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Quick Demo Landlord',
+                              style: TextStyle(
+                                fontFamily: 'ProximaNova',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              'owner@rentalecosystem.com',
+                              style: TextStyle(
+                                fontFamily: 'ProximaNova',
+                                fontSize: 11,
+                                color: subtextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      BouncingButton(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _emailController.text = 'owner@rentalecosystem.com';
+                          _passwordController.text = 'password123';
+                          AppSnackbar.show(context, 'Demo credentials filled! Tap Sign In.');
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryYellow,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Auto-Fill',
+                            style: TextStyle(
+                              fontFamily: 'ProximaNova',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
 
               // Role Selection (Only on Sign Up)
               if (_isSignUp) ...[
@@ -339,7 +389,7 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
               ],
 
               // Email Address
@@ -388,7 +438,7 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
                 ),
                 const SizedBox(height: 24),
               ] else ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
               ],
 
               // Submit Button
@@ -400,13 +450,6 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.primaryYellow,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryYellow.withValues(alpha: 0.35),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: Center(
                     child: _isLoading
@@ -414,7 +457,7 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
                         : Text(
                             _isSignUp ? 'Create Account & Continue' : 'Sign In to Partner Hub',
                             style: const TextStyle(
-                              fontFamily: 'DMSans',
+                              fontFamily: 'ProximaNova',
                               fontSize: 15.5,
                               fontWeight: FontWeight.w800,
                               color: Colors.black,
@@ -514,7 +557,7 @@ class _PartnerAuthScreenState extends State<PartnerAuthScreen> {
             Text(
               title,
               style: TextStyle(
-                fontFamily: 'DMSans',
+                fontFamily: 'ProximaNova',
                 fontSize: 13.5,
                 fontWeight: FontWeight.w800,
                 color: isSelected ? (isDark ? Colors.white : Colors.black87) : Colors.grey.shade400,
