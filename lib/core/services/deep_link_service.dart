@@ -1,7 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:rental/core/models/property_model.dart';
+import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
 import 'package:rental/features/property_details/presentation/pages/property_loader_screen.dart';
+import 'package:rental/features/transport/data/datasources/transport_service.dart';
 
 class DeepLinkService {
   DeepLinkService._();
@@ -15,6 +21,8 @@ class DeepLinkService {
 
   String? _lastNavigatedPropertyId;
   DateTime? _lastNavigatedTime;
+  bool _isNavigating = false;
+  bool isHandlingDeepLink = false;
 
   // A global navigator key must be provided from main.dart to navigate when a link is tapped.
   GlobalKey<NavigatorState>? navigatorKey;
@@ -23,7 +31,9 @@ class DeepLinkService {
     navigatorKey = key;
     _appLinks = AppLinks();
     _handleIncomingLinks();
-    _handleInitialLink();
+    if (!kIsWeb) {
+      _handleInitialLink();
+    }
   }
 
   /// Extracts propertyId from ANY deep link format:
@@ -71,9 +81,37 @@ class DeepLinkService {
     return null;
   }
 
+  /// Manually marks a property as navigated so background AppLink listeners don't double-navigate.
+  void markAsNavigated(String propertyId) {
+    _lastNavigatedPropertyId = propertyId.trim();
+    _lastNavigatedTime = DateTime.now();
+  }
+
+  /// Fast synchronous lookup in the cached properties JSON string.
+  static PropertyModel? findCachedProperty(String propertyId, String? cachedJson) {
+    if (cachedJson == null || cachedJson.isEmpty) return null;
+    try {
+      final clean = propertyId.trim();
+      final List list = jsonDecode(cachedJson);
+      final match = list.firstWhere(
+        (item) => item['id'] == clean,
+        orElse: () => null,
+      );
+      if (match != null) {
+        return PropertyModel.fromJson(match);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<void> _handleInitialLink() async {
     try {
-      final initialLink = await _appLinks.getInitialLink();
+      Uri? initialLink;
+      if (kIsWeb) {
+        initialLink = Uri.base;
+      } else {
+        initialLink = await _appLinks.getInitialLink();
+      }
       if (initialLink != null) {
         debugPrint("[DeepLinkService] Found initial deep link: $initialLink");
         _handleDeepLink(initialLink);
@@ -98,7 +136,7 @@ class DeepLinkService {
     // 1. Try extracting property ID
     final propertyId = extractPropertyId(uri);
     if (propertyId != null && propertyId.isNotEmpty) {
-      _navigateToProperty(propertyId);
+      navigateToProperty(propertyId);
       return;
     }
 
@@ -116,33 +154,81 @@ class DeepLinkService {
     }
   }
 
-  void _navigateToProperty(String propertyId) {
+  void navigateToProperty(String propertyId) async {
+    final cleanId = propertyId.trim();
+    if (cleanId.isEmpty) return;
+
+    // Strong deduplication: 5 seconds and mutex flag
+    final now = DateTime.now();
+    if (_isNavigating) return;
+    if (_lastNavigatedPropertyId == cleanId &&
+        _lastNavigatedTime != null &&
+        now.difference(_lastNavigatedTime!).inMilliseconds < 5000) {
+      debugPrint("[DeepLinkService] Skipping duplicate navigation for $cleanId");
+      return;
+    }
+
+    isHandlingDeepLink = true;
+
     if (navigatorKey?.currentState == null) {
-      _pendingPropertyId = propertyId;
+      _pendingPropertyId = cleanId;
       _startPendingRetry();
       return;
     }
 
-    // Deduplicate rapid successive triggers for the same property
-    final now = DateTime.now();
-    if (_lastNavigatedPropertyId == propertyId &&
-        _lastNavigatedTime != null &&
-        now.difference(_lastNavigatedTime!).inMilliseconds < 1500) {
-      debugPrint("[DeepLinkService] Skipping duplicate navigation for $propertyId");
-      return;
-    }
-
-    _lastNavigatedPropertyId = propertyId;
+    _lastNavigatedPropertyId = cleanId;
     _lastNavigatedTime = now;
     _pendingPropertyId = null;
     _retryTimer?.cancel();
+    _isNavigating = true;
 
-    debugPrint("[DeepLinkService] Pushing PropertyLoaderScreen for $propertyId");
-    navigatorKey!.currentState!.push(
-      MaterialPageRoute(
-        builder: (_) => PropertyLoaderScreen(propertyId: propertyId),
-      ),
-    );
+    try {
+      // 1. FAST PATH: Check SharedPreferences cached_properties for instant 0ms load!
+      PropertyModel? cachedProperty;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedJson = prefs.getString('cached_properties');
+        if (cachedJson != null && cachedJson.isNotEmpty) {
+          final List list = jsonDecode(cachedJson);
+          final match = list.firstWhere(
+            (item) => item['id'] == cleanId,
+            orElse: () => null,
+          );
+          if (match != null) {
+            cachedProperty = PropertyModel.fromJson(match);
+          }
+        }
+      } catch (_) {}
+
+      if (cachedProperty != null && navigatorKey?.currentState != null) {
+        debugPrint("[DeepLinkService] Instant cache hit for $cleanId — opening PropertyDetails directly");
+        final transportFuture = TransportService.getNearby(
+          cachedProperty.latitude,
+          cachedProperty.longitude,
+        );
+        navigatorKey!.currentState!.push(
+          MaterialPageRoute(
+            builder: (_) => PropertyDetailsScreen(
+              property: cachedProperty!,
+              preloadedTransportFuture: transportFuture,
+            ),
+          ),
+        );
+        return;
+      }
+
+      // 2. If not in cache, push PropertyLoaderScreen to fetch from Supabase
+      debugPrint("[DeepLinkService] Pushing PropertyLoaderScreen for $cleanId");
+      navigatorKey!.currentState!.push(
+        MaterialPageRoute(
+          builder: (_) => PropertyLoaderScreen(propertyId: cleanId),
+        ),
+      );
+    } finally {
+      Future.delayed(const Duration(milliseconds: 600), () {
+        _isNavigating = false;
+      });
+    }
   }
 
   void _navigateToNamed(String routeName) {
@@ -160,17 +246,19 @@ class DeepLinkService {
   void _startPendingRetry() {
     _retryTimer?.cancel();
     int attempts = 0;
-    _retryTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    _retryTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       attempts++;
       if (navigatorKey?.currentState != null) {
         timer.cancel();
         if (_pendingPropertyId != null) {
-          _navigateToProperty(_pendingPropertyId!);
+          final id = _pendingPropertyId!;
+          _pendingPropertyId = null;
+          navigateToProperty(id);
         } else if (_pendingNamedRoute != null) {
           _navigateToNamed(_pendingNamedRoute!);
         }
-      } else if (attempts >= 40) {
-        // Stop after 4 seconds
+      } else if (attempts >= 60) {
+        // Stop after 3 seconds
         timer.cancel();
       }
     });

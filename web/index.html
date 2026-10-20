@@ -28,12 +28,16 @@
 
   <style>
     /* Reset & Base */
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
       padding: 0;
       background-color: #0d0f12;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       overflow-x: hidden;
+      color: #ffffff;
     }
 
     /* Smart App Banner for Mobile */
@@ -147,12 +151,233 @@
       justify-content: center;
       line-height: 1;
     }
+
+    /* 0ms Instant App Splash & Property Preview Screen */
+    #app-splash {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at 50% 20%, #1a1e24 0%, #0d0f12 100%);
+      z-index: 999999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      transition: opacity 0.4s ease-out;
+      pointer-events: auto;
+    }
+
+    .splash-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .splash-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(255, 224, 130, 0.2);
+    }
+
+    .splash-brand-text {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+    }
+
+    .splash-brand-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: #FFE082;
+      background: rgba(255, 224, 130, 0.12);
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Card preview container */
+    #property-preview-card {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(26, 30, 38, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .preview-hero {
+      width: 100%;
+      height: 200px;
+      border-radius: 14px;
+      background-color: #232832;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-hero img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+      border-radius: 14px;
+    }
+
+    .preview-hero-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #FFE082;
+      display: none;
+    }
+
+    /* Skeleton shimmer animation */
+    .shimmer {
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0.03) 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmerMove 1.5s infinite;
+    }
+
+    @keyframes shimmerMove {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .preview-line {
+      height: 16px;
+      border-radius: 6px;
+      background: #232832;
+    }
+
+    .line-title {
+      width: 75%;
+      height: 20px;
+    }
+
+    .line-price {
+      width: 40%;
+      height: 22px;
+      background: rgba(255, 224, 130, 0.15);
+    }
+
+    .line-loc {
+      width: 60%;
+      height: 14px;
+    }
+
+    .preview-details {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .preview-real-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      display: none;
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .preview-real-price-row {
+      display: none;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .preview-real-price {
+      font-size: 22px;
+      font-weight: 800;
+      color: #FFE082;
+    }
+
+    .preview-real-loc {
+      font-size: 13px;
+      color: #9ca3af;
+      display: none;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Loading status indicator */
+    .splash-status-box {
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #9ca3af;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 224, 130, 0.2);
+      border-top-color: #FFE082;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-launch-direct {
+      display: none;
+      margin-top: 10px;
+      width: 100%;
+      padding: 12px;
+      background: #FFE082;
+      color: #000000;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(255, 224, 130, 0.3);
+      transition: transform 0.15s ease;
+    }
+
+    .btn-launch-direct:active {
+      transform: scale(0.98);
+    }
   </style>
 
-  <!-- Deep Link Detection & Immediate App Launch Script -->
+  <!-- Deep Link Detection, Instant Supabase REST Prefetch, & Native Intent -->
   <script>
     (function() {
-      // 1. Extract property ID from query parameters or URL path
+      // 1. Extract property ID from query params or path segments
       function extractPropertyId() {
         try {
           var searchParams = new URLSearchParams(window.location.search);
@@ -178,7 +403,7 @@
       var isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
       var isMobile = isAndroid || isIOS;
 
-      // Build target URLs
+      // Target URLs
       var stayUrl = window.location.href + (window.location.href.indexOf('?') >= 0 ? '&' : '?') + 'stay=1';
       var androidIntentUrl = "";
       var iosSchemeUrl = "";
@@ -198,6 +423,8 @@
         propertyId: propertyId,
         isAndroid: isAndroid,
         isIOS: isIOS,
+        androidIntentUrl: androidIntentUrl,
+        iosSchemeUrl: iosSchemeUrl,
         launchApp: function() {
           if (isAndroid) {
             window.location.href = androidIntentUrl;
@@ -214,7 +441,6 @@
       if (shouldAutoRedirect) {
         try {
           if (isAndroid) {
-            // Instant redirect to installed app via Chrome Intent URI
             window.location.href = androidIntentUrl;
           } else if (isIOS) {
             window.location.href = iosSchemeUrl;
@@ -222,27 +448,129 @@
         } catch (e) {}
       }
 
-      // 3. Render Top Banner on Mobile
-      window.addEventListener('DOMContentLoaded', function() {
-        if (!isMobile) return;
+      // 3. INSTANT Supabase REST prefetch in pure JavaScript (0ms start!)
+      if (propertyId) {
+        var supaUrl = "https://dhbwnteiahefjfpojapz.supabase.co/rest/v1/properties?id=eq." + encodeURIComponent(propertyId);
+        var supaKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoYndudGVpYWhlZmpmcG9qYXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2NDIwNTQsImV4cCI6MjEwMzIxODA1NH0.CnP-ogYh7FwPY9cqBRTX2oS6NqTT-mXgPsSyDDCADC8";
 
-        var banner = document.getElementById('smart-app-banner');
-        var btnOpen = document.getElementById('btn-open-app');
-        var btnClose = document.getElementById('btn-close-banner');
+        fetch(supaUrl, {
+          headers: {
+            "apikey": supaKey,
+            "Authorization": "Bearer " + supaKey
+          }
+        }).then(function(res) {
+          return res.json();
+        }).then(function(data) {
+          if (data && data.length > 0) {
+            var prop = data[0];
+            window._preloadedProperty = prop;
+            try {
+              sessionStorage.setItem("preloaded_property_" + propertyId, JSON.stringify(prop));
+            } catch(e) {}
+            // Instant render into the preview card within 200ms
+            updatePreviewUI(prop);
+          }
+        }).catch(function(err) {
+          console.warn("[Arkio] Prefetch error:", err);
+        });
+      }
 
-        if (banner && btnOpen) {
-          banner.style.display = 'block';
+      function updatePreviewUI(prop) {
+        var card = document.getElementById('property-preview-card');
+        if (!card) return;
 
-          btnOpen.addEventListener('click', function(e) {
+        // Image
+        var hero = document.getElementById('preview-hero-box');
+        var heroImg = document.getElementById('preview-img');
+        var heroBadge = document.getElementById('preview-badge');
+        if (hero && heroImg && prop.image_urls && prop.image_urls.length > 0) {
+          heroImg.src = prop.image_urls[0];
+          heroImg.onload = function() {
+            heroImg.style.display = 'block';
+            hero.classList.remove('shimmer');
+          };
+          if (heroBadge) {
+            heroBadge.innerText = prop.type || 'Rental';
+            heroBadge.style.display = 'block';
+          }
+        }
+
+        // Title & Price & Location
+        var tShimmer = document.getElementById('title-shimmer');
+        var pShimmer = document.getElementById('price-shimmer');
+        var lShimmer = document.getElementById('loc-shimmer');
+
+        var rTitle = document.getElementById('real-title');
+        var rPriceRow = document.getElementById('real-price-row');
+        var rPrice = document.getElementById('real-price');
+        var rLoc = document.getElementById('real-loc');
+
+        if (tShimmer) tShimmer.style.display = 'none';
+        if (pShimmer) pShimmer.style.display = 'none';
+        if (lShimmer) lShimmer.style.display = 'none';
+
+        if (rTitle) {
+          rTitle.innerText = prop.title || 'Rental Property';
+          rTitle.style.display = 'block';
+        }
+        if (rPrice && rPriceRow) {
+          rPrice.innerText = prop.price || '';
+          rPriceRow.style.display = 'flex';
+        }
+        if (rLoc) {
+          rLoc.innerText = prop.location_str || '';
+          rLoc.style.display = 'flex';
+        }
+
+        var statusText = document.getElementById('splash-status-text');
+        if (statusText) {
+          statusText.innerText = 'Property ready · Launching...';
+        }
+
+        var btnDirect = document.getElementById('btn-launch-direct');
+        if (btnDirect && isMobile) {
+          btnDirect.style.display = 'block';
+          btnDirect.addEventListener('click', function(e) {
             e.preventDefault();
             window._rentalDeepLink.launchApp();
           });
+        }
+      }
 
-          if (btnClose) {
-            btnClose.addEventListener('click', function(e) {
+      // Smoothly dismiss HTML splash when Flutter renders first frame
+      window.addEventListener('flutter-first-frame', function() {
+        var splash = document.getElementById('app-splash');
+        if (splash) {
+          splash.style.opacity = '0';
+          setTimeout(function() {
+            splash.remove();
+          }, 400);
+        }
+      });
+
+      // DOM Content Loaded Handler
+      window.addEventListener('DOMContentLoaded', function() {
+        if (window._preloadedProperty) {
+          updatePreviewUI(window._preloadedProperty);
+        }
+
+        if (isMobile) {
+          var banner = document.getElementById('smart-app-banner');
+          var btnOpen = document.getElementById('btn-open-app');
+          var btnClose = document.getElementById('btn-close-banner');
+
+          if (banner && btnOpen) {
+            banner.style.display = 'block';
+            btnOpen.addEventListener('click', function(e) {
               e.preventDefault();
-              banner.style.display = 'none';
+              window._rentalDeepLink.launchApp();
             });
+            if (btnClose) {
+              btnClose.addEventListener('click', function(e) {
+                e.preventDefault();
+                banner.style.display = 'none';
+              });
+            }
           }
         }
       });
@@ -264,6 +592,40 @@
         <a id="btn-open-app" href="#" class="btn-open">Open App</a>
         <button id="btn-close-banner" class="btn-close" aria-label="Close">&times;</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 0ms Instant Brand Splash & Property Skeleton Preview -->
+  <div id="app-splash">
+    <div class="splash-brand">
+      <img src="icons/Icon-192.png" alt="Arkio Rental" class="splash-logo" onerror="this.style.display='none'">
+      <div class="splash-brand-text">Arkio Rental <span class="splash-brand-badge">PRO</span></div>
+    </div>
+
+    <div id="property-preview-card">
+      <div id="preview-hero-box" class="preview-hero shimmer">
+        <img id="preview-img" alt="Property Preview">
+        <div id="preview-badge" class="preview-hero-badge">Rental</div>
+      </div>
+      <div class="preview-details">
+        <div id="title-shimmer" class="preview-line line-title shimmer"></div>
+        <h2 id="real-title" class="preview-real-title"></h2>
+
+        <div id="price-shimmer" class="preview-line line-price shimmer"></div>
+        <div id="real-price-row" class="preview-real-price-row">
+          <span id="real-price" class="preview-real-price"></span>
+        </div>
+
+        <div id="loc-shimmer" class="preview-line line-loc shimmer"></div>
+        <div id="real-loc" class="preview-real-loc"></div>
+      </div>
+
+      <a id="btn-launch-direct" href="#" class="btn-launch-direct">Open in Rental App</a>
+    </div>
+
+    <div class="splash-status-box">
+      <div class="spinner"></div>
+      <span id="splash-status-text">Opening Property...</span>
     </div>
   </div>
 

@@ -24,22 +24,27 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rental/features/transport/data/datasources/transport_service.dart';
+import 'package:rental/features/amenities/data/datasources/amenity_service.dart';
+import 'package:rental/features/amenities/presentation/pages/amenity_street_view_screen.dart';
 import 'package:rental/core/services/analytics_service.dart';
 import 'package:rental/core/utils/image_compressor.dart';
 import 'package:rental/core/ads/native_ad_widget.dart';
 import 'package:rental/features/partner/data/services/partner_service.dart';
 import 'package:rental/features/property_details/data/services/property_analytics_service.dart';
 import 'package:rental/features/property_posting/presentation/pages/posting_screen.dart';
+import 'package:rental/features/home/presentation/pages/home_screen.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final PropertyModel property;
   // Pre-started Future from HomeScreen (started on card tap, before navigation)
   final Future<List<TransportPlace>>? preloadedTransportFuture;
+  final Future<List<AmenityPlace>>? preloadedAmenitiesFuture;
 
   const PropertyDetailsScreen({
     super.key,
     required this.property,
     this.preloadedTransportFuture,
+    this.preloadedAmenitiesFuture,
   });
 
   @override
@@ -54,6 +59,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   // Transport facilities
   late Future<List<TransportPlace>> _nearbyTransportFuture;
+
+  // Neighborhood Essentials & Amenities (temporarily hidden from UI)
+  static const bool _showNearbyEssentials = false;
+  late Future<List<AmenityPlace>> _nearbyAmenitiesFuture;
 
   late int _liveViewsCount;
   final DateTime _pageOpenTime = DateTime.now();
@@ -70,6 +79,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           widget.property.latitude,
           widget.property.longitude,
         );
+    _nearbyAmenitiesFuture = _showNearbyEssentials
+        ? (widget.preloadedAmenitiesFuture ??
+            AmenityService.getNearby(
+              widget.property.latitude,
+              widget.property.longitude,
+            ))
+        : (widget.preloadedAmenitiesFuture ?? Future.value(const <AmenityPlace>[]));
 
     // Track property view
     if (widget.property.id != null) {
@@ -894,6 +910,485 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 
+  // --- Amenities styling & navigation helpers ---
+  IconData _amenityIcon(String type) {
+    switch (type) {
+      case 'Hospitals & Medical':
+        return CupertinoIcons.heart_fill;
+      case 'Schools & Colleges':
+        return CupertinoIcons.book_fill;
+      case 'Markets & Groceries':
+        return CupertinoIcons.cart_fill;
+      case 'Parks & Nature':
+        return CupertinoIcons.tree;
+      case 'Sports & Grounds':
+        return CupertinoIcons.sportscourt_fill;
+      case 'Banks & Civic':
+        return CupertinoIcons.building_2_fill;
+      default:
+        return CupertinoIcons.location_solid;
+    }
+  }
+
+  Widget _buildAmenitiesSection() {
+    if (!_showNearbyEssentials) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Nearby Essentials', CupertinoIcons.compass_fill),
+        const SizedBox(height: 12),
+        FutureBuilder<List<AmenityPlace>>(
+          future: _nearbyAmenitiesFuture,
+          builder: (context, snapshot) {
+            // Loading skeleton
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return SizedBox(
+                height: 110,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.darkCard : const Color(0xFFFAFAFC),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.darkCard : const Color(0xFFFAFAFC),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final places = snapshot.data ?? [];
+
+            // Empty state
+            if (places.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : const Color(0xFFF8F8FA),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : AppTheme.primaryYellow.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(CupertinoIcons.location_slash, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'No essentials found nearby',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Explore neighborhood on Google Maps',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    BouncingButton(
+                      scaleFactor: 0.92,
+                      onTap: () async {
+                        final searchUrl = Uri.parse(
+                          'https://www.google.com/maps/search/amenities/@${widget.property.latitude},${widget.property.longitude},14z',
+                        );
+                        if (await canLaunchUrl(searchUrl)) {
+                          await launchUrl(searchUrl, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.primaryYellow : Colors.black,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          'Open Maps',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Aggregate by type
+            final Map<String, List<AmenityPlace>> grouped = {};
+            for (final p in places) {
+              grouped.putIfAbsent(p.type, () => []).add(p);
+            }
+
+            final types = grouped.keys.toList();
+            const preferredOrder = [
+              'Hospitals & Medical',
+              'Schools & Colleges',
+              'Markets & Groceries',
+              'Parks & Nature',
+              'Sports & Grounds',
+              'Banks & Civic',
+            ];
+            types.sort((a, b) {
+              final idxA = preferredOrder.indexOf(a);
+              final idxB = preferredOrder.indexOf(b);
+              if (idxA != -1 && idxB != -1) return idxA.compareTo(idxB);
+              if (idxA != -1) return -1;
+              if (idxB != -1) return 1;
+              return a.compareTo(b);
+            });
+
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final double spacing = 12;
+                final double itemWidth = (constraints.maxWidth - spacing) / 2 - 0.5;
+
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: types.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final type = entry.value;
+                    final items = grouped[type]!;
+                    final nearest = items.first;
+                    final isFullWidth = (types.length % 2 != 0) && (index == types.length - 1);
+
+                    return _buildGridTypeCard(
+                      type: type,
+                      count: items.length,
+                      nearestDistance: nearest.distanceLabel,
+                      icon: _amenityIcon(type),
+                      width: isFullWidth ? constraints.maxWidth : itemWidth,
+                      isFullWidth: isFullWidth,
+                      isDark: isDark,
+                      onTap: () => _showAmenityBottomSheet(type, items, isDark),
+                    );
+                  }).toList(),
+                );
+              },
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 20),
+          child: Row(
+            children: [
+              Icon(CupertinoIcons.info_circle_fill, size: 14, color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade400),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Tap any category to view facilities and get directions from property',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openDirectionsToAmenity(AmenityPlace place) async {
+    final originLat = widget.property.latitude;
+    final originLng = widget.property.longitude;
+    final destLat = place.lat;
+    final destLng = place.lng;
+
+    final dirUrl = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&origin=$originLat,$originLng&destination=$destLat,$destLng&travelmode=driving',
+    );
+
+    try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+        final appleMapsUrl = Uri.parse(
+          'http://maps.apple.com/?saddr=$originLat,$originLng&daddr=$destLat,$destLng&dirflg=d',
+        );
+        if (await canLaunchUrl(appleMapsUrl)) {
+          await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
+          return;
+        }
+      }
+
+      if (await canLaunchUrl(dirUrl)) {
+        await launchUrl(dirUrl, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {}
+
+    final fallbackUrl = Uri.parse(
+      'https://www.google.com/maps/dir/$originLat,$originLng/$destLat,$destLng',
+    );
+    if (await canLaunchUrl(fallbackUrl)) {
+      await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        AppSnackbar.error(context, 'Could not open maps application');
+      }
+    }
+  }
+
+  void _showAmenityBottomSheet(String type, List<AmenityPlace> places, bool isDark) {
+    final primaryColor = isDark ? AppTheme.primaryYellow : Colors.black;
+    final onPrimaryColor = isDark ? Colors.black : Colors.white;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkCard : Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.82,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.darkCard : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? const Color(0xFF33333E) : Colors.grey.shade300,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.darkBorder : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: primaryColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(_amenityIcon(type), color: onPrimaryColor, size: 20),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Nearby $type',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : Colors.black,
+                                ),
+                              ),
+                              Text(
+                                '${places.length} places found nearby',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(CupertinoIcons.clear, color: isDark ? Colors.white54 : Colors.black54),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Divider(color: isDark ? AppTheme.darkBorder : Colors.grey.shade200, height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+                      itemCount: places.length,
+                      separatorBuilder: (_, index) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final place = places[index];
+                        return BouncingButton(
+                          scaleFactor: 0.98,
+                          onTap: () {
+                            _openDirectionsToAmenity(place);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF8F8FA),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+                              ),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: isDark ? AppTheme.darkBorder : Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(_amenityIcon(type), color: primaryColor, size: 20),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        place.name,
+                                        style: TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.25,
+                                          color: isDark ? Colors.white : Colors.black,
+                                        ),
+                                        softWrap: true,
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        '${place.subType} · ${place.distanceLabel} from property',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // 360° Street View button
+                                BouncingButton(
+                                  scaleFactor: 0.90,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => AmenityStreetViewScreen(place: place),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? AppTheme.darkBorder : Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isDark ? const Color(0xFF444455) : Colors.grey.shade300,
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '360°',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark ? AppTheme.primaryYellow : Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: primaryColor,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.arrow_turn_up_right,
+                                        size: 13,
+                                        color: onPrimaryColor,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'Direction',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: onPrimaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   // --- Section Header with Theme Badge Layout ---
   Widget _buildSectionHeader(String title, IconData icon) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1113,7 +1608,24 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     final isPg = widget.property.type == 'PG';
     final isBuy = widget.property.type == 'Buy' || widget.property.type == 'Sale';
 
-    return Scaffold(
+    void handleBack() {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        handleBack();
+      },
+      child: Scaffold(
       backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
       body: Center(
         child: ConstrainedBox(
@@ -1218,7 +1730,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           children: [
                             _buildGlassIconButton(
                               icon: CupertinoIcons.chevron_left,
-                              onTap: () => Navigator.pop(context),
+                              onTap: handleBack,
                             ),
                             Row(
                               children: [
@@ -2157,6 +2669,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       const SizedBox(height: 24),
 
                       // ==========================================
+                      // 8c. NEARBY ESSENTIALS SECTION (Hidden for now)
+                      // ==========================================
+                      if (_showNearbyEssentials) ...[
+                        _buildAmenitiesSection(),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // ==========================================
                       // 9. CONTRIBUTE PHOTOS CARD
                       // ==========================================
                       Container(
@@ -2377,8 +2897,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _showAvailabilityBottomSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;

@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rental/features/home/presentation/pages/home_screen.dart';
 import 'package:rental/features/onboarding/presentation/pages/onboarding_screen.dart';
+import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
+import 'package:rental/features/property_details/presentation/pages/property_loader_screen.dart';
+import 'package:rental/features/transport/data/datasources/transport_service.dart';
 import 'package:rental/features/ai_chat/presentation/pages/ai_chat_screen.dart';
 import 'package:rental/features/ai_chat/data/datasources/ai_assistant_service.dart';
 import 'package:rental/core/services/analytics_service.dart';
@@ -22,6 +26,7 @@ import 'package:rental/core/services/secure_storage_adapter.dart';
 import 'package:rental/core/services/install_tracker.dart';
 import 'package:rental/core/services/app_install_prompt_service.dart';
 import 'package:rental/core/ads/ads_initializer.dart';
+import 'package:app_links/app_links.dart';
 import 'package:rental/core/services/deep_link_service.dart';
 import 'package:rental/core/widgets/network_status_bar.dart';
 
@@ -103,72 +108,61 @@ Future<void> main() async {
     PaintingBinding.instance.imageCache.maximumSizeBytes = 250 << 20; // 250 MB
   } catch (_) {}
 
-  // Safe initialization of local controllers and storage
-  try {
-    await ThemeController.instance.init();
-  } catch (e) {
-    debugPrint('ThemeController init error: $e');
-  }
+  // Run critical startup tasks concurrently for near-instant cold start
+  String? initialPropertyId;
+  String? cachedPropertiesJson;
+  bool hasCompletedOnboarding = true;
 
-  try {
-    await SavedPropertiesService.instance.init();
-  } catch (e) {
-    debugPrint('SavedPropertiesService init error: $e');
-  }
+  // Start Firebase safely in background without blocking first frame
+  _initFirebaseSafely();
 
-  // Initialize Supabase safely
-  try {
-    await Supabase.initialize(
+  await Future.wait([
+    // 1. SharedPreferences, ThemeController & SavedProperties in parallel
+    SharedPreferences.getInstance().then((prefs) async {
+      cachedPropertiesJson = prefs.getString('cached_properties');
+      hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ??
+          (prefs.containsKey('cached_properties') ||
+              prefs.containsKey('unique_app_install_id'));
+      await Future.wait([
+        ThemeController.instance.init().catchError((e) {
+          debugPrint('ThemeController init error: $e');
+        }),
+        SavedPropertiesService.instance.init().catchError((e) {
+          debugPrint('SavedPropertiesService init error: $e');
+        }),
+      ]);
+    }).catchError((e) {
+      debugPrint('SharedPreferences init error: $e');
+    }),
+
+    // 2. Supabase initialize
+    Supabase.initialize(
       url: Env.supabaseUrl,
       anonKey: Env.supabaseAnonKey,
       authOptions: const FlutterAuthClientOptions(
         localStorage: SecureLocalStorage(),
       ),
-    );
-  } catch (e) {
-    debugPrint('Supabase initialize error: $e');
-  }
+    ).catchError((e) {
+      debugPrint('Supabase initialize error: $e');
+      return Supabase.instance;
+    }),
 
-  // Initialize Firebase before registering onBackgroundMessage
-  try {
-    if (Firebase.apps.isEmpty) {
-      if (kIsWeb) {
-        await Firebase.initializeApp(
-          options: const FirebaseOptions(
-            apiKey: 'AIzaSyBxP9pherG9E44m0Nzqm-eQmA066kvUG28',
-            appId: '1:1045370324281:android:55dc0aca49e69a1bcdd4e8',
-            messagingSenderId: '1045370324281',
-            projectId: 'rental-67032',
-            storageBucket: 'rental-67032.firebasestorage.app',
-          ),
-        );
-      } else {
-        await Firebase.initializeApp();
-      }
-    }
-    if (!kIsWeb) {
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    }
-  } catch (e) {
-    debugPrint('Firebase init error: $e');
-  }
+    // 3. Initial deep link check (0ms on Web, tight 200ms on mobile)
+    _checkInitialDeepLink().then((id) {
+      if (id != null) initialPropertyId = id;
+    }),
+  ]);
 
-  // Track unique installations anonymously in the background
-  try {
-    InstallTracker.initAndTrack();
-  } catch (e) {
-    debugPrint('InstallTracker error: $e');
-  }
-
-  // Pre-load AI Assistant local chat history and settings instantly
-  try {
-    AiAssistantService.instance.init();
-  } catch (e) {
-    debugPrint('AiAssistantService error: $e');
-  }
+  // Non-blocking background initializations
+  InstallTracker.initAndTrack();
+  AiAssistantService.instance.init();
 
   // Launch UI INSTANTLY — 0ms blank screen delay
-  runApp(const RentalApp());
+  runApp(RentalApp(
+    initialPropertyId: initialPropertyId,
+    cachedPropertiesJson: cachedPropertiesJson,
+    hasCompletedOnboarding: hasCompletedOnboarding,
+  ));
 
   // Initialize AdMob SDK non-blocking after first frame (never delays UI).
   try {
@@ -197,6 +191,51 @@ Future<void> main() async {
   }
 }
 
+Future<void> _initFirebaseSafely() async {
+  try {
+    if (Firebase.apps.isEmpty) {
+      if (kIsWeb) {
+        await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: 'AIzaSyBxP9pherG9E44m0Nzqm-eQmA066kvUG28',
+            appId: '1:1045370324281:android:55dc0aca49e69a1bcdd4e8',
+            messagingSenderId: '1045370324281',
+            projectId: 'rental-67032',
+            storageBucket: 'rental-67032.firebasestorage.app',
+          ),
+        );
+      } else {
+        await Firebase.initializeApp();
+      }
+    }
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    }
+  } catch (e) {
+    debugPrint('Firebase init error: $e');
+  }
+}
+
+Future<String?> _checkInitialDeepLink() async {
+  try {
+    if (kIsWeb) {
+      return DeepLinkService.extractPropertyId(Uri.base);
+    } else {
+      final appLinks = AppLinks();
+      final uri = await appLinks.getInitialLink().timeout(
+            const Duration(milliseconds: 200),
+            onTimeout: () => null,
+          );
+      if (uri != null) {
+        return DeepLinkService.extractPropertyId(uri);
+      }
+    }
+  } catch (e) {
+    debugPrint('Initial deep link check error: $e');
+  }
+  return null;
+}
+
 void _initAsyncServices() async {
   try {
     await AnalyticsService.instance.init();
@@ -211,7 +250,15 @@ void _initAsyncServices() async {
 }
 
 class RentalApp extends StatelessWidget {
-  const RentalApp({super.key});
+  final String? initialPropertyId;
+  final String? cachedPropertiesJson;
+  final bool hasCompletedOnboarding;
+  const RentalApp({
+    super.key,
+    this.initialPropertyId,
+    this.cachedPropertiesJson,
+    this.hasCompletedOnboarding = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -259,11 +306,44 @@ class RentalApp extends StatelessWidget {
                 );
               }
 
-              final propertyId = DeepLinkService.extractPropertyId(uri);
-              if (propertyId != null && propertyId.isNotEmpty) {
+              final routePropId =
+                  DeepLinkService.extractPropertyId(uri) ?? initialPropertyId;
+              if (routePropId != null && routePropId.isNotEmpty) {
+                DeepLinkService.instance.markAsNavigated(routePropId);
+
+                // 1. If property is in local cache, render PropertyDetailsScreen INSTANTLY (0ms!)
+                final cached = DeepLinkService.findCachedProperty(
+                  routePropId,
+                  cachedPropertiesJson,
+                );
+                if (cached != null) {
+                  final transportFuture = TransportService.getNearby(
+                    cached.latitude,
+                    cached.longitude,
+                  );
+                  return MaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => PropertyDetailsScreen(
+                      property: cached,
+                      preloadedTransportFuture: transportFuture,
+                    ),
+                  );
+                }
+
+                // 2. If not in cache, render PropertyLoaderScreen directly — NO HomeScreen overhead!
                 return MaterialPageRoute(
                   settings: settings,
-                  builder: (_) => HomeScreen(initialPropertyId: propertyId),
+                  builder: (_) => PropertyLoaderScreen(
+                    propertyId: routePropId,
+                    initialCachedPropertiesJson: cachedPropertiesJson,
+                  ),
+                );
+              }
+
+              if (hasCompletedOnboarding) {
+                return MaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => const HomeScreen(),
                 );
               }
 

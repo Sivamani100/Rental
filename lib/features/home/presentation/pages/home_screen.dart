@@ -36,6 +36,7 @@ import 'package:rental/app/theme/theme_provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rental/core/services/analytics_service.dart';
 import 'package:rental/features/transport/data/datasources/transport_service.dart';
+import 'package:rental/features/amenities/data/datasources/amenity_service.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:rental/core/models/property_model.dart';
 import 'package:rental/features/partner/data/models/partner_promotion_model.dart';
@@ -82,6 +83,8 @@ List<PropertyModel> _parsePropertiesIsolate(String jsonStr) {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedTypeIndex = 0; // 0 for PG / Hostel, 1 for Rental
   int _bottomNavIndex = 0; // 0 for Home, 1 for Saved, etc.
+  DateTime? _lastExploreTabTap;
+  DateTime? _lastSearchOpenTime;
   PropertyModel? _selectedMapProperty;
   final MapController _mapController = MapController();
   late final PageController _pageController;
@@ -133,7 +136,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription<Position>? _locationStream;
   RealtimeChannel? _propertiesChannel;
   bool _isRefreshingLocation = false;
-  bool _hasOpenedInitialProperty = false;
 
   // Geocoding throttle — only re-geocode when user moves >500m
   Position? _lastGeocodedPosition;
@@ -176,8 +178,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Subscribe to realtime new approvals
     _subscribeToRealtimeUpdates();
 
-    if (mounted) {
-      _checkAndOpenInitialProperty();
+    if (mounted && widget.initialPropertyId != null && widget.initialPropertyId!.isNotEmpty) {
+      DeepLinkService.instance.navigateToProperty(widget.initialPropertyId!);
     }
   }
 
@@ -195,6 +197,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await prefs.setInt('cached_properties_version', _cacheVersion);
       }
 
+      final cachedCity = prefs.getString('cached_city');
+      final cachedArea = prefs.getString('cached_area');
+      if (mounted) {
+        if (cachedCity != null && cachedCity.isNotEmpty && widget.initialLocationCity == null) {
+          _currentCity = cachedCity;
+        }
+        if (cachedArea != null && cachedArea.isNotEmpty && widget.initialLocationSubtext == null) {
+          _currentArea = cachedArea;
+        }
+      }
+
       final cachedData = prefs.getString('cached_properties');
       if (cachedData != null && cachedData.isNotEmpty && mounted) {
         // Decode off main thread to avoid UI jank
@@ -205,55 +218,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _isInitialLoading = false; // Show feed immediately with cache
           });
           _precachePropertyImages(cachedList);
-          _checkAndOpenInitialProperty();
         }
       } else if (mounted) {
         // No cache — keep loading spinner until first network result arrives
         // (will be dismissed in _fetchProperties)
       }
     } catch (_) {}
-  }
-
-  void _checkAndOpenInitialProperty() async {
-    if (_hasOpenedInitialProperty) return;
-    String? targetId = widget.initialPropertyId;
-    if (targetId == null && kIsWeb) {
-      targetId = DeepLinkService.extractPropertyId(Uri.base);
-    }
-
-    if (targetId != null && targetId.isNotEmpty) {
-      _hasOpenedInitialProperty = true;
-      try {
-        PropertyModel? found;
-        try {
-          found = _allProperties.firstWhere((p) => p.id == targetId);
-        } catch (_) {}
-
-        if (found == null) {
-          final res = await _supabase
-              .from('properties')
-              .select()
-              .eq('id', targetId)
-              .maybeSingle();
-          if (res != null) {
-            found = PropertyModel.fromJson(res);
-          }
-        }
-
-        if (found != null && mounted) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PropertyDetailsScreen(property: found!),
-                ),
-              );
-            }
-          });
-        }
-      } catch (_) {}
-    }
   }
 
   Future<void> _loadManualLocation() async {
@@ -586,7 +556,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
         NetworkStatusService.instance.reportSuccess();
         _precachePropertyImages(freshList);
-        _checkAndOpenInitialProperty();
       }
     } catch (e) {
       NetworkStatusService.instance.reportFailure();
@@ -733,6 +702,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _currentArea = 'Detecting your area...';
           }
         });
+
+        // Persist for instant display on next app open
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('cached_city', _currentCity);
+          await prefs.setString('cached_area', _currentArea);
+        } catch (_) {}
       }
     } catch (_) {
       // Keep current city label — geocoding is non-critical
@@ -771,6 +747,89 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     } catch (_) {}
     if (mounted) setState(() { _isSearchingLocations = false; });
+  }
+
+  Future<void> _openUnifiedSearch() async {
+    final now = DateTime.now();
+    if (_lastSearchOpenTime != null &&
+        now.difference(_lastSearchOpenTime!).inMilliseconds < 250) {
+      return;
+    }
+    _lastSearchOpenTime = now;
+    HapticFeedback.selectionClick();
+    try {
+      final result = await Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, anim, secAnim) => UnifiedSearchScreen(
+            initialProperties: _allProperties,
+          ),
+          transitionDuration: const Duration(milliseconds: 200),
+          reverseTransitionDuration: const Duration(milliseconds: 180),
+          transitionsBuilder: (context, anim, secAnim, child) {
+            final curved = CurvedAnimation(
+              parent: anim,
+              curve: Curves.easeOutCubic,
+            );
+            return FadeTransition(
+              opacity: curved,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.04),
+                  end: Offset.zero,
+                ).animate(curved),
+                child: child,
+              ),
+            );
+          },
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (result != null) {
+        Position? selectedPos;
+        String? cityName;
+        String? areaName;
+
+        if (result is Position) {
+          selectedPos = result;
+        } else if (result is Map) {
+          selectedPos = result['position'] as Position?;
+          cityName = result['city'] as String?;
+          areaName = result['area'] as String?;
+        }
+
+        if (selectedPos != null || (cityName != null && cityName.isNotEmpty)) {
+          if (selectedPos != null) {
+            _manualLocationOverride = selectedPos;
+          }
+          if (cityName != null && cityName.isNotEmpty) {
+            _currentCity = cityName;
+            _currentArea = areaName ?? 'Andhra Pradesh, India';
+          }
+          _searchQuery = '';
+          _searchController.clear();
+          _bottomNavIndex = 0; // Directly reach the Home page of the app
+          setState(() {});
+
+          if (selectedPos != null) {
+            if (cityName == null) {
+              await _updateGeocodingIfNeeded(selectedPos, force: true);
+            }
+            if (_bottomNavIndex == 3) {
+              _mapController.move(
+                LatLng(selectedPos.latitude, selectedPos.longitude),
+                14.0,
+              );
+            }
+          }
+          _fetchProperties(forceRefresh: true);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error navigating to UnifiedSearchScreen: $e');
+    }
   }
 
   List<PropertyModel> _getSortedPropertiesForType(String selectedTypeStr) {
@@ -1484,38 +1543,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           _searchFocusNode.hasFocus || _searchQuery.isNotEmpty ? 30 : 12,
                         ),
                         border: _isScrollUIVisible ? null : Border.all(color: Colors.grey.shade300),
-                        boxShadow: _searchFocusNode.hasFocus || _searchQuery.isNotEmpty
-                            ? [
-                                BoxShadow(
-                                  color: AppTheme.primaryYellow.withValues(alpha: 0.25),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ]
-                            : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: TextField(
                         controller: _searchController,
                         readOnly: true,
                         textAlignVertical: TextAlignVertical.center,
-                        onTap: () async {
-                          HapticFeedback.selectionClick();
-                          final result = await Navigator.push(
-                            context,
-                            CupertinoPageRoute(
-                              builder: (context) => const UnifiedSearchScreen(),
-                            ),
-                          );
-                          if (result != null && result is Position) {
-                            _manualLocationOverride = result;
-                            _searchQuery = '';
-                            _searchController.clear();
-                            setState(() {});
-                            await _updateGeocodingIfNeeded(result, force: true);
-                            _fetchProperties(forceRefresh: true);
-                          }
-                        },
+                        onTap: _openUnifiedSearch,
                         style: TextStyle(
                           fontFamily: 'ProximaNova',
                           fontSize: 14.5,
@@ -1565,11 +1606,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     }
                                   : () async {
                                       HapticFeedback.selectionClick();
-                                      final result = await Navigator.push<String>(
+                                      await Navigator.push(
                                         context,
                                         PageRouteBuilder(
                                           pageBuilder: (context, animation, secondaryAnimation) =>
-                                              const VoiceSearchScreen(),
+                                              VoiceSearchScreen(
+                                                properties: _allProperties,
+                                              ),
                                           transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                             const begin = Offset(0.0, 1.0);
                                             const end = Offset.zero;
@@ -1580,10 +1623,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           },
                                         ),
                                       );
-                                      if (result != null && result.isNotEmpty) {
-                                        _searchController.text = result;
-                                        _onSearchChanged(result);
-                                      }
                                     },
                             ),
                           ),
@@ -1838,12 +1877,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           prop.latitude,
                           prop.longitude,
                         );
+                        final amenitiesFuture = AmenityService.getNearby(
+                          prop.latitude,
+                          prop.longitude,
+                        );
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => PropertyDetailsScreen(
                               property: prop,
                               preloadedTransportFuture: transportFuture,
+                              preloadedAmenitiesFuture: amenitiesFuture,
                             ),
                           ),
                         );
@@ -2250,23 +2294,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         cursorColor: Colors.black87,
                         cursorWidth: 2.0,
                         cursorHeight: 20.0,
-                        onTap: () async {
-                          HapticFeedback.selectionClick();
-                          final result = await Navigator.push(
-                            context,
-                            CupertinoPageRoute(
-                              builder: (context) => const UnifiedSearchScreen(),
-                            ),
-                          );
-                          if (result != null && result is Position) {
-                            _manualLocationOverride = result;
-                            _searchQuery = '';
-                            _searchController.clear();
-                            setState(() {});
-                            await _updateGeocodingIfNeeded(result, force: true);
-                            _fetchProperties(forceRefresh: true);
-                          }
-                        },
+                        onTap: _openUnifiedSearch,
                         style: TextStyle(
                           fontFamily: 'ProximaNova',
                           fontSize: 15.5,
@@ -2320,10 +2348,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     } 
                                   : () async {
                                       HapticFeedback.selectionClick();
-                                      final result = await Navigator.push<String>(
+                                      await Navigator.push(
                                         context,
                                         PageRouteBuilder(
-                                          pageBuilder: (context, animation, secondaryAnimation) => const VoiceSearchScreen(),
+                                          pageBuilder: (context, animation, secondaryAnimation) => VoiceSearchScreen(
+                                            properties: _allProperties,
+                                          ),
                                           transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                             const begin = Offset(0.0, 1.0);
                                             const end = Offset.zero;
@@ -2333,12 +2363,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                           },
                                         ),
                                       );
-                                      if (result != null && result.isNotEmpty) {
-                                        setState(() {
-                                          _searchController.text = result;
-                                          _searchQuery = result;
-                                        });
-                                      }
                                     },
                             ),
                           ),
@@ -2687,29 +2711,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   controller: _searchController,
                   readOnly: true,
                   textAlignVertical: TextAlignVertical.center,
-                  onTap: () async {
-                    HapticFeedback.selectionClick();
-                    final result = await Navigator.push(
-                      context,
-                      CupertinoPageRoute(
-                        builder: (context) => const UnifiedSearchScreen(),
-                      ),
-                    );
-
-                    if (result != null && result is Position) {
-                      _manualLocationOverride = result;
-                      _searchQuery = '';
-                      _searchController.clear();
-                      
-                      setState(() {});
-                      await _updateGeocodingIfNeeded(result, force: true);
-                      _fetchProperties();
-
-                      if (_bottomNavIndex == 3) {
-                        _mapController.move(LatLng(result.latitude, result.longitude), 14.0);
-                      }
-                    }
-                  },
+                  onTap: _openUnifiedSearch,
                   style: TextStyle(
                     fontFamily: 'ProximaNova',
                     fontSize: 14.5,
@@ -2750,11 +2752,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               }
                             : () async {
                                 HapticFeedback.selectionClick();
-                                final result = await Navigator.push<String>(
+                                await Navigator.push(
                                   context,
                                   PageRouteBuilder(
                                     pageBuilder: (context, animation, secondaryAnimation) =>
-                                        const VoiceSearchScreen(),
+                                        VoiceSearchScreen(
+                                          properties: _allProperties,
+                                        ),
                                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                       const begin = Offset(0.0, 1.0);
                                       const end = Offset.zero;
@@ -2763,10 +2767,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     },
                                   ),
                                 );
-                                if (result != null && result.isNotEmpty) {
-                                  _searchController.text = result;
-                                  _onSearchChanged(result);
-                                }
                               },
                       ),
                     ),
@@ -3276,19 +3276,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(tabItems.length, (index) {
-              bool isSelected = false;
-              if (_bottomNavIndex == 0) {
-                if (index == 0) {
-                  isSelected =
-                      _selectedTypeIndex == 0 ||
-                      _selectedTypeIndex == 1 ||
-                      _selectedTypeIndex == 2;
-                } else if (index == 1) {
-                  isSelected = _selectedTypeIndex == 3;
-                }
-              } else if (_bottomNavIndex == index) {
-                isSelected = true;
-              }
+              final isSelected = _bottomNavIndex == index;
 
               final item = tabItems[index];
 
@@ -3296,6 +3284,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 onTap: () {
                   HapticFeedback.selectionClick();
                   if (index == 0) {
+                    _lastExploreTabTap = null;
                     setState(() {
                       _bottomNavIndex = 0;
                     });
@@ -3312,18 +3301,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       }
                     }
                   } else if (index == 1) {
-                    setState(() {
-                      _bottomNavIndex = 1;
-                    });
+                    final now = DateTime.now();
+                    final isMultiTap = _lastExploreTabTap != null &&
+                        now.difference(_lastExploreTabTap!).inMilliseconds < 1200;
+                    _lastExploreTabTap = now;
+
+                    debugPrint('🔍 [Explore Tab] tapped: bottomNavIndex=$_bottomNavIndex, isMultiTap=$isMultiTap');
+
+                    // If already on Explore tab (repeat click) or clicked more than once within 1.2s
+                    if (_bottomNavIndex == 1 || isMultiTap) {
+                      debugPrint('🚀 [Explore Tab] Opening UnifiedSearchScreen directly!');
+                      _openUnifiedSearch();
+                    } else {
+                      setState(() {
+                        _bottomNavIndex = 1;
+                      });
+                    }
                   } else if (index == 2) {
+                    _lastExploreTabTap = null;
                     setState(() {
                       _bottomNavIndex = 2;
                     });
                   } else if (index == 3) {
+                    _lastExploreTabTap = null;
                     setState(() {
                       _bottomNavIndex = 3;
                     });
                   } else if (index == 4) {
+                    _lastExploreTabTap = null;
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const AiChatScreen()),
@@ -3556,12 +3561,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               prop.latitude,
               prop.longitude,
             );
+            final amenitiesFuture = AmenityService.getNearby(
+              prop.latitude,
+              prop.longitude,
+            );
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => PropertyDetailsScreen(
                   property: prop,
                   preloadedTransportFuture: transportFuture,
+                  preloadedAmenitiesFuture: amenitiesFuture,
                 ),
               ),
             ).then((_) {

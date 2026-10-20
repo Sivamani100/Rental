@@ -35,10 +35,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Enable Flutter Deep Linking for App Launch -->
+            <!-- Disable Flutter default deep linking so AppLinks / DeepLinkService has 100% control without route collisions -->
             <meta-data
                 android:name="flutter_deeplinking_enabled"
-                android:value="true" />
+                android:value="false" />
 
             <!-- Intent Filter: Deep Link for Web URLs (https://rental.arkio.in) -->
             <intent-filter android:autoVerify="true">

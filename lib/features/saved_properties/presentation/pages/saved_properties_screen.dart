@@ -6,6 +6,7 @@ import 'package:rental/features/saved_properties/data/datasources/saved_properti
 import 'package:rental/features/home/presentation/pages/home_screen.dart'; // To reuse GridPropertyCard
 import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
 import 'package:rental/features/transport/data/datasources/transport_service.dart';
+import 'package:rental/features/amenities/data/datasources/amenity_service.dart';
 import 'package:flutter/cupertino.dart';
 
 class SavedPropertiesScreen extends StatefulWidget {
@@ -123,6 +124,10 @@ class _SavedPropertiesScreenState extends State<SavedPropertiesScreen> {
                         builder: (_) => PropertyDetailsScreen(
                           property: prop,
                           preloadedTransportFuture: transportFuture,
+                          preloadedAmenitiesFuture: AmenityService.getNearby(
+                            prop.latitude,
+                            prop.longitude,
+                          ),
                         ),
                       ),
                     );

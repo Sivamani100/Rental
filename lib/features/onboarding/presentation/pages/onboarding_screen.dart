@@ -153,13 +153,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     // Play logo animation immediately
     _splashLogoController.forward();
 
-    // Request location permission directly on splash but force 3s max timeout
-    Future.any([
-      _requestLocationOnSplash(),
-      Future.delayed(const Duration(seconds: 3)).then((_) {
-        if (mounted) _handleLocationError();
-      }),
-    ]);
+    // Fast non-blocking location check on splash
+    _requestLocationOnSplash();
+
+    // Brisk 600ms splash: allow the logo pop-in animation to display smoothly,
+    // then transition directly to HomeScreen without keeping the user waiting.
+    Future.delayed(const Duration(milliseconds: 600)).then((_) {
+      if (mounted) _transitionFromSplash();
+    });
 
     // Permission pulse animation
     _pulseController = AnimationController(
@@ -171,106 +172,52 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  /// Requests location permission during the splash screen,
-  /// reverse-geocodes the result, displays it, then transitions.
+  /// Fast non-blocking location check during splash.
+  /// Never blocks screen transition if GPS or network takes time.
   Future<void> _requestLocationOnSplash() async {
     try {
-      // 1. Request permission via permission_handler first
-      if (!kIsWeb) {
-        final status = await Permission.locationWhenInUse.request();
-        if (status.isPermanentlyDenied) {
-          _handleLocationDenied();
-          return;
-        }
-      }
-
-      // 2. Double-check via Geolocator
       LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.deniedForever ||
-          permission == LocationPermission.denied) {
-        _handleLocationDenied();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         return;
       }
 
-      // 3. Try last known position first (instant)
-      Position? position;
-      try {
-        position = await Geolocator.getLastKnownPosition();
-      } catch (_) {}
+      // Try last known position (near-instantaneous ~10ms)
+      final position = await Geolocator.getLastKnownPosition()
+          .timeout(const Duration(milliseconds: 400), onTimeout: () => null);
 
-      // 4. If no cached position, get a fresh one with a STRICT 5s timeout
-      if (position == null) {
-        try {
-          position = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.medium,
-              timeLimit: Duration(seconds: 5),
-            ),
-          );
-        } catch (_) {
-          // Immediately fail gracefully instead of wasting 8 more seconds.
-          _handleLocationError();
-          return;
-        }
-      }
+      if (position == null) return;
 
-      if (position == null) {
-        // Couldn't get position at all, proceed gracefully
-        _handleLocationError();
-        return;
-      }
+      // Fast reverse geocoding with tight 500ms timeout
+      final placemarks = await Geocoding()
+          .placemarkFromCoordinates(position.latitude, position.longitude)
+          .timeout(const Duration(milliseconds: 500), onTimeout: () => []);
 
-      // 5. Reverse geocode
-      String city = 'Your Location';
-      String subtext = '';
-      try {
-        final placemarks = await Geocoding()
-            .placemarkFromCoordinates(position.latitude, position.longitude)
-            .timeout(const Duration(seconds: 5));
-        if (placemarks.isNotEmpty) {
-          final p = placemarks.first;
-          city = p.subLocality?.isNotEmpty == true
-              ? p.subLocality!
-              : p.locality?.isNotEmpty == true
-                  ? p.locality!
-                  : p.administrativeArea ?? 'Your Location';
+      if (placemarks.isNotEmpty && mounted) {
+        final p = placemarks.first;
+        final city = p.subLocality?.isNotEmpty == true
+            ? p.subLocality!
+            : p.locality?.isNotEmpty == true
+                ? p.locality!
+                : p.administrativeArea ?? 'Your Location';
 
-          final parts = <String>[
-            if (p.subLocality?.isNotEmpty == true) p.subLocality!,
-            if (p.locality?.isNotEmpty == true && p.locality != p.subLocality)
-              p.locality!,
-            if (p.administrativeArea?.isNotEmpty == true) p.administrativeArea!,
-            if (p.country?.isNotEmpty == true) p.country!,
-          ];
-          subtext = parts.join(', ');
-        }
-      } catch (_) {
-        // Geocoding failed, do NOT falsely claim it was found
-        subtext = 'Location unreadable. Tap to select.';
-      }
+        final parts = <String>[
+          if (p.subLocality?.isNotEmpty == true) p.subLocality!,
+          if (p.locality?.isNotEmpty == true && p.locality != p.subLocality)
+            p.locality!,
+          if (p.administrativeArea?.isNotEmpty == true) p.administrativeArea!,
+          if (p.country?.isNotEmpty == true) p.country!,
+        ];
 
-      // 6. Show location on splash
-      if (mounted) {
         setState(() {
           _isLocating = false;
           _isLocationGranted = true;
           _locationCity = city;
-          _locationSubtext = subtext;
+          _locationSubtext = parts.join(', ');
         });
         _cityFadeController.forward();
       }
-
-      // 7. Hold for 300ms so user can read location
-      await Future.delayed(const Duration(milliseconds: 300));
-    } catch (e) {
-      _handleLocationError();
-      return;
-    }
-
-    _transitionFromSplash();
+    } catch (_) {}
   }
 
   void _handleLocationDenied() {
@@ -298,9 +245,25 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   bool _hasTransitioned = false;
 
-  void _transitionFromSplash() {
+  void _transitionFromSplash() async {
     if (!mounted || _hasTransitioned) return;
     _hasTransitioned = true;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_completed_onboarding', true);
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    // Safety guard: If another route was pushed on top of splash (e.g. deep link PropertyDetailsScreen),
+    // calling Navigator.pushReplacement(context, ...) would replace the top-most route in Flutter!
+    final currentRoute = ModalRoute.of(context);
+    if (currentRoute != null && !currentRoute.isCurrent) {
+      debugPrint("[OnboardingScreen] Another route is on top. Skipping pushReplacement to protect deep link.");
+      return;
+    }
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => HomeScreen(
@@ -374,6 +337,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_completed_onboarding', true);
     if (mounted) {
+      final currentRoute = ModalRoute.of(context);
+      if (currentRoute != null && !currentRoute.isCurrent) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),

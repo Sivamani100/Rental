@@ -13,6 +13,7 @@ import 'package:rental/features/home/presentation/pages/home_screen.dart' show P
 import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
 import 'package:rental/features/ai_chat/presentation/pages/ai_chat_screen.dart';
 import 'package:rental/core/services/analytics_service.dart';
+import 'package:rental/features/search/presentation/pages/voice_search_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<PropertyModel> properties;
@@ -697,6 +698,34 @@ class _SearchScreenState extends State<SearchScreen> {
                   CupertinoIcons.clear_circled_solid,
                   size: 18,
                   color: mutedColor,
+                ),
+              ),
+            )
+          else
+            GestureDetector(
+              onTap: () async {
+                HapticFeedback.selectionClick();
+                await Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => VoiceSearchScreen(
+                      properties: widget.properties,
+                    ),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(0.0, 1.0);
+                      const end = Offset.zero;
+                      final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: Curves.ease));
+                      return SlideTransition(position: animation.drive(tween), child: child);
+                    },
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Icon(
+                  CupertinoIcons.mic_fill,
+                  size: 18,
+                  color: AppTheme.primaryYellow,
                 ),
               ),
             ),
