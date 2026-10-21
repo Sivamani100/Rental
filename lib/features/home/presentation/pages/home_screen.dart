@@ -7,6 +7,8 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:rental/core/ads/in_feed_ad_card.dart';
+import 'package:rental/core/ads/ad_config.dart';
 import 'package:rental/features/settings/presentation/pages/settings_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -3525,6 +3527,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildPropertyList(List<PropertyModel> properties, String typeStr) {
     const int crossAxisCount = 2;
     const double aspectRatio = 0.8;
+    const int adInterval = 7;
+    final bool showAds = adsEnabled && properties.length >= 4;
+    final int adCount = showAds ? (properties.length ~/ (adInterval - 1)) : 0;
+    final int totalCount = properties.length + adCount;
 
     return GridView.builder(
       shrinkWrap: true,
@@ -3536,9 +3542,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         mainAxisSpacing: 16,
         childAspectRatio: aspectRatio,
       ),
-      itemCount: properties.length,
+      itemCount: totalCount,
       itemBuilder: (context, index) {
-        final prop = properties[index];
+        // Render In-Feed Native Ad card seamlessly every 7 items
+        if (showAds && (index + 1) % adInterval == 0) {
+          final slotIndex = index ~/ adInterval;
+          return InFeedGridAdCard(slotIndex: slotIndex);
+        }
+
+        final propIndex = showAds ? index - (index ~/ adInterval) : index;
+        if (propIndex >= properties.length) return const SizedBox.shrink();
+
+        final prop = properties[propIndex];
         double? distance;
         final currentPos = _effectivePosition;
         if (currentPos != null) {

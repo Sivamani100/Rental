@@ -30,6 +30,7 @@ import 'package:rental/features/amenities/presentation/pages/amenity_street_view
 import 'package:rental/core/services/analytics_service.dart';
 import 'package:rental/core/utils/image_compressor.dart';
 import 'package:rental/core/ads/native_ad_widget.dart';
+import 'package:rental/core/ads/banner_ad_widget.dart';
 import 'package:rental/features/partner/data/services/partner_service.dart';
 import 'package:rental/features/property_details/data/services/property_analytics_service.dart';
 import 'package:rental/features/property_posting/presentation/pages/posting_screen.dart';
@@ -2275,7 +2276,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 14),
+
+                      // ==========================================
+                      // BANNER AD: Sponsored Banner Ad
+                      // Positioned between Monthly Rent & Room/Occupancy Overview
+                      // ==========================================
+                      const PropertyBannerAdCard(),
+                      const SizedBox(height: 14),
 
                       // ==========================================
                       // 4. OVERVIEW / KEY PROPERTY SPECS

@@ -21,6 +21,7 @@ class PropertyNativeAdWidget extends StatefulWidget {
 
 class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
   NativeAd? _nativeAd;
+  AdWidget? _adWidget;
 
   /// true  = ad ready (real ad or web card)
   /// false = still loading (show shimmer)
@@ -51,7 +52,7 @@ class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
       return;
     }
 
-    final unitId = nativeAdUnitId;
+    final unitId = propertyNativeAdUnitId;
     if (unitId == null) {
       if (mounted) setState(() => _adReady = true);
       return;
@@ -74,7 +75,18 @@ class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
       listener: NativeAdListener(
         onAdLoaded: (ad) {
           if (kDebugMode) debugPrint('[AdMob] Native ad loaded: ${ad.adUnitId}');
-          if (mounted) setState(() => _adReady = true);
+          if (!mounted) {
+            ad.dispose();
+            return;
+          }
+          setState(() {
+            _nativeAd = ad as NativeAd;
+            _adWidget = AdWidget(
+              key: ObjectKey(ad),
+              ad: ad,
+            );
+            _adReady = true;
+          });
         },
         onAdFailedToLoad: (ad, error) {
           if (kDebugMode) {
@@ -82,6 +94,7 @@ class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
           }
           ad.dispose();
           _nativeAd = null;
+          _adWidget = null;
           // Fall back to sponsored native ad card so ads are always visible when adsEnabled is true
           if (mounted) setState(() => _adReady = true);
         },
@@ -98,6 +111,8 @@ class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
   @override
   void dispose() {
     _nativeAd?.dispose();
+    _nativeAd = null;
+    _adWidget = null;
     super.dispose();
   }
 
@@ -112,13 +127,13 @@ class _PropertyNativeAdWidgetState extends State<PropertyNativeAdWidget> {
       return _AdShimmer(isDark: isDark);
     }
 
-    if (kIsWeb || _nativeAd == null) {
+    if (kIsWeb || _nativeAd == null || _adWidget == null) {
       return _buildWebAdCard(isDark);
     }
 
     return _AdContainer(
       isDark: isDark,
-      child: AdWidget(ad: _nativeAd!),
+      child: _adWidget!,
     );
   }
 

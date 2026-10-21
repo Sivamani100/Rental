@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'ad_config.dart';
 
@@ -15,12 +15,13 @@ class AdsInitializer {
     if (_done || !adsEnabled) return;
     _done = true;
 
-    // Configure test devices BEFORE initializing the SDK.
-    if (testDeviceIds.isNotEmpty) {
-      MobileAds.instance.updateRequestConfiguration(
-        RequestConfiguration(testDeviceIds: testDeviceIds),
-      );
-    }
+    // Configure SDK request settings: filter out adult, dating, romantic & violent ads.
+    MobileAds.instance.updateRequestConfiguration(
+      RequestConfiguration(
+        maxAdContentRating: MaxAdContentRating.g, // Restricts ads to General Audiences (No adult, dating, romantic or violent ads)
+        testDeviceIds: testDeviceIds,
+      ),
+    );
 
     // Initialize asynchronously — never await in main() so the first frame
     // is not delayed.
