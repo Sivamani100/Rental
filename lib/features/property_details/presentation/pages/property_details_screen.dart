@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'dart:io';
 import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
@@ -64,6 +65,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   static const bool _showNearbyEssentials = false;
   late Future<List<AmenityPlace>> _nearbyAmenitiesFuture;
 
+  // Nearby Properties
+  late Future<List<PropertyModel>> _nearbyPropertiesFuture;
+
   late int _liveViewsCount;
   final DateTime _pageOpenTime = DateTime.now();
 
@@ -86,6 +90,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               widget.property.longitude,
             ))
         : (widget.preloadedAmenitiesFuture ?? Future.value(const <AmenityPlace>[]));
+
+    // Fetch nearby properties
+    _nearbyPropertiesFuture = _fetchNearbyProperties();
 
     // Track property view
     if (widget.property.id != null) {
@@ -150,6 +157,52 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       }
       // We don't set _hasReviewed = true here; that only happens after actual review submission
     }
+  }
+
+  Future<List<PropertyModel>> _fetchNearbyProperties() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final currentLat = widget.property.latitude;
+      final currentLng = widget.property.longitude;
+      final currentType = widget.property.type;
+
+      // Fetch nearby properties within 5km, same type, excluding current property
+      final data = await supabase
+          .from('properties')
+          .select()
+          .eq('status', 'approved')
+          .eq('type', currentType)
+          .neq('id', widget.property.id ?? '')
+          .order('views_count', ascending: false)
+          .limit(6);
+
+      // Filter by distance (within 5km)
+      final List<PropertyModel> nearbyProperties = [];
+      for (var item in data) {
+        final lat = (item['latitude'] as num?)?.toDouble() ?? 0.0;
+        final lng = (item['longitude'] as num?)?.toDouble() ?? 0.0;
+        
+        if (lat != 0.0 && lng != 0.0) {
+          final distance = _calculateDistance(currentLat, currentLng, lat, lng);
+          if (distance <= 5.0) { // 5km radius
+            nearbyProperties.add(PropertyModel.fromJson(item));
+          }
+        }
+      }
+
+      return nearbyProperties;
+    } catch (e) {
+      debugPrint('Error fetching nearby properties: $e');
+      return [];
+    }
+  }
+
+  double _calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+    const double p = 0.017453292519943295;
+    final double a = 0.5 -
+        math.cos((lat2 - lat1) * p) / 2 +
+        math.cos(lat1 * p) * math.cos(lat2 * p) * (1 - math.cos((lng2 - lng1) * p)) / 2;
+    return 12742 * math.asin(math.sqrt(a)).toDouble();
   }
 
   Future<void> _launchWhatsApp(String phone) async {
@@ -2819,6 +2872,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       // 12. BOTTOM FLAT RE-VERIFY NOTE (NO SHADOWS / NO BUTTONS)
                       // ==========================================
                       _buildReverifyNoteCard(),
+
+                      // ==========================================
+                      // 13. NEARBY PROPERTIES SECTION
+                      // ==========================================
+                      const SizedBox(height: 20),
+                      _buildNearbyPropertiesSection(),
                     ],
                   ),
                 ),
@@ -3783,6 +3842,311 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     },
   );
 }
+
+  // ==========================================
+  // NEARBY PROPERTIES SECTION
+  // ==========================================
+  Widget _buildNearbyPropertiesSection() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Nearby Properties', CupertinoIcons.location_solid),
+        const SizedBox(height: 12),
+        FutureBuilder<List<PropertyModel>>(
+          future: _nearbyPropertiesFuture,
+          builder: (context, snapshot) {
+            // Loading state
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  itemCount: 3,
+                  itemBuilder: (context, index) {
+                    return Container(
+                      width: 260,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkCard : const Color(0xFFFAFAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }
+
+            final nearbyProperties = snapshot.data ?? [];
+
+            // Empty state
+            if (nearbyProperties.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
+                decoration: BoxDecoration(
+                  color: isDark ? AppTheme.darkCard : const Color(0xFFF8F8FA),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: isDark ? AppTheme.darkBorder : Colors.grey.shade200,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : AppTheme.primaryYellow.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(CupertinoIcons.location_slash, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'No nearby properties found',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Be the first to discover properties in this area',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Properties list
+            return SizedBox(
+              height: 220,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                itemCount: nearbyProperties.length,
+                itemBuilder: (context, index) {
+                  final property = nearbyProperties[index];
+                  final distance = _calculateDistance(
+                    widget.property.latitude,
+                    widget.property.longitude,
+                    property.latitude,
+                    property.longitude,
+                  );
+
+                  return Container(
+                    width: 260,
+                    margin: const EdgeInsets.only(right: 12),
+                    child: BouncingButton(
+                      scaleFactor: 0.97,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PropertyDetailsScreen(property: property),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.darkCard : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark ? AppTheme.darkBorder : const Color(0xFFEEEEEE),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
+                              blurRadius: 12,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Image
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                              ),
+                              child: Stack(
+                                children: [
+                                  CachedNetworkImage(
+                                    imageUrl: property.imageUrls.isNotEmpty ? property.imageUrls.first : '',
+                                    height: 120,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 600,
+                                    fadeInDuration: Duration.zero,
+                                    fadeOutDuration: Duration.zero,
+                                    placeholder: (context, url) => Container(
+                                      height: 120,
+                                      color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
+                                      child: Center(
+                                        child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 24),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) => Container(
+                                      height: 120,
+                                      color: isDark ? AppTheme.darkCardElevated : const Color(0xFFF0F0F0),
+                                      child: Center(
+                                        child: Icon(CupertinoIcons.photo, color: Colors.grey.shade400, size: 24),
+                                      ),
+                                    ),
+                                  ),
+                                  // Distance badge
+                                  Positioned(
+                                    bottom: 8,
+                                    left: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.7),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(CupertinoIcons.location_solid, color: Colors.white, size: 11),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            distance < 1.0
+                                                ? '${(distance * 1000).round()}m'
+                                                : '${distance.toStringAsFixed(1)}km',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Content
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    property.title,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : Colors.black,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.location_solid,
+                                        color: AppTheme.swiggyOrange,
+                                        size: 11,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Expanded(
+                                        child: Text(
+                                          property.locationStr,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isDark ? AppTheme.darkTextSecondary : Colors.grey.shade600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        property.price,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: isDark ? AppTheme.primaryYellow : Colors.black,
+                                        ),
+                                      ),
+                                      if (property.isAvailable)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.swiggyGreen,
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            'Available',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        )
+                                      else
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.swiggyRed,
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            property.type == 'Buy' || property.type == 'Sale' ? 'Sold' : 'Occupied',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
 
   // ==========================================
   // REPORT LISTING SECTION

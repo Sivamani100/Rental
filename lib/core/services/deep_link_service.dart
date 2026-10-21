@@ -24,6 +24,9 @@ class DeepLinkService {
   bool _isNavigating = false;
   bool isHandlingDeepLink = false;
 
+  // Flag to indicate that main.dart already handled the initial deep link
+  bool _initialLinkHandledByMain = false;
+
   // A global navigator key must be provided from main.dart to navigate when a link is tapped.
   GlobalKey<NavigatorState>? navigatorKey;
 
@@ -87,6 +90,11 @@ class DeepLinkService {
     _lastNavigatedTime = DateTime.now();
   }
 
+  /// Marks that main.dart already handled the initial deep link
+  void markInitialLinkHandled() {
+    _initialLinkHandledByMain = true;
+  }
+
   /// Fast synchronous lookup in the cached properties JSON string.
   static PropertyModel? findCachedProperty(String propertyId, String? cachedJson) {
     if (cachedJson == null || cachedJson.isEmpty) return null;
@@ -105,6 +113,12 @@ class DeepLinkService {
   }
 
   Future<void> _handleInitialLink() async {
+    // Skip if main.dart already handled the initial link
+    if (_initialLinkHandledByMain) {
+      debugPrint("[DeepLinkService] Initial link already handled by main.dart, skipping");
+      return;
+    }
+
     try {
       Uri? initialLink;
       if (kIsWeb) {
@@ -219,11 +233,17 @@ class DeepLinkService {
 
       // 2. If not in cache, push PropertyLoaderScreen to fetch from Supabase
       debugPrint("[DeepLinkService] Pushing PropertyLoaderScreen for $cleanId");
-      navigatorKey!.currentState!.push(
-        MaterialPageRoute(
-          builder: (_) => PropertyLoaderScreen(propertyId: cleanId),
-        ),
-      );
+      if (navigatorKey?.currentState != null) {
+        navigatorKey!.currentState!.push(
+          MaterialPageRoute(
+            builder: (_) => PropertyLoaderScreen(propertyId: cleanId),
+          ),
+        );
+      } else {
+        debugPrint("[DeepLinkService] Navigator state is null, retrying...");
+        _pendingPropertyId = cleanId;
+        _startPendingRetry();
+      }
     } finally {
       Future.delayed(const Duration(milliseconds: 600), () {
         _isNavigating = false;

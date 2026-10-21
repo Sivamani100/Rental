@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:lottie/lottie.dart';
 import 'package:geolocator/geolocator.dart';
@@ -23,17 +23,38 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
-  // â”€â”€ Splash / Loading phase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Splash / Loading phase ──────────────────────────────────────────
   bool _showSplash = true;
 
   // Location state on splash
-  bool _isLocating = true;          // still fetching
-  String? _locationCity;            // e.g. "Palacherla"
-  String? _locationSubtext;         // e.g. "Palacherla, Andhra Pradesh, India"
-  bool _locationDenied = false;     // permission denied
+  String? _locationCity;
+  String? _locationSubtext;
+  bool _locationDenied = false;
 
-  // â”€â”€ Onboarding page control â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  
+  // Splash progression flags
+  bool _showFindingLocation = true;
+  bool _showLocationResult = false;
+  bool _minLocatingTimeElapsed = false;
+  bool _locationFetchDone = false;
+  bool _hasShownLocationResult = false;
+  bool _hasTransitioned = false;
+
+  Timer? _minLocatingTimer;
+  Timer? _safetyTimeoutTimer;
+
+  // ── Splash logo pop-in animation ─────────────────────────────────────
+  late final AnimationController _splashLogoController;
+  late final Animation<double> _splashLogoScale;
+  late final Animation<double> _splashLogoFade;
+
+  // ── "finding location..." animated dots ──────────────────────────────
+  late final AnimationController _locatingDotsController;
+
+  // ── Location found: fade-in of city text ─────────────────────────────
+  late final AnimationController _cityFadeController;
+  late final Animation<double> _cityFade;
+
+  // ── Onboarding page control ──────────────────────────────────────────
   Color get accentTextColor {
     final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark;
     return isAccentDark ? Colors.white : const Color(0xFF1A1A1A);
@@ -49,38 +70,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnimation;
 
-  // â”€â”€ Splash logo bounce / fade â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  late final AnimationController _splashLogoController;
-  late final Animation<double> _splashLogoScale;
-  late final Animation<double> _splashLogoFade;
-
-  // â”€â”€ Location found: fade-in of city text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  late final AnimationController _cityFadeController;
-  late final Animation<double> _cityFade;
-
-  // â”€â”€ "Locating" dot pulse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  late final AnimationController _locatingController;
-
-  // â”€â”€ Icon Cycling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  Timer? _iconCycleTimer;
-  int _iconCycleIndex = 0;
-  late AnimationController _iconSlideController;
-  late Animation<Offset> _iconSlide;
-  late Animation<double> _iconFade;
-  static const List<String> _splashIcons = [
-    'assets/icons/home.png',
-    'assets/icons/stall.png',
-    'assets/icons/cot.png',
-    'assets/icons/snag.png',
-    'assets/icons/logoblack.png',
-  ];
-
-
   final List<String> _notificationVariants = const [
     'Look at this gorgeous 3BHK home with spacious balcony in Danavaipeta',
     'Thinking of buying a dream house? Gated villa on AV Appa Rao Road',
     'New 2 BHK flat available 650m away near Morampudi Junction',
-    'Rent reduced by â‚¹2,000! Price dropped on Prakash Nagar home',
+    'Rent reduced by ₹2,000! Price dropped on Prakash Nagar home',
     'Deluxe AC room just opened in Tadithota near Kotipalli stand',
   ];
 
@@ -94,75 +88,35 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   void initState() {
     super.initState();
 
-    // Splash logo pop-in animation
+    // 1. Splash logo pop-in animation (starts immediately at 0ms, brisk 180ms)
     _splashLogoController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 180),
     );
-    _splashLogoScale = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _splashLogoController, curve: Curves.elasticOut),
+    _splashLogoScale = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(parent: _splashLogoController, curve: Curves.easeOutCubic),
     );
     _splashLogoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _splashLogoController, curve: const Interval(0, 0.4)),
+      CurvedAnimation(parent: _splashLogoController, curve: Curves.easeIn),
     );
+    _splashLogoController.forward();
 
-    // City name fade-in after location found
+    // 2. "finding location..." animated dots controller (fast brisk cycle)
+    _locatingDotsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..repeat();
+
+    // 3. City name fade-in controller
     _cityFadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 180),
     );
     _cityFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _cityFadeController, curve: Curves.easeIn),
     );
 
-    // "Locating" pulsing dots
-    _locatingController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
-
-
-    // Icon slide-up animation (plays on each cycle)
-    _iconSlideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _iconSlide = Tween<Offset>(
-      begin: const Offset(0, 0.6),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _iconSlideController,
-      curve: Curves.easeOutCubic,
-    ));
-    _iconFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _iconSlideController, curve: const Interval(0, 0.6)),
-    );
-    _iconSlideController.forward();
-
-    // Icon cycling timer â€” switches icon every 1.1s
-    _iconCycleTimer = Timer.periodic(const Duration(milliseconds: 1100), (_) {
-      if (mounted) {
-        _iconSlideController.reset();
-        setState(() {
-          _iconCycleIndex = (_iconCycleIndex + 1) % _splashIcons.length;
-        });
-        _iconSlideController.forward();
-      }
-    });
-
-    // Play logo animation immediately
-    _splashLogoController.forward();
-
-    // Fast non-blocking location check on splash
-    _requestLocationOnSplash();
-
-    // Brisk 600ms splash: allow the logo pop-in animation to display smoothly,
-    // then transition directly to HomeScreen without keeping the user waiting.
-    Future.delayed(const Duration(milliseconds: 600)).then((_) {
-      if (mounted) _transitionFromSplash();
-    });
-
-    // Permission pulse animation
+    // 4. Permission pulse animation for onboarding slides
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -170,80 +124,179 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // 5. Start location detection concurrently in background
+    _fetchLocationForSplash();
+
+    // Step 1: "finding location..." is visible immediately from 0ms.
+    // Step 2: Keep "finding location..." visible for 480ms, then reveal detected city
+    _minLocatingTimer = Timer(const Duration(milliseconds: 480), () {
+      if (mounted) {
+        _minLocatingTimeElapsed = true;
+        _checkAndShowLocationResult();
+      }
+    });
+
+    // Safety timeout: Never hang on splash for longer than 850ms
+    _safetyTimeoutTimer = Timer(const Duration(milliseconds: 850), () {
+      if (mounted && !_hasShownLocationResult) {
+        _minLocatingTimeElapsed = true;
+        _locationFetchDone = true;
+        if (_locationCity == null) {
+          _locationCity = 'Your Location';
+          _locationSubtext = 'Nearby properties loading...';
+        }
+        _checkAndShowLocationResult();
+      }
+    });
+
+    if (!_showSplash) {
+      _startNotifTimer();
+      _checkInitialPermissions();
+    }
   }
 
-  /// Fast non-blocking location check during splash.
-  /// Never blocks screen transition if GPS or network takes time.
-  Future<void> _requestLocationOnSplash() async {
+  /// Concurrently fetches location: returns INSTANTLY (<5ms) from cache if available,
+  /// else checks last known position with a short 300ms timeout so the splash never stalls.
+  Future<void> _fetchLocationForSplash() async {
     try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedCity = prefs.getString('cached_city');
+      final cachedArea = prefs.getString('cached_area');
+
+      // 1. If we have a cached city, resolve INSTANTLY so splash transitions smoothly without delay!
+      if (cachedCity != null && cachedCity.isNotEmpty) {
+        _onLocationResolved(
+          city: cachedCity,
+          subtext: cachedArea ?? 'Nearby properties loading...',
+          isDenied: false,
+        );
+        // Refresh silently in background without stalling the splash
+        _refreshLocationInBackground(prefs);
         return;
       }
 
-      // Try last known position (near-instantaneous ~10ms)
+      // 2. If no cache yet (first install), do a rapid non-blocking check
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _onLocationResolved(
+          city: 'Your Location',
+          subtext: 'Nearby properties loading...',
+          isDenied: false,
+        );
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        _onLocationResolved(
+          city: 'Your Location',
+          subtext: 'Nearby properties loading...',
+          isDenied: true,
+        );
+        return;
+      }
+
+      // Rapid last known position (<200ms)
+      Position? position;
+      try {
+        position = await Geolocator.getLastKnownPosition()
+            .timeout(const Duration(milliseconds: 250), onTimeout: () => null);
+      } catch (_) {}
+
+      if (position != null) {
+        try {
+          final placemarks = await Geocoding()
+              .placemarkFromCoordinates(position.latitude, position.longitude)
+              .timeout(const Duration(milliseconds: 500), onTimeout: () => []);
+
+          if (placemarks.isNotEmpty) {
+            final p = placemarks.first;
+            final city = p.subLocality?.isNotEmpty == true
+                ? p.subLocality!
+                : p.locality?.isNotEmpty == true
+                    ? p.locality!
+                    : p.administrativeArea ?? 'Your Location';
+            final subtext = p.administrativeArea ?? '';
+            try {
+              prefs.setString('cached_city', city);
+              if (subtext.isNotEmpty) prefs.setString('cached_area', subtext);
+            } catch (_) {}
+            _onLocationResolved(city: city, subtext: subtext, isDenied: false);
+            return;
+          }
+        } catch (_) {}
+      }
+
+      _onLocationResolved(
+        city: 'Your Location',
+        subtext: 'Nearby properties loading...',
+        isDenied: false,
+      );
+    } catch (_) {
+      _onLocationResolved(
+        city: 'Your Location',
+        subtext: 'Nearby properties loading...',
+        isDenied: false,
+      );
+    }
+  }
+
+  void _refreshLocationInBackground(SharedPreferences prefs) async {
+    try {
       final position = await Geolocator.getLastKnownPosition()
-          .timeout(const Duration(milliseconds: 400), onTimeout: () => null);
-
-      if (position == null) return;
-
-      // Fast reverse geocoding with tight 500ms timeout
-      final placemarks = await Geocoding()
-          .placemarkFromCoordinates(position.latitude, position.longitude)
-          .timeout(const Duration(milliseconds: 500), onTimeout: () => []);
-
-      if (placemarks.isNotEmpty && mounted) {
-        final p = placemarks.first;
-        final city = p.subLocality?.isNotEmpty == true
-            ? p.subLocality!
-            : p.locality?.isNotEmpty == true
-                ? p.locality!
-                : p.administrativeArea ?? 'Your Location';
-
-        final parts = <String>[
-          if (p.subLocality?.isNotEmpty == true) p.subLocality!,
-          if (p.locality?.isNotEmpty == true && p.locality != p.subLocality)
-            p.locality!,
-          if (p.administrativeArea?.isNotEmpty == true) p.administrativeArea!,
-          if (p.country?.isNotEmpty == true) p.country!,
-        ];
-
-        setState(() {
-          _isLocating = false;
-          _isLocationGranted = true;
-          _locationCity = city;
-          _locationSubtext = parts.join(', ');
-        });
-        _cityFadeController.forward();
+          .timeout(const Duration(milliseconds: 500), onTimeout: () => null);
+      if (position != null) {
+        final placemarks = await Geocoding()
+            .placemarkFromCoordinates(position.latitude, position.longitude)
+            .timeout(const Duration(seconds: 2), onTimeout: () => []);
+        if (placemarks.isNotEmpty) {
+          final p = placemarks.first;
+          final city = p.subLocality?.isNotEmpty == true
+              ? p.subLocality!
+              : p.locality?.isNotEmpty == true
+                  ? p.locality!
+                  : p.administrativeArea;
+          if (city != null && city.isNotEmpty) {
+            prefs.setString('cached_city', city);
+            final subtext = p.administrativeArea ?? '';
+            if (subtext.isNotEmpty) prefs.setString('cached_area', subtext);
+          }
+        }
       }
     } catch (_) {}
   }
 
-  void _handleLocationDenied() {
-    if (mounted) {
-      setState(() {
-        _isLocating = false;
-        _locationDenied = true;
-      });
-      _cityFadeController.forward();
-    }
-    Future.delayed(const Duration(milliseconds: 300)).then((_) => _transitionFromSplash());
+  void _onLocationResolved({
+    required String city,
+    required String subtext,
+    required bool isDenied,
+  }) {
+    if (!mounted) return;
+    _locationCity = city;
+    _locationSubtext = subtext;
+    _locationDenied = isDenied;
+    _locationFetchDone = true;
+    _checkAndShowLocationResult();
   }
 
-  void _handleLocationError() {
-    if (mounted) {
-      setState(() {
-        _isLocating = false;
-        _locationCity = 'Your Location';
-        _locationSubtext = 'Nearby properties loading...';
-      });
-      _cityFadeController.forward();
-    }
-    Future.delayed(const Duration(milliseconds: 300)).then((_) => _transitionFromSplash());
-  }
+  /// Triggers the city name fade-in ONLY after "finding location..." has had its guaranteed display time
+  void _checkAndShowLocationResult() {
+    if (!_minLocatingTimeElapsed || !_locationFetchDone || _hasShownLocationResult || !mounted) return;
+    _hasShownLocationResult = true;
 
-  bool _hasTransitioned = false;
+    setState(() {
+      _showFindingLocation = false;
+      _showLocationResult = true;
+    });
+    _cityFadeController.forward();
+
+    // Give the user 320ms to appreciate the detected city before transitioning
+    Timer(const Duration(milliseconds: 320), () {
+      if (mounted) _transitionFromSplash();
+    });
+  }
 
   void _transitionFromSplash() async {
     if (!mounted || _hasTransitioned) return;
@@ -266,10 +319,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => HomeScreen(
-        initialLocationCity: _locationCity,
-        initialLocationSubtext: _locationSubtext,
-      )),
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => HomeScreen(
+          initialLocationCity: _locationCity,
+          initialLocationSubtext: _locationSubtext,
+        ),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 200),
+      ),
     );
   }
 
@@ -347,14 +406,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    precacheImage(const AssetImage('assets/icons/logoblack.png'), context);
+  }
+
+  @override
   void dispose() {
-    _iconCycleTimer?.cancel();
-    _iconSlideController.dispose();
+    _minLocatingTimer?.cancel();
+    _safetyTimeoutTimer?.cancel();
     _notifTimer?.cancel();
     _pulseController.dispose();
     _splashLogoController.dispose();
+    _locatingDotsController.dispose();
     _cityFadeController.dispose();
-    _locatingController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -368,114 +433,141 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   // SWIGGY-STYLE SPLASH SCREEN â€” Yellow bg, icon + location name centered
   // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildSwiggyStyleSplash() {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: const Color(0xFFFFD600),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // â”€â”€ Centered content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // â”€â”€ Icon with slide-up + fade-in animation â”€â”€â”€â”€â”€â”€â”€
-                    SizedBox(
-                      height: 88,
-                      child: Center(
-                        child: FadeTransition(
-                          opacity: _iconFade,
-                          child: SlideTransition(
-                            position: _iconSlide,
-                            child: Transform.rotate(
-                              angle: _splashIcons[_iconCycleIndex].contains('logo') ? 0 : -10 * math.pi / 180,
-                              child: Builder(
-                                builder: (context) {
-                                  final isLogo = _splashIcons[_iconCycleIndex].contains('logo');
-                                  return Image.asset(
-                                    _splashIcons[_iconCycleIndex],
-                                    width: isLogo ? 160 : 64,
-                                    height: isLogo ? null : 64,
-                                    fit: BoxFit.contain,
-                                    filterQuality: FilterQuality.medium,
-                                  );
-                                }
-                              ),
-                            ),
-                          ),
-                        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFFFFD600),
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFFFD600),
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 1. Black logo icon — immediately rendered from frame 0 with zero blank frames
+                Image.asset(
+                  'assets/icons/logoblack.png',
+                  width: 52,
+                  height: 52,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                    if (wasSynchronouslyLoaded || frame != null) {
+                      return child;
+                    }
+                    return Transform.rotate(
+                      angle: 0.6,
+                      child: const Icon(
+                        Icons.navigation_rounded,
+                        size: 46,
+                        color: Color(0xFF1A1A1A),
                       ),
-                    ),
-                    SizedBox(height: 32),
-
-                    // â”€â”€ Location text â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                    if (_isLocating)
-                      _buildLocatingText()
-                    else
-                      FadeTransition(
-                        opacity: _cityFade,
-                        child: Column(
-                          children: [
-                            Text(
-                              _locationDenied
-                                  ? 'Location Access'
-                                  : (_locationCity ?? 'Your Location'),
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF1A1A1A),
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _locationDenied
-                                  ? 'Enable location for better results'
-                                  : (_locationSubtext ?? ''),
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400,
-                                color: const Color(0xFF1A1A1A).withValues(alpha: 0.65),
-                                letterSpacing: 0.1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+                    );
+                  },
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+
+                // 2. Animated text below logo
+                SizedBox(
+                  height: 68,
+                  child: Center(
+                    child: _buildSplashBottomText(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildLocatingText() {
-    return Text(
-      'finding location...',
-      style: GoogleFonts.dmSans(
-        fontSize: 22,
-        fontWeight: FontWeight.w700,
-        color: const Color(0xFF1A1A1A),
-        letterSpacing: 0.2,
-      ),
+  Widget _buildSplashBottomText() {
+    if (_showLocationResult) {
+      return FadeTransition(
+        opacity: _cityFade,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _locationDenied
+                  ? 'Location Access'
+                  : (_locationCity ?? 'Your Location'),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF1A1A1A),
+                letterSpacing: -0.4,
+              ),
+            ),
+            const SizedBox(height: 4),
+            if ((_locationSubtext ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  _locationDenied
+                      ? 'Enable location for better results'
+                      : (_locationSubtext ?? ''),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1A1A1A).withValues(alpha: 0.7),
+                    letterSpacing: 0.1,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    // Default from frame 0: Black logo icon with animated "finding location..."
+    return AnimatedBuilder(
+      animation: _locatingDotsController,
+      builder: (context, _) {
+        final dotCount = (_locatingDotsController.value * 3).floor() + 1;
+        final dots = '.' * dotCount;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              'finding location',
+              style: GoogleFonts.dmSans(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF1A1A1A),
+                letterSpacing: -0.2,
+              ),
+            ),
+            SizedBox(
+              width: 22,
+              child: Text(
+                dots,
+                style: GoogleFonts.dmSans(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1A1A1A),
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-
-
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // ONBOARDING SLIDES
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   Widget _buildOnboarding() {
-    final isAccentDark = ThemeData.estimateBrightnessForColor(AppTheme.swiggyOrange) == Brightness.dark;
-    
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -1003,78 +1095,4 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SWIGGY "S" PIN-DROP LOGO PAINTER
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-class _SwiggyLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    final w = size.width;
-    final h = size.height;
-
-    // Draw a pin-drop teardrop shape
-    final path = Path();
-
-    // Top circle center
-    final cx = w / 2;
-    final cy = w / 2; // Circle height = width
-    final r = w / 2;
-
-    // Teardrop: semicircle on top + triangle pointing down
-    path.addArc(
-      Rect.fromCircle(center: Offset(cx, cy), radius: r),
-      3.14, // Ï€  = left side
-      3.14, // Ï€  = top semicircle
-    );
-
-    // Right side of top circle going down to point
-    path.lineTo(cx, h);
-    path.lineTo(cx - r, cy);
-    path.close();
-
-    // Draw full circle on top
-    final circlePath = Path()
-      ..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
-
-    // Combined pin-drop path
-    final fullPath = Path.combine(PathOperation.union, circlePath, path);
-    canvas.drawPath(fullPath, paint);
-
-    // Draw "S" letter cutout in orange
-    final sPaint = Paint()
-      ..color = const Color(0xFFFC8019)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = w * 0.095
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    // Draw stylized S using bezier curves centered in the circle
-    final sPath = Path();
-    final sc = Offset(cx, cy);
-    final sr = r * 0.42;
-
-    // Top arc of S (going left)
-    sPath.moveTo(sc.dx + sr * 0.7, sc.dy - sr * 0.55);
-    sPath.cubicTo(
-      sc.dx + sr * 0.7, sc.dy - sr * 1.1,  // control1
-      sc.dx - sr * 0.7, sc.dy - sr * 1.1,  // control2
-      sc.dx - sr * 0.7, sc.dy - sr * 0.55, // end
-    );
-    sPath.cubicTo(
-      sc.dx - sr * 0.7, sc.dy - sr * 0.0,  // control1
-      sc.dx + sr * 0.7, sc.dy - sr * 0.0,  // control2
-      sc.dx + sr * 0.7, sc.dy + sr * 0.55, // end
-    );
-    sPath.cubicTo(
-      sc.dx + sr * 0.7, sc.dy + sr * 1.1,  // control1
-      sc.dx - sr * 0.7, sc.dy + sr * 1.1,  // control2
-      sc.dx - sr * 0.7, sc.dy + sr * 0.55, // end
-    );
-
-    canvas.drawPath(sPath, sPaint);
-  }
-
-  @override
-  bool shouldRepaint(_SwiggyLogoPainter oldDelegate) => false;
-}
+// (Legacy painter removed)

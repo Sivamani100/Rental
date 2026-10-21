@@ -37,6 +37,7 @@ class _PropertyLoaderScreenState extends State<PropertyLoaderScreen>
   @override
   void initState() {
     super.initState();
+    debugPrint('[PropertyLoaderScreen] initState for propertyId: ${widget.propertyId}');
     _shimmerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -182,6 +183,7 @@ class _PropertyLoaderScreenState extends State<PropertyLoaderScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = ThemeController.instance.isDarkMode;
+    debugPrint('[PropertyLoaderScreen] build: isLoading=$_isLoading, errorMessage=$_errorMessage');
 
     return PopScope(
       canPop: false,

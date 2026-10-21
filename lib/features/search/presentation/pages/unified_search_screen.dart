@@ -736,7 +736,7 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 4), // Proper inner padding on both sides
         decoration: BoxDecoration(
           color: surfaceColor,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(50),
           border: Border.all(color: borderColor, width: 1.0),
           boxShadow: [
             BoxShadow(

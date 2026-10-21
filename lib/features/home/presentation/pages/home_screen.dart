@@ -178,9 +178,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     // Subscribe to realtime new approvals
     _subscribeToRealtimeUpdates();
 
-    if (mounted && widget.initialPropertyId != null && widget.initialPropertyId!.isNotEmpty) {
-      DeepLinkService.instance.navigateToProperty(widget.initialPropertyId!);
-    }
+    // Deep link handling is now done by onGenerateRoute in main.dart
+    // No need to handle it here to avoid duplicate navigation and blank screen
   }
 
   /// Loads cached properties synchronously-fast from SharedPrefs,

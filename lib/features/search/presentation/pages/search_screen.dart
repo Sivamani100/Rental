@@ -642,7 +642,7 @@ class _SearchScreenState extends State<SearchScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkCard : AppTheme.lightCard,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(50),
         border: Border.all(
           color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
           width: 1.0,
@@ -650,24 +650,18 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       child: Row(
         children: [
-          Icon(
-            CupertinoIcons.search,
-            size: 18,
-            color: AppTheme.primaryYellow,
-          ),
-          SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchController,
               focusNode: _focusNode,
-              style: TextStyle(fontFamily: 'ProximaNova', 
+              style: TextStyle(fontFamily: 'ProximaNova',
                 fontSize: 13.5,
                 fontWeight: FontWeight.w500,
                 color: primaryTextColor,
               ),
               decoration: InputDecoration(
                 hintText: 'Search city, area, 2 BHK, hostel, buy...',
-                hintStyle: TextStyle(fontFamily: 'ProximaNova', 
+                hintStyle: TextStyle(fontFamily: 'ProximaNova',
                   fontSize: 13,
                   color: mutedColor.withValues(alpha: 0.75),
                   fontWeight: FontWeight.normal,

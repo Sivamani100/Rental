@@ -87,33 +87,95 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
   }
 
   Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
+    if (query.trim().isEmpty || query.trim().length < 2) {
       setState(() => _suggestions = []);
       return;
     }
     setState(() => _isSearching = true);
     try {
-      final res = await http.get(
-        Uri.parse('https://photon.komoot.io/api/?q=${Uri.encodeComponent(query)}&limit=8'),
-      );
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        final List<dynamic> features = data['features'] ?? [];
-        if (mounted) {
-          setState(() {
-            _suggestions = features;
-          });
-        }
+      // Use Nominatim with India-specific filtering for better village/town results
+      await _searchWithNominatim(query);
+    } catch (e) {
+      debugPrint('Search error: $e');
+      if (mounted) {
+        setState(() => _suggestions = []);
       }
-    } catch (_) {
     } finally {
       if (mounted) setState(() => _isSearching = false);
     }
   }
 
+  Future<void> _searchWithNominatim(String query) async {
+    try {
+      // Search specifically in India with village/town priority
+      final res = await http.get(
+        Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(query)}&limit=10&addressdetails=1&countrycodes=IN&featuretype=village'),
+        headers: {'User-Agent': 'RentalApp/1.0'},
+      ).timeout(const Duration(seconds: 5));
+
+      debugPrint('Nominatim village search status: ${res.statusCode}');
+
+      List<dynamic> data = [];
+      if (res.statusCode == 200) {
+        data = jsonDecode(res.body) as List;
+        debugPrint('Nominatim village results: ${data.length}');
+      }
+
+      // If no village results, try broader search for towns/cities in India
+      if (data.isEmpty) {
+        final broadRes = await http.get(
+          Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(query)}, India&limit=10&addressdetails=1'),
+          headers: {'User-Agent': 'RentalApp/1.0'},
+        ).timeout(const Duration(seconds: 5));
+
+        debugPrint('Nominatim broad search status: ${broadRes.statusCode}');
+
+        if (broadRes.statusCode == 200) {
+          data = jsonDecode(broadRes.body) as List;
+          debugPrint('Nominatim broad results: ${data.length}');
+        }
+      }
+
+      // Convert Nominatim format to Photon-like format
+      final features = data.map((item) {
+        final address = item['address'] ?? {};
+        return {
+          'geometry': {
+            'coordinates': [
+              double.tryParse(item['lon']?.toString() ?? '0') ?? 0.0,
+              double.tryParse(item['lat']?.toString() ?? '0') ?? 0.0,
+            ]
+          },
+          'properties': {
+            'name': address['village'] ?? address['town'] ?? address['city'] ?? address['suburb'] ?? item['display_name']?.split(',').first?.trim() ?? 'Unknown',
+            'street': address['road'],
+            'city': address['city'] ?? address['town'] ?? address['village'],
+            'state': address['state'],
+            'country': address['country'],
+            'display_name': item['display_name'],
+            'type': item['type'],
+          }
+        };
+      }).toList();
+
+      debugPrint('Final features count: ${features.length}');
+
+      if (mounted) {
+        setState(() {
+          _suggestions = features;
+        });
+      }
+    } catch (e) {
+      debugPrint('Nominatim search error: $e');
+      if (mounted) {
+        setState(() => _suggestions = []);
+      }
+    }
+  }
+
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 600), () {
+    _debounce = Timer(const Duration(milliseconds: 300), () {
       _performSearch(query);
     });
   }
@@ -317,11 +379,11 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                     Container(
                       decoration: BoxDecoration(
                         color: isDark ? AppTheme.darkCardElevated : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(50),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08), 
-                            blurRadius: 12, 
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 12,
                             offset: const Offset(0, 4)
                           ),
                         ],
@@ -339,7 +401,7 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                         decoration: InputDecoration(
                           hintText: 'Search area, street name...',
                           hintStyle: TextStyle(
-                            color: isDark ? Colors.white54 : Colors.grey.shade500, 
+                            color: isDark ? Colors.white54 : Colors.grey.shade500,
                             fontSize: 15,
                             fontFamily: 'ProximaNova',
                           ),
@@ -355,28 +417,15 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                                   ),
                                 )
-                              : Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (_searchController.text.isNotEmpty)
-                                      IconButton(
-                                        icon: Icon(CupertinoIcons.clear_circled_solid, color: Colors.grey.shade400, size: 20),
-                                        onPressed: () {
-                                          _searchController.clear();
-                                          setState(() => _suggestions = []);
-                                        },
-                                      ),
-                                    IconButton(
-                                      icon: Icon(CupertinoIcons.search, color: isDark ? Colors.white : Colors.black87, size: 20),
+                              : _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: Icon(CupertinoIcons.clear_circled_solid, color: Colors.grey.shade400, size: 20),
                                       onPressed: () {
-                                        if (_searchController.text.isNotEmpty) {
-                                          _performSearch(_searchController.text);
-                                        }
+                                        _searchController.clear();
+                                        setState(() => _suggestions = []);
                                       },
-                                    ),
-                                    const SizedBox(width: 4),
-                                  ],
-                                ),
+                                    )
+                                  : null,
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         ),
@@ -388,7 +437,82 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                     if (_suggestions.isNotEmpty)
                       Container(
                         margin: const EdgeInsets.only(top: 8),
-                        constraints: const BoxConstraints(maxHeight: 250),
+                        constraints: const BoxConstraints(maxHeight: 300),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppTheme.darkCardElevated : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 4))
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              itemCount: _suggestions.length,
+                              separatorBuilder: (c, i) => Divider(height: 1, color: isDark ? Colors.white12 : Colors.grey.shade200, indent: 56, endIndent: 16),
+                              itemBuilder: (c, i) {
+                                final suggestion = _suggestions[i];
+                                final props = suggestion['properties'] ?? {};
+                                final title = props['name'] ?? props['street'] ?? props['district'] ?? props['city'] ?? props['display_name'] ?? 'Unknown Location';
+
+                                final subtitleParts = [
+                                  props['street'],
+                                  props['city'],
+                                  props['state'],
+                                  props['country']
+                                ].where((e) => e != null && e.toString().trim().isNotEmpty).toSet().toList();
+
+                                final subtitle = subtitleParts.join(', ').trim();
+
+                                debugPrint('Suggestion $i: $title - $subtitle');
+
+                                return BouncingButton(
+                                  scaleFactor: 0.98,
+                                  onTap: () => _onSuggestionSelected(suggestion),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? AppTheme.primaryYellow.withValues(alpha: 0.15) : AppTheme.primaryYellow.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(CupertinoIcons.location_solid, color: isDark ? AppTheme.primaryYellow : Colors.black, size: 18),
+                                    ),
+                                    title: Text(
+                                      title,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? Colors.white : Colors.black87,
+                                      ),
+                                    ),
+                                    subtitle: subtitle.isNotEmpty
+                                        ? Text(
+                                            subtitle,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDark ? Colors.white54 : Colors.grey.shade600,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          )
+                                        : null,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (_isSearching)
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: isDark ? AppTheme.darkCardElevated : Colors.white,
                           borderRadius: BorderRadius.circular(12),
@@ -396,53 +520,23 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
                             BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))
                           ],
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: ListView.separated(
-                            shrinkWrap: true,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: _suggestions.length,
-                          separatorBuilder: (c, i) => Divider(height: 1, color: isDark ? Colors.white12 : Colors.grey.shade100),
-                          itemBuilder: (c, i) {
-                            final suggestion = _suggestions[i];
-                            final props = suggestion['properties'] ?? {};
-                            final title = props['name'] ?? props['street'] ?? props['district'] ?? props['city'] ?? 'Unknown Location';
-                            
-                            final subtitleParts = [
-                              props['city'],
-                              props['state'],
-                              props['country']
-                            ].where((e) => e != null && e.toString().trim().isNotEmpty).toSet().toList();
-                            
-                            final subtitle = subtitleParts.join(', ').trim();
-                            
-                            return ListTile(
-                              leading: Icon(CupertinoIcons.location_solid, color: Colors.grey.shade400, size: 20),
-                              title: Text(
-                                title,
-                                style: TextStyle(
-                                  fontSize: 15, 
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'DMSans',
-                                  color: isDark ? Colors.white : Colors.black87,
-                                ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: isDark ? Colors.white : Colors.black87),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Searching...',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDark ? Colors.white54 : Colors.grey.shade600,
                               ),
-                              subtitle: subtitle.isNotEmpty 
-                                  ? Text(
-                                      subtitle,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontFamily: 'ProximaNova',
-                                        color: isDark ? Colors.white54 : Colors.grey.shade600,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  : null,
-                              onTap: () => _onSuggestionSelected(suggestion),
-                            );
-                          },
-                        ),
+                            ),
+                          ],
                         ),
                       ),
                   ],

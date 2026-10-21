@@ -781,94 +781,100 @@ class _PostingScreenState extends State<PostingScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppTheme.primaryAccent,
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(36),
-              bottomRight: Radius.circular(36),
+      appBar: AppBar(
+        toolbarHeight: 64,
+        backgroundColor: AppTheme.primaryAccent,
+        elevation: 0,
+        centerTitle: false,
+        automaticallyImplyLeading: false,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
+        ),
+        titleSpacing: 24,
+        title: Row(
+          children: [
+            if (Navigator.of(context).canPop())
+              BouncingButton(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.of(context).pop();
+                },
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: Icon(CupertinoIcons.back, color: Colors.black87, size: 24),
+                ),
+              ),
+            Text(
+              _isEditing ? 'Edit Property' : 'Post Property',
+              style: const TextStyle(
+                fontFamily: 'ProximaNova',
+                color: Colors.black87,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          BouncingButton(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SavedPropertiesScreen(
+                    allProperties: widget.allProperties,
+                  ),
+                ),
+              );
+            },
+            child: const Padding(
+              padding: EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
+              child: Icon(
+                CupertinoIcons.heart,
+                color: Colors.black87,
+                size: 24,
+              ),
             ),
           ),
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 12, 16, 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      if (Navigator.of(context).canPop())
-                        BouncingButton(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.of(context).pop();
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.only(right: 12),
-                            child: Icon(CupertinoIcons.back, color: Colors.black87, size: 24),
-                          ),
-                        ),
-                      Text(
-                        _isEditing ? 'Edit Property' : 'Post Property',
-                        style: const TextStyle(
-                          fontFamily: 'ProximaNova',
-                          color: Colors.black87,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          height: 1.1,
-                        ),
-                      ),
-                    ],
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: BouncingButton(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
                   ),
-                  Row(
-                    children: [
-                      BouncingButton(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SavedPropertiesScreen(
-                                allProperties: widget.allProperties,
-                              ),
-                            ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
-                          child: const Icon(
-                            CupertinoIcons.heart,
-                            color: Colors.black87,
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                      BouncingButton(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SettingsScreen(),
-                            ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
-                          child: const Icon(
-                            Iconsax.setting_2,
-                            color: Colors.black87,
-                            size: 24,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                );
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
+                child: Icon(
+                  Iconsax.setting_2,
+                  color: Colors.black87,
+                  size: 24,
+                ),
               ),
+            ),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(66),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(35, 0, 35, 22),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth > 350 ? 350.0 : constraints.maxWidth;
+                return Center(
+                  child: SizedBox(
+                    width: width,
+                    child: _buildStepProgressIndicator(isDark),
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -878,17 +884,16 @@ class _PostingScreenState extends State<PostingScreen> {
           padding: const EdgeInsets.only(
             left: 16,
             right: 16,
-            top: 24,
+            top: 14,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header removed (now handled by AppBar)
               if (_sheetErrorMessage != null)
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   margin: const EdgeInsets.only(
-                    top: 10,
+                    top: 4,
                     bottom: 12,
                     left: 10,
                     right: 10,
@@ -931,86 +936,6 @@ class _PostingScreenState extends State<PostingScreen> {
                     ],
                   ),
                 ),
-              // Step Progress Indicator Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  children: List.generate(_totalSteps * 2 - 1, (index) {
-                    if (index % 2 != 0) {
-                      // Connecting line between steps
-                      final isLinePassed = (index ~/ 2) + 1 < _currentStep;
-                      return Expanded(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          height: 2,
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          decoration: BoxDecoration(
-                            color: isLinePassed
-                                ? Colors.green
-                                : (isDark ? AppTheme.darkBorder : Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(1),
-                          ),
-                        ),
-                      );
-                    }
-
-                    // Step number circle
-                    final stepIndex = (index ~/ 2) + 1;
-                    final isCompleted = stepIndex < _currentStep;
-                    final isCurrent = stepIndex == _currentStep;
-
-                    return GestureDetector(
-                      onTap: () {
-                        if (_isEditing || stepIndex <= _currentStep) {
-                          HapticFeedback.selectionClick();
-                          setState(() => _currentStep = stepIndex);
-                        }
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isCompleted
-                              ? Colors.green
-                              : (isCurrent
-                                  ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                                  : Colors.transparent),
-                          border: Border.all(
-                            color: isCompleted
-                                ? Colors.green
-                                : (isCurrent
-                                    ? (isDark ? AppTheme.primaryYellow : Colors.black)
-                                    : (isDark ? AppTheme.darkBorder : Colors.grey.shade400)),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Center(
-                          child: isCompleted
-                              ? const Icon(
-                                  Icons.check,
-                                  size: 16,
-                                  color: Colors.white,
-                                )
-                              : Text(
-                                  '$stepIndex',
-                                  style: TextStyle(
-                                    fontFamily: 'ProximaNova',
-                                    fontSize: 13,
-                                    fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
-                                    color: isCurrent
-                                        ? (isDark ? Colors.black : Colors.white)
-                                        : (isDark ? Colors.grey.shade400 : Colors.grey.shade500),
-                                  ),
-                                ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-              const SizedBox(height: 24),
               // Scrollable Content
               Expanded(
                 child: SingleChildScrollView(
@@ -1032,6 +957,83 @@ class _PostingScreenState extends State<PostingScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStepProgressIndicator(bool isDark) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(_totalSteps * 2 - 1, (index) {
+        if (index % 2 != 0) {
+          // Connecting line between steps
+          final isLinePassed = (index ~/ 2) + 1 < _currentStep;
+          return Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              height: 2.5,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: isLinePassed
+                    ? const Color(0xFF16A34A)
+                    : Colors.black.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          );
+        }
+
+        // Step number circle
+        final stepIndex = (index ~/ 2) + 1;
+        final isCompleted = stepIndex < _currentStep;
+        final isCurrent = stepIndex == _currentStep;
+
+        return GestureDetector(
+          onTap: () {
+            if (_isEditing || stepIndex <= _currentStep) {
+              HapticFeedback.selectionClick();
+              setState(() => _currentStep = stepIndex);
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isCompleted
+                  ? const Color(0xFF16A34A)
+                  : (isCurrent
+                      ? Colors.black87
+                      : Colors.black.withValues(alpha: 0.05)),
+              border: Border.all(
+                color: isCompleted
+                    ? const Color(0xFF16A34A)
+                    : (isCurrent
+                        ? Colors.black87
+                        : Colors.black38),
+                width: 1.5,
+              ),
+            ),
+            child: Center(
+              child: isCompleted
+                  ? const Icon(
+                      Icons.check,
+                      size: 16,
+                      color: Colors.white,
+                    )
+                  : Text(
+                      '$stepIndex',
+                      style: TextStyle(
+                        fontFamily: 'ProximaNova',
+                        fontSize: 13,
+                        fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+                        color: isCurrent ? Colors.white : Colors.black87,
+                      ),
+                    ),
+            ),
+          ),
+        );
+      }),
     );
   }
 

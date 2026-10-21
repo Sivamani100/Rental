@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:rental/features/home/presentation/pages/home_screen.dart';
 import 'package:rental/features/onboarding/presentation/pages/onboarding_screen.dart';
 import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
 import 'package:rental/features/property_details/presentation/pages/property_loader_screen.dart';
@@ -116,26 +115,53 @@ Future<void> main() async {
   // Start Firebase safely in background without blocking first frame
   _initFirebaseSafely();
 
-  await Future.wait([
-    // 1. SharedPreferences, ThemeController & SavedProperties in parallel
-    SharedPreferences.getInstance().then((prefs) async {
-      cachedPropertiesJson = prefs.getString('cached_properties');
-      hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ??
-          (prefs.containsKey('cached_properties') ||
-              prefs.containsKey('unique_app_install_id'));
-      await Future.wait([
-        ThemeController.instance.init().catchError((e) {
-          debugPrint('ThemeController init error: $e');
-        }),
-        SavedPropertiesService.instance.init().catchError((e) {
-          debugPrint('SavedPropertiesService init error: $e');
-        }),
-      ]);
-    }).catchError((e) {
-      debugPrint('SharedPreferences init error: $e');
-    }),
+  // Non-blocking background initializations
+  InstallTracker.initAndTrack();
+  AiAssistantService.instance.init();
 
-    // 2. Supabase initialize
+  // CRITICAL: Load SharedPreferences BEFORE deep link check so we can use cache
+  // SharedPreferences is fast (usually <10ms) and needed for cache lookup
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    cachedPropertiesJson = prefs.getString('cached_properties');
+    hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ??
+        (prefs.containsKey('cached_properties') ||
+            prefs.containsKey('unique_app_install_id'));
+  } catch (e) {
+    debugPrint('SharedPreferences init error: $e');
+  }
+
+  // CRITICAL: Check initial deep link - wait for it to ensure we don't miss it
+  // If no deep link, this returns null quickly. If there is a deep link, we wait for it.
+  // This prevents the blank screen issue by ensuring we know the target before launching UI.
+  initialPropertyId = await _checkInitialDeepLink();
+
+  // Mark that we handled the initial link to prevent duplicate navigation in DeepLinkService
+  if (initialPropertyId != null) {
+    DeepLinkService.instance.markInitialLinkHandled();
+  }
+
+  // Launch UI INSTANTLY - if we have a deep link, we route directly to property
+  // If not, we route to HomeScreen (no blank screen)
+  runApp(RentalApp(
+    initialPropertyId: initialPropertyId,
+    cachedPropertiesJson: cachedPropertiesJson,
+    hasCompletedOnboarding: hasCompletedOnboarding,
+  ));
+
+  // Initialize remaining services in background AFTER UI is visible
+  Future.wait([
+    // ThemeController & SavedProperties in parallel
+    Future.wait([
+      ThemeController.instance.init().catchError((e) {
+        debugPrint('ThemeController init error: $e');
+      }),
+      SavedPropertiesService.instance.init().catchError((e) {
+        debugPrint('SavedPropertiesService init error: $e');
+      }),
+    ]),
+
+    // Supabase initialize
     Supabase.initialize(
       url: Env.supabaseUrl,
       anonKey: Env.supabaseAnonKey,
@@ -146,23 +172,7 @@ Future<void> main() async {
       debugPrint('Supabase initialize error: $e');
       return Supabase.instance;
     }),
-
-    // 3. Initial deep link check (0ms on Web, tight 200ms on mobile)
-    _checkInitialDeepLink().then((id) {
-      if (id != null) initialPropertyId = id;
-    }),
   ]);
-
-  // Non-blocking background initializations
-  InstallTracker.initAndTrack();
-  AiAssistantService.instance.init();
-
-  // Launch UI INSTANTLY — 0ms blank screen delay
-  runApp(RentalApp(
-    initialPropertyId: initialPropertyId,
-    cachedPropertiesJson: cachedPropertiesJson,
-    hasCompletedOnboarding: hasCompletedOnboarding,
-  ));
 
   // Initialize AdMob SDK non-blocking after first frame (never delays UI).
   try {
@@ -219,15 +229,21 @@ Future<void> _initFirebaseSafely() async {
 Future<String?> _checkInitialDeepLink() async {
   try {
     if (kIsWeb) {
-      return DeepLinkService.extractPropertyId(Uri.base);
+      final propId = DeepLinkService.extractPropertyId(Uri.base);
+      debugPrint('[_checkInitialDeepLink] Web initial link: $propId');
+      return propId;
     } else {
       final appLinks = AppLinks();
-      final uri = await appLinks.getInitialLink().timeout(
-            const Duration(milliseconds: 200),
-            onTimeout: () => null,
-          );
+      // No timeout - wait for the link to ensure we don't miss it
+      // If there's no link, this returns null quickly (typically <50ms)
+      // If there is a link, we wait for it (necessary for deep link to work)
+      final uri = await appLinks.getInitialLink();
       if (uri != null) {
-        return DeepLinkService.extractPropertyId(uri);
+        final propId = DeepLinkService.extractPropertyId(uri);
+        debugPrint('[_checkInitialDeepLink] Mobile initial link: $uri -> $propId');
+        return propId;
+      } else {
+        debugPrint('[_checkInitialDeepLink] No initial link found');
       }
     }
   } catch (e) {
@@ -299,6 +315,8 @@ class RentalApp extends StatelessWidget {
               final uri = Uri.parse(rawName);
               final path = uri.path.toLowerCase();
 
+              debugPrint('[onGenerateRoute] Route: $rawName, Path: $path, initialPropertyId: $initialPropertyId');
+
               if (path == '/ai' || path == '/ai-chat' || path == '/assistant') {
                 return MaterialPageRoute(
                   settings: settings,
@@ -309,6 +327,7 @@ class RentalApp extends StatelessWidget {
               final routePropId =
                   DeepLinkService.extractPropertyId(uri) ?? initialPropertyId;
               if (routePropId != null && routePropId.isNotEmpty) {
+                debugPrint('[onGenerateRoute] Navigating to property: $routePropId');
                 DeepLinkService.instance.markAsNavigated(routePropId);
 
                 // 1. If property is in local cache, render PropertyDetailsScreen INSTANTLY (0ms!)
@@ -317,6 +336,7 @@ class RentalApp extends StatelessWidget {
                   cachedPropertiesJson,
                 );
                 if (cached != null) {
+                  debugPrint('[onGenerateRoute] Cache hit for $routePropId - showing PropertyDetails');
                   final transportFuture = TransportService.getNearby(
                     cached.latitude,
                     cached.longitude,
@@ -331,6 +351,7 @@ class RentalApp extends StatelessWidget {
                 }
 
                 // 2. If not in cache, render PropertyLoaderScreen directly — NO HomeScreen overhead!
+                debugPrint('[onGenerateRoute] Cache miss for $routePropId - showing PropertyLoaderScreen');
                 return MaterialPageRoute(
                   settings: settings,
                   builder: (_) => PropertyLoaderScreen(
@@ -340,13 +361,7 @@ class RentalApp extends StatelessWidget {
                 );
               }
 
-              if (hasCompletedOnboarding) {
-                return MaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => const HomeScreen(),
-                );
-              }
-
+              debugPrint('[onGenerateRoute] No property ID - launching with splash screen');
               return MaterialPageRoute(
                 settings: settings,
                 builder: (_) => const OnboardingScreen(),
