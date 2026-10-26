@@ -497,6 +497,16 @@ class _PostingScreenState extends State<PostingScreen> {
     _descriptionController.text = rawDescription;
     _addressController.text = rawAddress;
 
+    if (_selectedType.isEmpty) {
+      _showSheetError('Please select a property category');
+      setState(() => _currentStep = 1);
+      return;
+    }
+    if (_selectedImages.isEmpty && _existingImages.isEmpty) {
+      _showSheetError('Please upload at least 1 property photo');
+      setState(() => _currentStep = 2);
+      return;
+    }
     if (rawTitle.isEmpty) {
       _showSheetError('Please enter the ${_titleLabel.toLowerCase()}');
       setState(() => _currentStep = 2);
@@ -513,18 +523,25 @@ class _PostingScreenState extends State<PostingScreen> {
       setState(() => _currentStep = 2);
       return;
     }
+    if (rawAddress.isEmpty && _locationAddress.isEmpty) {
+      _showSheetError('Please enter property address or pin GPS location');
+      setState(() => _currentStep = 2);
+      return;
+    }
 
     // SECURITY: Validate phone — must be a valid 10-digit Indian mobile number
     final rawPhone = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
     final phoneRegex = RegExp(r'^[6-9]\d{9}$');
     if (rawPhone.isEmpty) {
-      _showSheetError('Please provide owner contact number');
+      _showSheetError('Please provide owner contact phone number');
+      setState(() => _currentStep = 6);
       return;
     }
     if (!phoneRegex.hasMatch(rawPhone)) {
       _showSheetError(
         'Enter a valid 10-digit Indian mobile number (e.g. 9876543210)',
       );
+      setState(() => _currentStep = 6);
       return;
     }
     _phoneController.text = rawPhone;
@@ -989,7 +1006,7 @@ class _PostingScreenState extends State<PostingScreen> {
 
         return GestureDetector(
           onTap: () {
-            if (_isEditing || stepIndex <= _currentStep) {
+            if (_selectedType.isNotEmpty || _isEditing) {
               HapticFeedback.selectionClick();
               setState(() => _currentStep = stepIndex);
             }
@@ -1185,13 +1202,27 @@ class _PostingScreenState extends State<PostingScreen> {
       key: const ValueKey(1),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Select Property Category',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.2,
-          ),
+        Row(
+          children: [
+            Text(
+              'Select Property Category',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.2,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(width: 3),
+            const Text(
+              '*',
+              style: TextStyle(
+                color: Color(0xFFEF4444),
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 4),
         Text(
@@ -1714,7 +1745,7 @@ class _PostingScreenState extends State<PostingScreen> {
       key: const ValueKey(2),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Upload Photos', Iconsax.camera),
+        _buildSectionHeader('Upload Photos', Iconsax.camera, isRequired: true),
         const SizedBox(height: 8),
         _selectedImages.isEmpty && _existingImages.isEmpty
             ? GestureDetector(
@@ -1743,13 +1774,27 @@ class _PostingScreenState extends State<PostingScreen> {
                             : Colors.grey.shade400,
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Tap to Upload Photos',
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.grey.shade700,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Tap to Upload Photos',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.grey.shade700,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          const Text(
+                            '*',
+                            style: TextStyle(
+                              color: Color(0xFFEF4444),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         'Add clear photos of room, bath & hall',
@@ -2011,6 +2056,7 @@ class _PostingScreenState extends State<PostingScreen> {
           controller: _titleController,
           label: _titleLabel,
           hint: _titleHint,
+          isRequired: true,
         ),
         const SizedBox(height: 12),
         if (_selectedType == 'Buy')
@@ -2019,6 +2065,7 @@ class _PostingScreenState extends State<PostingScreen> {
             label: 'Total Selling Price (₹)',
             hint: 'e.g. 4500000 (45 Lakhs)',
             keyboardType: TextInputType.number,
+            isRequired: true,
           )
         else
           Row(
@@ -2031,6 +2078,7 @@ class _PostingScreenState extends State<PostingScreen> {
                       : 'Monthly Rent (₹)',
                   hint: 'e.g. 5500',
                   keyboardType: TextInputType.number,
+                  isRequired: true,
                 ),
               ),
               const SizedBox(width: 12),
@@ -2074,8 +2122,8 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildCustomInput(
           controller: _maintenanceController,
           label: _selectedType == 'Buy'
-              ? 'Monthly Society / Maintenance Charges (Optional)'
-              : 'Maintenance / Extra Charges (Optional)',
+              ? 'Monthly Society / Maintenance Charges'
+              : 'Maintenance / Extra Charges',
           hint: _selectedType == 'Buy'
               ? 'e.g. 1500 (or leave blank if none)'
               : 'e.g. 500 (or leave blank if included)',
@@ -2085,6 +2133,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildSectionHeader(
           'Location & Address',
           Iconsax.location,
+          isRequired: true,
         ),
         const SizedBox(height: 10),
         _locationAddress.isEmpty
@@ -2181,6 +2230,7 @@ class _PostingScreenState extends State<PostingScreen> {
           label: 'Complete Address / Landmark',
           hint: 'e.g. Near Satyam Junction, MVP Colony, Visakhapatnam',
           maxLines: 2,
+          isRequired: true,
         ),
         const SizedBox(height: 12),
         Row(
@@ -3129,6 +3179,7 @@ class _PostingScreenState extends State<PostingScreen> {
         _buildSectionHeader(
           'Owner / Caretaker Contact',
           Iconsax.call,
+          isRequired: true,
         ),
         const SizedBox(height: 12),
         _buildCustomInput(
@@ -3136,6 +3187,7 @@ class _PostingScreenState extends State<PostingScreen> {
           label: 'Primary Phone Number (For Calls)',
           hint: 'e.g. 9876543210',
           keyboardType: TextInputType.phone,
+          isRequired: true,
         ),
         const SizedBox(height: 12),
         _buildCustomInput(
@@ -3782,7 +3834,7 @@ class _PostingScreenState extends State<PostingScreen> {
   // SHARED UI HELPER WIDGETS
   // ==========================================
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget _buildSectionHeader(String title, IconData icon, {bool isRequired = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Row(
@@ -3811,6 +3863,17 @@ class _PostingScreenState extends State<PostingScreen> {
             letterSpacing: -0.2,
           ),
         ),
+        if (isRequired) ...[
+          const SizedBox(width: 3),
+          const Text(
+            '*',
+            style: TextStyle(
+              color: Color(0xFFEF4444),
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -3820,6 +3883,7 @@ class _PostingScreenState extends State<PostingScreen> {
     String? subtitle,
     required IconData icon,
     required Widget child,
+    bool isRequired = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -3857,14 +3921,32 @@ class _PostingScreenState extends State<PostingScreen> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : const Color(0xFF1E1E1E),
-                    letterSpacing: -0.1,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : const Color(0xFF1E1E1E),
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ),
+                    if (isRequired) ...[
+                      const SizedBox(width: 3),
+                      const Text(
+                        '*',
+                        style: TextStyle(
+                          color: Color(0xFFEF4444),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -3900,18 +3982,42 @@ class _PostingScreenState extends State<PostingScreen> {
     int maxLines = 1,
     Function(String)? onChanged,
     Widget? suffixIcon,
+    bool isRequired = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isDark ? AppTheme.darkTextSecondary : Colors.black,
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppTheme.darkTextSecondary : Colors.black,
+                  ),
+                ),
+              ),
+              if (isRequired) ...[
+                const SizedBox(width: 3),
+                const Text(
+                  '*',
+                  style: TextStyle(
+                    color: Color(0xFFEF4444),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         const SizedBox(height: 6),
@@ -4167,7 +4273,7 @@ class _PostingScreenState extends State<PostingScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      isSet ? 'Menu is set. Tap to edit.' : 'Tap to add day-by-day menu (Optional)',
+                      isSet ? 'Menu is set. Tap to edit.' : 'Tap to add day-by-day menu',
                       style: TextStyle(
                         fontSize: 12,
                         color: isSet ? Colors.green : (isDark ? Colors.white54 : Colors.black54),

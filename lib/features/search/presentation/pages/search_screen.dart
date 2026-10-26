@@ -9,7 +9,6 @@ import 'package:lottie/lottie.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/core/models/property_model.dart';
-import 'package:rental/features/home/presentation/pages/home_screen.dart' show PropertyCard;
 import 'package:rental/features/property_details/presentation/pages/property_details_screen.dart';
 import 'package:rental/features/ai_chat/presentation/pages/ai_chat_screen.dart';
 import 'package:rental/core/services/analytics_service.dart';
@@ -192,7 +191,7 @@ class _SearchScreenState extends State<SearchScreen> {
       }
 
       // 2. Location filter
-      if (_selectedLocation != null && _selectedLocation!.isNotEmpty && _selectedLocation != 'All Locations') {
+      if (_selectedLocation != null && _selectedLocation!.isNotEmpty && _selectedLocation != 'All Locations' && _selectedLocation != 'Near My Location') {
         final loc = _selectedLocation!.toLowerCase();
         if (!p.locationStr.toLowerCase().contains(loc) && !title.contains(loc)) {
           return false;
@@ -347,7 +346,7 @@ class _SearchScreenState extends State<SearchScreen> {
     }).toList();
 
     // Sorting
-    if (_sortBy == 'distance' && widget.currentPosition != null) {
+    if (widget.currentPosition != null && (_sortBy == 'distance' || _sortBy == 'relevance' || _selectedLocation == 'Near My Location')) {
       list.sort((a, b) {
         double distA = Geolocator.distanceBetween(
           widget.currentPosition!.latitude,

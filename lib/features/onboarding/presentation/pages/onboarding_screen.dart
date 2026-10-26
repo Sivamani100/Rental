@@ -180,8 +180,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         _onLocationResolved(
-          city: 'Your Location',
-          subtext: 'Nearby properties loading...',
+          city: 'Diwancheruvu',
+          subtext: 'Rajahmundry, India',
           isDenied: false,
         );
         return;
@@ -191,8 +191,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         _onLocationResolved(
-          city: 'Your Location',
-          subtext: 'Nearby properties loading...',
+          city: 'Diwancheruvu',
+          subtext: 'Rajahmundry, India',
           isDenied: true,
         );
         return;
@@ -217,8 +217,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ? p.subLocality!
                 : p.locality?.isNotEmpty == true
                     ? p.locality!
-                    : p.administrativeArea ?? 'Your Location';
-            final subtext = p.administrativeArea ?? '';
+                    : p.administrativeArea ?? 'Diwancheruvu';
+            final subtext = p.administrativeArea ?? 'Rajahmundry, India';
             try {
               prefs.setString('cached_city', city);
               if (subtext.isNotEmpty) prefs.setString('cached_area', subtext);
@@ -230,14 +230,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       }
 
       _onLocationResolved(
-        city: 'Your Location',
-        subtext: 'Nearby properties loading...',
+        city: 'Diwancheruvu',
+        subtext: 'Rajahmundry, India',
         isDenied: false,
       );
     } catch (_) {
       _onLocationResolved(
-        city: 'Your Location',
-        subtext: 'Nearby properties loading...',
+        city: 'Diwancheruvu',
+        subtext: 'Rajahmundry, India',
         isDenied: false,
       );
     }

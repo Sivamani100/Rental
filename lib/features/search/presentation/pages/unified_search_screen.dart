@@ -51,12 +51,14 @@ class UnifiedSearchScreen extends StatefulWidget {
   final List<PropertyModel>? initialProperties;
   final String? initialQuery;
   final String? initialCategory;
+  final Position? currentPosition;
 
   const UnifiedSearchScreen({
     super.key,
     this.initialProperties,
     this.initialQuery,
     this.initialCategory,
+    this.currentPosition,
   });
 
   @override
@@ -611,14 +613,21 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
         return pb.compareTo(pa);
       });
     } else {
-      // Default: promoted first
+      // Default: promoted first, followed by proximity (location-wise)
+      final pos = widget.currentPosition;
       list.sort((a, b) {
         final promoA = a.id != null ? _activePromotions[a.id] : null;
         final promoB = b.id != null ? _activePromotions[b.id] : null;
         if (promoA != null && promoB == null) return -1;
         if (promoA == null && promoB != null) return 1;
         if (promoA != null && promoB != null) {
-          return promoA.priorityPosition.compareTo(promoB.priorityPosition);
+          final comp = promoA.priorityPosition.compareTo(promoB.priorityPosition);
+          if (comp != 0) return comp;
+        }
+        if (pos != null) {
+          final distA = Geolocator.distanceBetween(pos.latitude, pos.longitude, a.latitude, a.longitude);
+          final distB = Geolocator.distanceBetween(pos.latitude, pos.longitude, b.latitude, b.longitude);
+          return distA.compareTo(distB);
         }
         return 0;
       });

@@ -107,38 +107,46 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
 
   Future<void> _searchWithNominatim(String query) async {
     try {
-      // Search specifically in India with village/town priority
+      // Global search across all cities, regions, and countries worldwide
       final res = await http.get(
-        Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(query)}&limit=10&addressdetails=1&countrycodes=IN&featuretype=village'),
-        headers: {'User-Agent': 'RentalApp/1.0'},
+        Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(query)}&limit=15&addressdetails=1'),
+        headers: {'User-Agent': 'RentalApp/1.0 (contact@rental.arkio.in)'},
       ).timeout(const Duration(seconds: 5));
 
-      debugPrint('Nominatim village search status: ${res.statusCode}');
+      debugPrint('Nominatim global search status: ${res.statusCode}');
 
       List<dynamic> data = [];
       if (res.statusCode == 200) {
         data = jsonDecode(res.body) as List;
-        debugPrint('Nominatim village results: ${data.length}');
+        debugPrint('Nominatim results: ${data.length}');
       }
 
-      // If no village results, try broader search for towns/cities in India
+      // If Nominatim returned no results or is slow, try Photon global geocoder as fallback
       if (data.isEmpty) {
-        final broadRes = await http.get(
-          Uri.parse('https://nominatim.openstreetmap.org/search?format=json&q=${Uri.encodeComponent(query)}, India&limit=10&addressdetails=1'),
-          headers: {'User-Agent': 'RentalApp/1.0'},
-        ).timeout(const Duration(seconds: 5));
+        try {
+          final photonRes = await http.get(
+            Uri.parse('https://photon.komoot.io/api/?q=${Uri.encodeComponent(query)}&limit=15'),
+            headers: {'User-Agent': 'RentalApp/1.0 (contact@rental.arkio.in)'},
+          ).timeout(const Duration(seconds: 4));
 
-        debugPrint('Nominatim broad search status: ${broadRes.statusCode}');
-
-        if (broadRes.statusCode == 200) {
-          data = jsonDecode(broadRes.body) as List;
-          debugPrint('Nominatim broad results: ${data.length}');
-        }
+          if (photonRes.statusCode == 200) {
+            final photonData = jsonDecode(photonRes.body);
+            if (photonData['features'] != null && (photonData['features'] as List).isNotEmpty) {
+              if (mounted) {
+                setState(() {
+                  _suggestions = List.from(photonData['features']);
+                });
+                return;
+              }
+            }
+          }
+        } catch (_) {}
       }
 
-      // Convert Nominatim format to Photon-like format
+      // Convert Nominatim format to unified format
       final features = data.map((item) {
         final address = item['address'] ?? {};
+        final displayName = item['display_name']?.toString() ?? '';
         return {
           'geometry': {
             'coordinates': [
@@ -147,12 +155,12 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
             ]
           },
           'properties': {
-            'name': address['village'] ?? address['town'] ?? address['city'] ?? address['suburb'] ?? item['display_name']?.split(',').first?.trim() ?? 'Unknown',
+            'name': address['village'] ?? address['town'] ?? address['city'] ?? address['suburb'] ?? displayName.split(',').first.trim(),
             'street': address['road'],
             'city': address['city'] ?? address['town'] ?? address['village'],
             'state': address['state'],
             'country': address['country'],
-            'display_name': item['display_name'],
+            'display_name': displayName,
             'type': item['type'],
           }
         };
@@ -167,6 +175,23 @@ class _LocationPickerSheetState extends State<LocationPickerSheet> {
       }
     } catch (e) {
       debugPrint('Nominatim search error: $e');
+      // If error, attempt Photon search
+      try {
+        final photonRes = await http.get(
+          Uri.parse('https://photon.komoot.io/api/?q=${Uri.encodeComponent(query)}&limit=15'),
+          headers: {'User-Agent': 'RentalApp/1.0 (contact@rental.arkio.in)'},
+        ).timeout(const Duration(seconds: 4));
+
+        if (photonRes.statusCode == 200) {
+          final photonData = jsonDecode(photonRes.body);
+          if (photonData['features'] != null && mounted) {
+            setState(() {
+              _suggestions = List.from(photonData['features']);
+            });
+            return;
+          }
+        }
+      } catch (_) {}
       if (mounted) {
         setState(() => _suggestions = []);
       }

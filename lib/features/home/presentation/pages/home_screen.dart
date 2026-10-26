@@ -106,11 +106,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final ScrollController _rentalScrollController = ScrollController();
   final ScrollController _buyScrollController = ScrollController();
 
+  static final Position _defaultFallbackPosition = Position(
+    latitude: 17.0440,
+    longitude: 81.8430,
+    timestamp: DateTime.now(),
+    accuracy: 10,
+    altitude: 0,
+    heading: 0,
+    speed: 0,
+    speedAccuracy: 0,
+    altitudeAccuracy: 0,
+    headingAccuracy: 0,
+  );
+  static const String _defaultCity = 'Diwancheruvu';
+  static const String _defaultArea = 'Rajahmundry, India';
+
   Position? _currentPosition;
   late String _currentCity =
-      widget.initialLocationCity ?? 'Finding location...';
+      widget.initialLocationCity ?? _defaultCity;
   late String _currentArea =
-      widget.initialLocationSubtext ?? 'Detecting your area...';
+      widget.initialLocationSubtext ?? _defaultArea;
   bool _hasLocationPermission = true;
   bool _isInitialLoading = true;
   bool _showSplash = false;
@@ -126,12 +141,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String? _manualLocationName;
   Timer? _locationPromptTimer;
 
-  Position? get _effectivePosition =>
-      _manualLocationOverride ?? _currentPosition;
+  Position get _effectivePosition =>
+      _manualLocationOverride ?? _currentPosition ?? _defaultFallbackPosition;
   String _mapFilter = 'All';
   List<PropertyModel> _allProperties = [];
   Map<String, PartnerPromotionModel> _activePromotions = {};
-  int _currentSearchRadiusKm = 5;
+  int _currentSearchRadiusKm = 0;
 
   final _supabase = Supabase.instance.client;
   // Replaced 1-second Timer with distance-filtered position stream
@@ -594,32 +609,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        if (mounted)
+        if (mounted) {
           setState(() {
             _hasLocationPermission = false;
             _isRefreshingLocation = false;
+            if (_manualLocationOverride == null && _currentPosition == null) {
+              _currentPosition = _defaultFallbackPosition;
+              _currentCity = _defaultCity;
+              _currentArea = _defaultArea;
+            }
           });
+        }
         return;
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied ||
-            permission == LocationPermission.deniedForever) {
-          if (mounted)
-            setState(() {
-              _hasLocationPermission = false;
-              _isRefreshingLocation = false;
-            });
-          return;
-        }
       }
 
-      if (mounted)
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() {
+            _hasLocationPermission = false;
+            _isRefreshingLocation = false;
+            if (_manualLocationOverride == null && _currentPosition == null) {
+              _currentPosition = _defaultFallbackPosition;
+              _currentCity = _defaultCity;
+              _currentArea = _defaultArea;
+            }
+          });
+        }
+        return;
+      }
+
+      if (mounted) {
         setState(() {
           _hasLocationPermission = true;
         });
+      }
 
       Position? position;
       try {
@@ -644,7 +673,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         position = await Geolocator.getLastKnownPosition();
       }
 
-      if (position == null) return;
+      if (position == null) {
+        if (mounted && _manualLocationOverride == null && _currentPosition == null) {
+          setState(() {
+            _currentPosition = _defaultFallbackPosition;
+            _currentCity = _defaultCity;
+            _currentArea = _defaultArea;
+          });
+        }
+        return;
+      }
+
       if (!mounted) return;
       _currentPosition = position;
       if (_manualLocationOverride == null) {
@@ -652,7 +691,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await _updateGeocodingIfNeeded(position, force: true);
       }
     } catch (_) {
-      // Fallback already pre-rendered
+      if (mounted && _manualLocationOverride == null && _currentPosition == null) {
+        setState(() {
+          _currentPosition = _defaultFallbackPosition;
+          _currentCity = _defaultCity;
+          _currentArea = _defaultArea;
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -764,6 +809,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         PageRouteBuilder(
           pageBuilder: (context, anim, secAnim) => UnifiedSearchScreen(
             initialProperties: _allProperties,
+            currentPosition: _effectivePosition,
           ),
           transitionDuration: const Duration(milliseconds: 200),
           reverseTransitionDuration: const Duration(milliseconds: 180),
@@ -1064,97 +1110,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
 
     final currentPos = _effectivePosition;
-    if (currentPos == null) {
-      final list = _allProperties
-          .where((p) => matchesType(p) && matchesSearch(p) && matchesFilters(p))
-          .toList();
-      list.sort((a, b) {
-        final promoA = a.id != null ? _activePromotions[a.id] : null;
-        final promoB = b.id != null ? _activePromotions[b.id] : null;
-        final bool isBoostedA = promoA != null;
-        final bool isBoostedB = promoB != null;
-        if (isBoostedA && !isBoostedB) return -1;
-        if (!isBoostedA && isBoostedB) return 1;
-        if (isBoostedA && isBoostedB) {
-          final posComp = promoA.priorityPosition.compareTo(promoB.priorityPosition);
-          if (posComp != 0) return posComp;
-        }
-        return 0;
-      });
-      return list;
-    }
 
-    int searchRadiusKm = 5;
-    List<PropertyModel> tempFiltered = [];
+    // Retrieve all platform properties matching type, search query, and filters
+    // Without any artificial 50km radius cutoff, ensuring properties across all
+    // cities, states, and different countries worldwide are included.
+    final matchingProperties = _allProperties
+        .where((p) => matchesType(p) && matchesSearch(p) && matchesFilters(p))
+        .toList();
 
-    // Increment radius by 5km until we find properties or hit 50km limit
-    while (searchRadiusKm <= 50) {
-      tempFiltered = _allProperties.where((property) {
-        if (!matchesType(property) || !matchesSearch(property) || !matchesFilters(property)) return false;
-
-        double distanceInMeters = Geolocator.distanceBetween(
-          currentPos.latitude,
-          currentPos.longitude,
-          property.latitude,
-          property.longitude,
-        );
-
-        return distanceInMeters <= (searchRadiusKm * 1000);
-      }).toList();
-
-      if (tempFiltered.isNotEmpty) {
-        break;
-      }
-      searchRadiusKm += 5;
-    }
-
-    // Never show an empty feed on opening the app if properties exist!
-    // Fall back to showing all platform properties matching type & filters
-    bool isFallback = false;
-    if (tempFiltered.isEmpty && _searchQuery.isEmpty) {
-      tempFiltered = _allProperties
-          .where((p) => matchesType(p) && matchesFilters(p))
-          .toList();
-      isFallback = true;
-    }
-
-    tempFiltered.sort((a, b) {
-      double distA = Geolocator.distanceBetween(
-        currentPos.latitude,
-        currentPos.longitude,
-        a.latitude,
-        a.longitude,
-      );
-      double distB = Geolocator.distanceBetween(
-        currentPos.latitude,
-        currentPos.longitude,
-        b.latitude,
-        b.longitude,
-      );
-
-      // In-App Promotion 5km Priority Boost
-      final promoA = a.id != null ? _activePromotions[a.id] : null;
-      final promoB = b.id != null ? _activePromotions[b.id] : null;
-      
-      final bool isLocMatchA = _searchQuery.isNotEmpty && (a.locationStr.toLowerCase().contains(_searchQuery.toLowerCase()) || a.title.toLowerCase().contains(_searchQuery.toLowerCase()));
-      final bool isLocMatchB = _searchQuery.isNotEmpty && (b.locationStr.toLowerCase().contains(_searchQuery.toLowerCase()) || b.title.toLowerCase().contains(_searchQuery.toLowerCase()));
-
-      final bool isBoostedA = promoA != null && (distA <= (promoA.radiusKm * 1000) || isLocMatchA);
-      final bool isBoostedB = promoB != null && (distB <= (promoB.radiusKm * 1000) || isLocMatchB);
-
-      if (isBoostedA && !isBoostedB) {
-        return -1; // Promoted within 5km goes first (#1)
-      } else if (!isBoostedA && isBoostedB) {
-        return 1;  // Promoted within 5km goes first (#1)
-      } else if (isBoostedA && isBoostedB) {
-        final posComp = promoA.priorityPosition.compareTo(promoB.priorityPosition);
-        if (posComp != 0) return posComp;
-        return distA.compareTo(distB);
-      }
-
-      if (_filterState.sortBy == 'distance' || isFallback) {
-        return distA.compareTo(distB);
-      } else if (_filterState.sortBy == 'price_asc' || _filterState.sortBy == 'price_desc') {
+    matchingProperties.sort((a, b) {
+      // 1. Explicit user price sort
+      if (_filterState.sortBy == 'price_asc' || _filterState.sortBy == 'price_desc') {
         double priceA = double.tryParse(a.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
         double priceB = double.tryParse(b.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
         if (_filterState.sortBy == 'price_asc') {
@@ -1163,11 +1129,57 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           return priceB.compareTo(priceA);
         }
       }
+
+      // 2. Promotion boosts
+      final promoA = a.id != null ? _activePromotions[a.id] : null;
+      final promoB = b.id != null ? _activePromotions[b.id] : null;
+
+      double distA = double.infinity;
+      double distB = double.infinity;
+
+      if (currentPos != null) {
+        distA = Geolocator.distanceBetween(
+          currentPos.latitude,
+          currentPos.longitude,
+          a.latitude,
+          a.longitude,
+        );
+        distB = Geolocator.distanceBetween(
+          currentPos.latitude,
+          currentPos.longitude,
+          b.latitude,
+          b.longitude,
+        );
+      }
+
+      final bool isLocMatchA = _searchQuery.isNotEmpty && (a.locationStr.toLowerCase().contains(_searchQuery.toLowerCase()) || a.title.toLowerCase().contains(_searchQuery.toLowerCase()));
+      final bool isLocMatchB = _searchQuery.isNotEmpty && (b.locationStr.toLowerCase().contains(_searchQuery.toLowerCase()) || b.title.toLowerCase().contains(_searchQuery.toLowerCase()));
+
+      final bool isBoostedA = promoA != null && (distA <= (promoA.radiusKm * 1000) || isLocMatchA);
+      final bool isBoostedB = promoB != null && (distB <= (promoB.radiusKm * 1000) || isLocMatchB);
+
+      if (isBoostedA && !isBoostedB) {
+        return -1; // Promoted within promo radius goes first (#1)
+      } else if (!isBoostedA && isBoostedB) {
+        return 1;
+      } else if (isBoostedA && isBoostedB) {
+        final posComp = promoA.priorityPosition.compareTo(promoB.priorityPosition);
+        if (posComp != 0) return posComp;
+        return distA.compareTo(distB);
+      }
+
+      // 3. Location-Wise Ordering (Proximity):
+      // Nearby properties (e.g. within 50km) show at the top,
+      // followed seamlessly by properties in other cities, states, and different countries worldwide.
+      if (currentPos != null) {
+        return distA.compareTo(distB);
+      }
+
       return 0; // relevance or fallback
     });
 
-    _currentSearchRadiusKm = searchRadiusKm > 50 ? 50 : searchRadiusKm;
-    return tempFiltered;
+    _currentSearchRadiusKm = 0; // Worldwide / overall
+    return matchingProperties;
   }
 
   /// Get the scroll controller for the active tab
@@ -1196,116 +1208,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           city: _currentCity,
           subtext: _currentArea,
           isDenied: !_hasLocationPermission,
-        ),
-      );
-    }
-
-    if (!_hasLocationPermission) {
-      return Scaffold(
-        backgroundColor: isDark ? AppTheme.darkScaffold : Colors.white,
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ColorFiltered(
-                    colorFilter: isDark
-                        ? const ColorFilter.matrix([
-                            -1,
-                            0,
-                            0,
-                            0,
-                            255,
-                            0,
-                            -1,
-                            0,
-                            0,
-                            255,
-                            0,
-                            0,
-                            -1,
-                            0,
-                            255,
-                            0,
-                            0,
-                            0,
-                            1,
-                            0,
-                          ])
-                        : const ColorFilter.mode(
-                            Colors.transparent,
-                            BlendMode.dst,
-                          ),
-                    child: Lottie.asset(
-                      'assets/animations/location.json',
-                      width: 250,
-                      height: 250,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Text(
-                    'Location Access Required',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'We need your location to show you the best properties around you in ascending order of distance. Please allow location access to continue.',
-                    style: TextStyle(
-                      color: isDark
-                          ? AppTheme.darkTextSecondary
-                          : Colors.black54,
-                      fontSize: 15,
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 32),
-                  BouncingButton(
-                    onTap: () {
-                      Geolocator.openAppSettings();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 32,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppTheme.primaryYellow : Colors.black,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            CupertinoIcons.settings,
-                            color: isDark ? Colors.black : Colors.white,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Open Settings',
-                            style: TextStyle(
-                              color: isDark ? Colors.black : Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         ),
       );
     }
@@ -1358,63 +1260,79 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         body: IndexedStack(
           index: _bottomNavIndex == 4 ? 0 : _bottomNavIndex,
           children: [
-            Column(
-                children: [
-                  // ── Swiggy-style dark navy header ──
-                  _buildSwiggyHeader(context),
-                  // ── Content ──
-                  if (_searchFocusNode.hasFocus || _searchQuery.isNotEmpty)
-                    Expanded(
-                      child: _buildSearchResults(),
-                    )
-                  else
-                    Expanded(
-                      child: NotificationListener<UserScrollNotification>(
-                      onNotification: (notification) {
-                        // Only listen to vertical scrolling (ignore PageView horizontal swipes)
-                        if (notification.metrics.axis != Axis.vertical)
-                          return false;
+            Stack(
+              children: [
+                Positioned.fill(
+                  child: Column(
+                    children: [
+                      // ── Swiggy-style header ──
+                      _buildSwiggyHeader(context),
+                      // ── Content ──
+                      if (_searchFocusNode.hasFocus || _searchQuery.isNotEmpty)
+                        Expanded(
+                          child: _buildSearchResults(),
+                        )
+                      else
+                        Expanded(
+                          child: NotificationListener<UserScrollNotification>(
+                            onNotification: (notification) {
+                              // Only listen to vertical scrolling (ignore PageView horizontal swipes)
+                              if (notification.metrics.axis != Axis.vertical)
+                                return false;
 
-                        if (notification.direction == ScrollDirection.reverse) {
-                          // scrolling down
-                          if (_isScrollUIVisible)
-                            setState(() => _isScrollUIVisible = false);
-                        } else if (notification.direction ==
-                            ScrollDirection.forward) {
-                          // scrolling up
-                          if (!_isScrollUIVisible)
-                            setState(() => _isScrollUIVisible = true);
-                        }
-                        return false;
-                      },
-                      child: PageView(
-                        controller: _pageController,
-                        onPageChanged: (index) {
-                          if (_selectedTypeIndex != index) {
-                            setState(() {
-                              _selectedTypeIndex = index;
-                            });
-                            AnalyticsService.instance.logCategoryClick(
-                              index == 0
-                                  ? 'Home'
-                                  : index == 1
-                                  ? 'Hostel'
-                                  : (index == 3 ? 'Buy' : 'Rental'),
-                            );
-                            HapticFeedback.selectionClick();
-                          }
-                        },
-                        children: [
-                          _buildTabContent('Home'),
-                          _buildTabContent('PG'),
-                          _buildTabContent('Rental'),
-                          _buildTabContent('Buy'),
-                        ],
-                      ),
-                    ),
+                              if (notification.direction == ScrollDirection.reverse) {
+                                // scrolling down
+                                if (_isScrollUIVisible)
+                                  setState(() => _isScrollUIVisible = false);
+                              } else if (notification.direction ==
+                                  ScrollDirection.forward) {
+                                // scrolling up
+                                if (!_isScrollUIVisible)
+                                  setState(() => _isScrollUIVisible = true);
+                              }
+                              return false;
+                            },
+                            child: PageView(
+                              controller: _pageController,
+                              onPageChanged: (index) {
+                                if (_selectedTypeIndex != index) {
+                                  setState(() {
+                                    _selectedTypeIndex = index;
+                                  });
+                                  AnalyticsService.instance.logCategoryClick(
+                                    index == 0
+                                        ? 'Home'
+                                        : index == 1
+                                        ? 'Hostel'
+                                        : (index == 3 ? 'Buy' : 'Rental'),
+                                  );
+                                  HapticFeedback.selectionClick();
+                                }
+                              },
+                              children: [
+                                _buildTabContent('Home'),
+                                _buildTabContent('PG'),
+                                _buildTabContent('Rental'),
+                                _buildTabContent('Buy'),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+
+                // ── Floating Bottom Center Search Button (appears when scrolling down) ──
+                Positioned(
+                  bottom: MediaQuery.of(context).padding.bottom + 22,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: _buildFloatingBottomSearchButton(isDark),
+                  ),
+                ),
+              ],
+            ),
             _buildExploreMarketplaceView(context, isDark),
             PostingScreen(
               allProperties: _allProperties,
@@ -1441,14 +1359,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final headerTextColor = isBgDark ? Colors.white : Colors.black87;
 
     final query = _searchQuery.trim().toLowerCase();
+    final currentPos = _effectivePosition;
     final displayedProperties = query.isEmpty
-        ? _allProperties
+        ? List<PropertyModel>.from(_allProperties)
         : _allProperties.where((p) {
             final titleMatch = p.title.toLowerCase().contains(query);
             final locMatch = p.locationStr.toLowerCase().contains(query);
             final typeMatch = p.type.toLowerCase().contains(query);
             return titleMatch || locMatch || typeMatch;
           }).toList();
+
+    if (currentPos != null) {
+      displayedProperties.sort((a, b) {
+        final distA = Geolocator.distanceBetween(
+          currentPos.latitude,
+          currentPos.longitude,
+          a.latitude,
+          a.longitude,
+        );
+        final distB = Geolocator.distanceBetween(
+          currentPos.latitude,
+          currentPos.longitude,
+          b.latitude,
+          b.longitude,
+        );
+        return distA.compareTo(distB);
+      });
+    }
 
     return NotificationListener<UserScrollNotification>(
       onNotification: (notification) {
@@ -1932,6 +1869,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           p.features.join(' ').toLowerCase().contains(q);
     }).toList();
 
+    final searchPos = _effectivePosition;
+    if (searchPos != null) {
+      localMatches.sort((a, b) {
+        final distA = Geolocator.distanceBetween(
+          searchPos.latitude,
+          searchPos.longitude,
+          a.latitude,
+          a.longitude,
+        );
+        final distB = Geolocator.distanceBetween(
+          searchPos.latitude,
+          searchPos.longitude,
+          b.latitude,
+          b.longitude,
+        );
+        return distA.compareTo(distB);
+      });
+    }
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -2001,9 +1957,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             itemCount: localMatches.length,
             itemBuilder: (context, index) {
               final prop = localMatches[index];
+              double? dist;
+              if (searchPos != null) {
+                dist = Geolocator.distanceBetween(
+                  searchPos.latitude,
+                  searchPos.longitude,
+                  prop.latitude,
+                  prop.longitude,
+                );
+              }
               return GridPropertyCard(
                 property: prop,
-                distanceInMeters: null,
+                distanceInMeters: dist,
                 onTap: () {
                   _searchFocusNode.unfocus();
                   Navigator.push(
@@ -2080,7 +2045,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               left: 16.0,
               right: 16.0,
               top: 0.0,
-              bottom: 24.0,
+              bottom: 84.0,
             ),
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -2107,26 +2072,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSearchActive = _searchFocusNode.hasFocus || _searchQuery.isNotEmpty;
     
-    final headerBgColor = (_isScrollUIVisible && !isSearchActive) ? AppTheme.primaryAccent : (isDark ? AppTheme.darkScaffold : Colors.white);
+    // When scrolling down (!_isScrollUIVisible) or searching, the header background is white (or dark scaffold in dark mode).
+    // When at the top (_isScrollUIVisible && !isSearchActive), it uses the brand yellow (AppTheme.primaryAccent).
+    final headerBgColor = (!_isScrollUIVisible || isSearchActive)
+        ? (isDark ? AppTheme.darkScaffold : Colors.white)
+        : AppTheme.primaryAccent;
     final isBgDark = ThemeData.estimateBrightnessForColor(headerBgColor) == Brightness.dark;
     final headerTextColor = isBgDark ? Colors.white : Colors.black87;
     final headerSubTextColor = isBgDark ? Colors.white70 : Colors.black54;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 280),
       decoration: BoxDecoration(
         color: headerBgColor,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(isSearchActive ? 0 : 36),
-          bottomRight: Radius.circular(isSearchActive ? 0 : 36),
+          bottomLeft: Radius.circular(isSearchActive ? 0 : (_isScrollUIVisible ? 36 : 18)),
+          bottomRight: Radius.circular(isSearchActive ? 0 : (_isScrollUIVisible ? 36 : 18)),
         ),
+        boxShadow: (!_isScrollUIVisible && !isSearchActive)
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
       ),
       child: SafeArea(
         bottom: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 10), // 10px gap after status bar
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              height: (_isScrollUIVisible && !isSearchActive) ? 10 : 2,
+            ),
             // ── Top row: location + settings button ─────────────────────────────
             AnimatedSize(
               duration: const Duration(milliseconds: 300),
@@ -2237,7 +2219,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               );
                             },
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
+                              padding: const EdgeInsets.fromLTRB(2.0, 8.0, 8.0, 8.0),
                               child: Icon(
                                 Iconsax.setting_2,
                                 color: headerTextColor,
@@ -2250,206 +2232,213 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
             ),
 
-            // ── Swiggy-style search bar row ──────────────────────────────────
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 25),
-                  child: Row(
-                    children: [
-                      if (isSearchActive)
+            // ── Search bar row (collapses while scrolling down) ──────────────────
+            AnimatedSize(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeInOut,
+              child: (!_isScrollUIVisible && !isSearchActive)
+                  ? const SizedBox(width: double.infinity, height: 0)
+                  : Stack(
+                      clipBehavior: Clip.none,
+                      children: [
                         Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: IconButton(
-                            icon: Icon(
-                              CupertinoIcons.back, // iOS style back button
-                              color: headerTextColor,
-                              size: 24,
-                            ),
-                            onPressed: () {
-                              _searchFocusNode.unfocus();
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                                _locationSuggestions = [];
-                              });
-                            },
-                          ),
-                        ),
-                      // Search bar
-                  Expanded(
-                    key: const ValueKey('home_search_expanded'),
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(isSearchActive ? 30 : 12),
-                        border: (_isScrollUIVisible && !isSearchActive) ? null : Border.all(color: Colors.grey.shade300),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: TextField(
-                        controller: _searchController,
-                        readOnly: true,
-                        textAlignVertical: TextAlignVertical.center,
-                        cursorColor: Colors.black87,
-                        cursorWidth: 2.0,
-                        cursorHeight: 20.0,
-                        onTap: _openUnifiedSearch,
-                        style: TextStyle(
-                          fontFamily: 'ProximaNova',
-                          fontSize: 15.5,
-                          color: Colors.grey.shade900,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        onChanged: _onSearchChanged,
-                        decoration: InputDecoration(
-                          hintText: "Search for '${_searchHints[_hintIndex]}'",
-                          hintStyle: TextStyle(
-                            fontFamily: 'ProximaNova',
-                            fontSize: 15.0,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          errorBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
-                          contentPadding: isSearchActive 
-                              ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
-                              : const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                          prefixIcon: isSearchActive ? null : Padding(
-                            padding: const EdgeInsets.only(left: 8, right: 4),
-                            child: Icon(
-                              CupertinoIcons.search,
-                              color: Colors.grey.shade600,
-                              size: 20, // Decreased size
-                            ),
-                          ),
-                          suffixIcon: Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: IconButton(
-                              icon: Icon(
-                                _searchQuery.isNotEmpty
-                                    ? CupertinoIcons.clear
-                                    : CupertinoIcons.mic_fill,
-                                color: Colors.black87,
-                                size: 20, // Decreased size
-                              ),
-                              onPressed: _searchQuery.isNotEmpty 
-                                  ? () {
-                                      HapticFeedback.selectionClick();
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: Row(
+                            children: [
+                              if (isSearchActive)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8.0),
+                                  child: IconButton(
+                                    icon: Icon(
+                                      CupertinoIcons.back, // iOS style back button
+                                      color: headerTextColor,
+                                      size: 24,
+                                    ),
+                                    onPressed: () {
+                                      _searchFocusNode.unfocus();
                                       _searchController.clear();
-                                      _searchFocusNode.unfocus(); // Close overlay when clearing
                                       setState(() {
                                         _searchQuery = '';
                                         _locationSuggestions = [];
                                       });
-                                    } 
-                                  : () async {
-                                      HapticFeedback.selectionClick();
-                                      await Navigator.push(
-                                        context,
-                                        PageRouteBuilder(
-                                          pageBuilder: (context, animation, secondaryAnimation) => VoiceSearchScreen(
-                                            properties: _allProperties,
-                                          ),
-                                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                            const begin = Offset(0.0, 1.0);
-                                            const end = Offset.zero;
-                                            const curve = Curves.ease;
-                                            final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                                            return SlideTransition(position: animation.drive(tween), child: child);
-                                          },
-                                        ),
-                                      );
                                     },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  if (!isSearchActive) ...[
-                    const SizedBox(width: 10),
-
-                    // ── SORT button ──────────────────────────────
-                    BouncingButton(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _showSortBottomSheet();
-                      },
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            height: 50,
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: (_isScrollUIVisible && !isSearchActive) ? null : Border.all(color: Colors.grey.shade300),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'SORT',
-                                  style: TextStyle(
-                                    fontFamily: 'ProximaNova',
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.black87,
-                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                const Icon(
-                                  CupertinoIcons.sort_down,
-                                  size: 12, // Decreased size
-                                  color: Colors.black87,
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (_filterState.activeFilterCount > 0)
-                            Positioned(
-                              top: -8,
-                              right: -8,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                ),
-                                child: Text(
-                                  '${_filterState.activeFilterCount}',
-                                  style: const TextStyle(
+                              // Search bar
+                              Expanded(
+                                key: const ValueKey('home_search_expanded'),
+                                child: Container(
+                                  height: 50,
+                                  decoration: BoxDecoration(
                                     color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                                    borderRadius: BorderRadius.circular(isSearchActive ? 30 : 12),
+                                    border: (_isScrollUIVisible && !isSearchActive) ? null : Border.all(color: Colors.grey.shade300),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: TextField(
+                                    controller: _searchController,
+                                    readOnly: true,
+                                    textAlignVertical: TextAlignVertical.center,
+                                    cursorColor: Colors.black87,
+                                    cursorWidth: 2.0,
+                                    cursorHeight: 20.0,
+                                    onTap: _openUnifiedSearch,
+                                    style: TextStyle(
+                                      fontFamily: 'ProximaNova',
+                                      fontSize: 15.5,
+                                      color: Colors.grey.shade900,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    onChanged: _onSearchChanged,
+                                    decoration: InputDecoration(
+                                      hintText: "Search for '${_searchHints[_hintIndex]}'",
+                                      hintStyle: TextStyle(
+                                        fontFamily: 'ProximaNova',
+                                        fontSize: 15.0,
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      border: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      focusedBorder: InputBorder.none,
+                                      errorBorder: InputBorder.none,
+                                      disabledBorder: InputBorder.none,
+                                      contentPadding: isSearchActive 
+                                          ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
+                                          : const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                      prefixIcon: isSearchActive ? null : Padding(
+                                        padding: const EdgeInsets.only(left: 8, right: 4),
+                                        child: Icon(
+                                          CupertinoIcons.search,
+                                          color: Colors.grey.shade600,
+                                          size: 20, // Decreased size
+                                        ),
+                                      ),
+                                      suffixIcon: Padding(
+                                        padding: const EdgeInsets.only(right: 8),
+                                        child: IconButton(
+                                          icon: Icon(
+                                            _searchQuery.isNotEmpty
+                                                ? CupertinoIcons.clear
+                                                : CupertinoIcons.mic_fill,
+                                            color: Colors.black87,
+                                            size: 20, // Decreased size
+                                          ),
+                                          onPressed: _searchQuery.isNotEmpty 
+                                              ? () {
+                                                  HapticFeedback.selectionClick();
+                                                  _searchController.clear();
+                                                  _searchFocusNode.unfocus(); // Close overlay when clearing
+                                                  setState(() {
+                                                    _searchQuery = '';
+                                                    _locationSuggestions = [];
+                                                  });
+                                                } 
+                                              : () async {
+                                                  HapticFeedback.selectionClick();
+                                                  await Navigator.push(
+                                                    context,
+                                                    PageRouteBuilder(
+                                                      pageBuilder: (context, animation, secondaryAnimation) => VoiceSearchScreen(
+                                                        properties: _allProperties,
+                                                      ),
+                                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                                        const begin = Offset(0.0, 1.0);
+                                                        const end = Offset.zero;
+                                                        const curve = Curves.ease;
+                                                        final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                                                        return SlideTransition(position: animation.drive(tween), child: child);
+                                                      },
+                                                    ),
+                                                  );
+                                                },
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
 
-        // ── Integrated Tabs inside Header ─────────────────────────────
+                              if (!isSearchActive) ...[
+                                const SizedBox(width: 10),
+
+                                // ── SORT button ──────────────────────────────
+                                BouncingButton(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    _showSortBottomSheet();
+                                  },
+                                  child: Stack(
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Container(
+                                        height: 50,
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: (_isScrollUIVisible && !isSearchActive) ? null : Border.all(color: Colors.grey.shade300),
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              'SORT',
+                                              style: TextStyle(
+                                                fontFamily: 'ProximaNova',
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                                color: Colors.black87,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            const Icon(
+                                              CupertinoIcons.sort_down,
+                                              size: 12, // Decreased size
+                                              color: Colors.black87,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (_filterState.activeFilterCount > 0)
+                                        Positioned(
+                                          top: -8,
+                                          right: -8,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white, width: 2),
+                                            ),
+                                            child: Text(
+                                              '${_filterState.activeFilterCount}',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+
+            // ── Sticky Category Tabs inside Header (remains sticky while scrolling) ──
             AnimatedSize(
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 280),
               curve: Curves.easeInOut,
-              child: (!_isScrollUIVisible || isSearchActive)
+              child: isSearchActive
                   ? const SizedBox(width: double.infinity, height: 0)
                   : Column(
                       mainAxisSize: MainAxisSize.min,
@@ -2457,7 +2446,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         _buildHeaderTabBar(headerTextColor, headerSubTextColor),
                         const SizedBox(
                           height: 8,
-                        ), // added padding before the curve ends
+                        ),
                       ],
                     ),
             ),
@@ -2522,7 +2511,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       children: [
                         Icon(
                           tab.icon,
-                          color: textColor,
+                          color: isSelected
+                              ? textColor
+                              : textColor.withValues(alpha: 0.6),
                           size: 16,
                         ),
                         const SizedBox(width: 6),
@@ -2530,9 +2521,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           tab.label,
                           style: TextStyle(
                             fontFamily: 'ProximaNova',
-                            color: textColor,
+                            color: isSelected
+                                ? textColor
+                                : textColor.withValues(alpha: 0.6),
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w800,
+                            fontWeight:
+                                isSelected ? FontWeight.w800 : FontWeight.w600,
                             letterSpacing: 0.3,
                           ),
                         ),
@@ -2556,6 +2550,79 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             );
           }),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FLOATING BOTTOM CENTER SEARCH BUTTON (appears while scrolling down)
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildFloatingBottomSearchButton(bool isDark) {
+    final isSearchActive = _searchFocusNode.hasFocus || _searchQuery.isNotEmpty;
+    final isVisible = !_isScrollUIVisible && !isSearchActive && _bottomNavIndex == 0;
+
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      offset: isVisible ? Offset.zero : const Offset(0, 1.8),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOut,
+        opacity: isVisible ? 1.0 : 0.0,
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutBack,
+          scale: isVisible ? 1.0 : 0.75,
+          child: IgnorePointer(
+            ignoring: !isVisible,
+            child: BouncingButton(
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                _openUnifiedSearch();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      blurRadius: 18,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      CupertinoIcons.search,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Search',
+                      style: TextStyle(
+                        fontFamily: 'ProximaNova',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -3475,20 +3542,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _showLocationOptionsSheet() async {
-    final currentPos =
-        _effectivePosition ??
-        Position(
-          latitude: 17.3850,
-          longitude: 78.4867, // Default to Hyderabad
-          timestamp: DateTime.now(),
-          accuracy: 1,
-          altitude: 0,
-          heading: 0,
-          speed: 0,
-          speedAccuracy: 0,
-          altitudeAccuracy: 0,
-          headingAccuracy: 0,
-        );
+    final currentPos = _effectivePosition;
 
     final result = await showModalBottomSheet(
       context: context,
