@@ -35,6 +35,52 @@ The app uses a **feature-first folder structure** under `lib/features`. A featur
 
 This is not a strict repository/use-case Clean Architecture implementation: many screens call singleton services or Supabase directly, and some screens contain their own orchestration and form state. Most transient UI state is held by `StatefulWidget`; cross-screen or app-wide state is exposed by singleton `ChangeNotifier` services such as `SavedPropertiesService`, `PartnerService`, and `ThemeController`.
 
+### Architecture diagram
+
+This diagram shows the main ownership boundaries. Feature screens may use a feature service or call a shared integration directly, depending on the workflow; there is no universal repository layer.
+
+```mermaid
+flowchart TB
+  User[User]
+  subgraph FlutterApp[Flutter application]
+    Bootstrap[main.dart and route generator]
+    subgraph Features[Feature presentation and workflows]
+      Discovery[Home, search, map, voice]
+      Listing[Property details and posting]
+      Partner[Partner workspace]
+      Assistant[AI assistant]
+      Nearby[Transport and amenities]
+      Other[Onboarding, saved properties, settings]
+    end
+    subgraph Shared[Shared application code]
+      Domain[PropertyModel and feature models]
+      Services[Core services: links, analytics, notifications, network]
+      UI[Theme, shared widgets, ads, image utilities]
+      Local[SharedPreferences and secure storage]
+    end
+  end
+  subgraph Integrations[External integrations]
+    Supabase[Supabase: Postgres, Auth, Storage, Realtime]
+    Providers[OpenRouter and OpenStreetMap services]
+    Device[Platform APIs: location, camera, speech, notifications]
+    Firebase[Firebase Messaging]
+    AdMob[Google Mobile Ads]
+  end
+
+  User --> Bootstrap
+  Bootstrap --> Features
+  Features --> Domain
+  Features --> Services
+  Features --> UI
+  Features --> Local
+  Features --> Supabase
+  Services --> Supabase
+  Services --> Firebase
+  Features --> Providers
+  Features --> Device
+  UI --> AdMob
+```
+
 ### Top-level source layers
 
 - `lib/main.dart` bootstraps plugins and services, configures global error handling, creates the `MaterialApp`, and owns the route generator.
@@ -58,6 +104,45 @@ This is not a strict repository/use-case Clean Architecture implementation: many
 7. After the first frame is allowed to render, remaining work initializes the theme controller, saved properties, Supabase, AdMob, analytics, push notifications, the incoming-link listener, and (on web) the install prompt.
 
 Initialization errors are generally caught and logged so optional integrations do not prevent the UI from starting. Supabase-backed screens still require a reachable and correctly configured Supabase project to load remote data.
+
+### Startup and deep-link sequence
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Main as main()
+  participant Local as SharedPreferences
+  participant Links as AppLinks / browser URL
+  participant Router as MaterialApp route generator
+  participant Cache as Property cache
+  participant Loader as PropertyLoaderScreen
+  participant DB as Supabase
+  participant UI as App screens
+  participant Async as Background services
+
+  User->>Main: Launch app or open property URL
+  Main->>Main: Initialize Flutter and global handlers
+  Main->>Local: Read cached properties and onboarding flags
+  Main->>Links: Resolve initial URI
+  Links-->>Main: URI or no property link
+  Main->>Router: runApp with initial link and cache
+  alt URI identifies a property and cache contains it
+    Router->>Cache: Find cached PropertyModel
+    Cache-->>Router: PropertyModel
+    Router->>UI: Show PropertyDetailsScreen
+  else URI identifies property but cache misses
+    Router->>Loader: Open loader directly
+    Loader->>Local: Check stored property cache
+    alt Still not found locally
+      Loader->>DB: Select one property by ID (6-second timeout)
+      DB-->>Loader: Property row or failure
+    end
+    Loader->>UI: Replace loader with details or show error
+  else No property link
+    Router->>UI: Show OnboardingScreen
+  end
+  Main-->>Async: Initialize Supabase, theme, saved items, ads, analytics, push, links
+```
 
 ### Route behavior
 
@@ -86,6 +171,38 @@ arkio://rental/property/<id>
 - Deep-link loading tries the startup cache, web-preloaded property data, and SharedPreferences before selecting a single property from Supabase. The remote fallback has a six-second timeout.
 - Transport results are requested alongside property details and have their own Supabase/local caches.
 - Saving or editing listing data invalidates the feed cache so subsequent screens refresh.
+
+### Property data lifecycle
+
+```mermaid
+flowchart LR
+  subgraph Read[Discover and open listings]
+    Home[HomeScreen] --> LocalFeed[SharedPreferences feed cache]
+    LocalFeed --> FeedUI[Render cached feed immediately]
+    Home --> Approved[Supabase properties where status is approved]
+    Approved --> UpdateCache[Refresh cached JSON and timestamp]
+    UpdateCache --> FeedUI
+    Link[Property deep link] --> CacheCheck{Property in cache?}
+    CacheCheck -->|Yes| Details[PropertyDetailsScreen]
+    CacheCheck -->|No| Loader[PropertyLoaderScreen]
+    Loader --> SingleQuery[Supabase select by property ID]
+    SingleQuery --> Details
+  end
+
+  subgraph Write[Create or edit a listing]
+    Form[PostingScreen] --> Compress[ImageCompressor]
+    Compress --> Storage[Supabase Storage: property_images]
+    Storage --> URLs[Public image URLs]
+    URLs --> WriteRow[Insert or update Supabase properties row]
+    WriteRow --> Invalidate[Remove local feed cache]
+    Invalidate --> Realtime[Home feed refreshes on Realtime change]
+  end
+
+  Partner[PartnerService] -->|availability, edits, claims, promotions| SupabaseOps[Supabase RPCs and tables]
+  SupabaseOps --> Realtime
+```
+
+The cache makes the first feed render faster, but remote refresh remains the source of current approved listings. Listing uploads and edits write remotely first and invalidate the local feed cache after success.
 
 ## Feature Guide
 
