@@ -9,7 +9,7 @@
 import 'package:flutter/foundation.dart';
 
 /// Kill-switch: set to false to hide every ad slot across the whole app.
-const bool adsEnabled = true;
+const bool adsEnabled = false;
 
 // ---------------------------------------------------------------------------
 // Native Ad Unit IDs

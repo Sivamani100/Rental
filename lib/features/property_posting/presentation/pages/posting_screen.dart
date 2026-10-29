@@ -23,6 +23,7 @@ import 'package:rental/features/property_posting/presentation/pages/photo_positi
 import 'package:rental/features/property_posting/presentation/widgets/property_posting_status_sheet.dart';
 import 'package:rental/features/property_posting/presentation/pages/area_calculator_map_screen.dart';
 import 'package:rental/features/partner/data/services/partner_service.dart';
+import 'package:rental/core/services/photo_processing_pipeline.dart';
 
 class PostingScreen extends StatefulWidget {
   final Position? currentLocation;
@@ -387,6 +388,8 @@ class _PostingScreenState extends State<PostingScreen> {
         _selectedImages = List<XFile>.from(result['localImages'] ?? []);
         _existingImages = List<String>.from(result['existingUrls'] ?? []);
       });
+      // Ensure background compression & upload pipeline stages any newly picked or reordered photos
+      PhotoProcessingPipeline.instance.stageAndProcess(_selectedImages);
     }
   }
 
@@ -399,13 +402,19 @@ class _PostingScreenState extends State<PostingScreen> {
         _showSheetError('Maximum $maxImages photos allowed per listing.');
         return;
       }
-      final List<XFile> images = await _picker.pickMultiImage();
+      final List<XFile> images = await _picker.pickMultiImage(
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 85,
+      );
       if (images.isNotEmpty) {
         final remaining = maxImages - currentCount;
         final toAdd = images.take(remaining).toList();
         setState(() {
           _selectedImages.addAll(toAdd);
         });
+        // Immediately kick off background compression, watermarking & upload
+        PhotoProcessingPipeline.instance.stageAndProcess(toAdd);
         if (images.length > remaining) {
           _showSheetError(
             'Only $remaining more photo(s) added. Maximum $maxImages reached.',

@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/app/theme/app_theme.dart';
-import 'package:rental/core/utils/image_compressor.dart';
+import 'package:rental/core/services/photo_processing_pipeline.dart';
 import 'package:rental/core/models/property_model.dart';
 import 'package:rental/features/partner/data/services/partner_service.dart';
 enum _UploadStatusState { uploading, success, error }
@@ -82,34 +82,17 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
         });
       }
 
-      final futures = widget.selectedImages.map((file) async {
-        final originalBytes = await file.readAsBytes();
-
-        // Off-thread isolate compression
-        final result = await ImageCompressor.smartCompress(
-          originalBytes,
-        );
-
-        final rawBaseName = file.name.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_$rawBaseName.${result.fileExtension}';
-
-        await supabase.storage.from('property_images').uploadBinary(
-          fileName,
-          result.bytes,
-          fileOptions: FileOptions(contentType: result.mimeType),
-        );
-
-        final url = supabase.storage.from('property_images').getPublicUrl(fileName);
-
-        if (mounted && !_isCancelled) {
-          setState(() {
-            _progress = (_progress + (0.79 / totalImages)).clamp(0.01, 0.80);
-          });
-        }
-        return url;
-      });
-
-      final newUrls = await Future.wait(futures);
+      final newUrls = await PhotoProcessingPipeline.instance.getOrWaitForUrls(
+        widget.selectedImages,
+        onProgress: (p, status) {
+          if (mounted && !_isCancelled) {
+            setState(() {
+              _progress = p;
+              _statusMessage = status;
+            });
+          }
+        },
+      );
       if (_isCancelled) return;
       uploadedUrls.addAll(newUrls);
 
@@ -168,6 +151,7 @@ class _PropertyPostingStatusSheetState extends State<PropertyPostingStatusSheet>
       if (!widget.isEditing) {
         await prefs.remove('posting_draft_v1');
       }
+      PhotoProcessingPipeline.instance.clear();
 
   
 

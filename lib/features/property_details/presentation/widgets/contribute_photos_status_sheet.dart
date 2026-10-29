@@ -86,8 +86,10 @@ class _ContributePhotosStatusSheetState extends State<ContributePhotosStatusShee
         final cleanName = file.name.split('.').first.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
         final originalBytes = await file.readAsBytes();
         
+        final watermarkBytes = await ImageCompressor.getWatermarkBytes();
         final result = await ImageCompressor.smartCompress(
           originalBytes,
+          watermarkRawBytes: watermarkBytes,
         );
         
         final fileName = '${DateTime.now().millisecondsSinceEpoch}_$cleanName.${result.fileExtension}';

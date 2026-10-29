@@ -6,11 +6,12 @@ import 'package:flutter/services.dart';
 
 import 'package:lottie/lottie.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
+import 'package:rental/core/services/location_helper.dart';
+import 'package:rental/core/services/deep_link_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rental/features/home/presentation/pages/home_screen.dart';
 
@@ -29,6 +30,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   // Location state on splash
   String? _locationCity;
   String? _locationSubtext;
+  Position? _locationPosition;
   bool _locationDenied = false;
 
   // Splash progression flags
@@ -71,7 +73,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late final Animation<double> _pulseAnimation;
 
   final List<String> _notificationVariants = const [
-    'Look at this gorgeous 3BHK home with spacious balcony in Danavaipeta',
+    'Look at this gorgeous 3BHK home with spacious balcony in Diwancheruvu',
     'Thinking of buying a dream house? Gated villa on AV Appa Rao Road',
     'New 2 BHK flat available 650m away near Morampudi Junction',
     'Rent reduced by ₹2,000! Price dropped on Prakash Nagar home',
@@ -137,16 +139,24 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       }
     });
 
-    // Safety timeout: Never hang on splash for longer than 850ms
-    _safetyTimeoutTimer = Timer(const Duration(milliseconds: 850), () {
+    // Safety timeout: Swift fallback so user never gets stuck on splash screen
+    _safetyTimeoutTimer = Timer(const Duration(milliseconds: 2200), () {
       if (mounted && !_hasShownLocationResult) {
         _minLocatingTimeElapsed = true;
         _locationFetchDone = true;
         if (_locationCity == null) {
-          _locationCity = 'Your Location';
-          _locationSubtext = 'Nearby properties loading...';
+          _locationCity = LocationHelper.defaultCity;
+          _locationSubtext = LocationHelper.defaultArea;
         }
         _checkAndShowLocationResult();
+      }
+    });
+
+    // Hard failsafe timer: Splash NEVER stays on screen longer than 2.8s
+    Timer(const Duration(milliseconds: 2800), () {
+      if (mounted && !_hasTransitioned) {
+        debugPrint("[OnboardingScreen] Failsafe timer fired, forcing transition to HomeScreen");
+        _transitionFromSplash();
       }
     });
 
@@ -156,116 +166,25 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
-  /// Concurrently fetches location: returns INSTANTLY (<5ms) from cache if available,
-  /// else checks last known position with a short 300ms timeout so the splash never stalls.
+  /// Requests location permission first thing, grabs accurate GPS coordinates and reverse geocodes locality
   Future<void> _fetchLocationForSplash() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final cachedCity = prefs.getString('cached_city');
-      final cachedArea = prefs.getString('cached_area');
-
-      // 1. If we have a cached city, resolve INSTANTLY so splash transitions smoothly without delay!
-      if (cachedCity != null && cachedCity.isNotEmpty) {
-        _onLocationResolved(
-          city: cachedCity,
-          subtext: cachedArea ?? 'Nearby properties loading...',
-          isDenied: false,
-        );
-        // Refresh silently in background without stalling the splash
-        _refreshLocationInBackground(prefs);
-        return;
-      }
-
-      // 2. If no cache yet (first install), do a rapid non-blocking check
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _onLocationResolved(
-          city: 'Diwancheruvu',
-          subtext: 'Rajahmundry, India',
-          isDenied: false,
-        );
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        _onLocationResolved(
-          city: 'Diwancheruvu',
-          subtext: 'Rajahmundry, India',
-          isDenied: true,
-        );
-        return;
-      }
-
-      // Rapid last known position (<200ms)
-      Position? position;
-      try {
-        position = await Geolocator.getLastKnownPosition()
-            .timeout(const Duration(milliseconds: 250), onTimeout: () => null);
-      } catch (_) {}
-
-      if (position != null) {
-        try {
-          final placemarks = await Geocoding()
-              .placemarkFromCoordinates(position.latitude, position.longitude)
-              .timeout(const Duration(milliseconds: 500), onTimeout: () => []);
-
-          if (placemarks.isNotEmpty) {
-            final p = placemarks.first;
-            final city = p.subLocality?.isNotEmpty == true
-                ? p.subLocality!
-                : p.locality?.isNotEmpty == true
-                    ? p.locality!
-                    : p.administrativeArea ?? 'Diwancheruvu';
-            final subtext = p.administrativeArea ?? 'Rajahmundry, India';
-            try {
-              prefs.setString('cached_city', city);
-              if (subtext.isNotEmpty) prefs.setString('cached_area', subtext);
-            } catch (_) {}
-            _onLocationResolved(city: city, subtext: subtext, isDenied: false);
-            return;
-          }
-        } catch (_) {}
-      }
-
+      final result = await LocationHelper.fetchInitialLocation(
+        gpsTimeout: kIsWeb ? const Duration(milliseconds: 1500) : const Duration(seconds: 3),
+      );
+      _locationPosition = result.position;
       _onLocationResolved(
-        city: 'Diwancheruvu',
-        subtext: 'Rajahmundry, India',
-        isDenied: false,
+        city: result.city,
+        subtext: result.area,
+        isDenied: result.isPermissionDenied,
       );
     } catch (_) {
       _onLocationResolved(
-        city: 'Diwancheruvu',
-        subtext: 'Rajahmundry, India',
+        city: LocationHelper.defaultCity,
+        subtext: LocationHelper.defaultArea,
         isDenied: false,
       );
     }
-  }
-
-  void _refreshLocationInBackground(SharedPreferences prefs) async {
-    try {
-      final position = await Geolocator.getLastKnownPosition()
-          .timeout(const Duration(milliseconds: 500), onTimeout: () => null);
-      if (position != null) {
-        final placemarks = await Geocoding()
-            .placemarkFromCoordinates(position.latitude, position.longitude)
-            .timeout(const Duration(seconds: 2), onTimeout: () => []);
-        if (placemarks.isNotEmpty) {
-          final p = placemarks.first;
-          final city = p.subLocality?.isNotEmpty == true
-              ? p.subLocality!
-              : p.locality?.isNotEmpty == true
-                  ? p.locality!
-                  : p.administrativeArea;
-          if (city != null && city.isNotEmpty) {
-            prefs.setString('cached_city', city);
-            final subtext = p.administrativeArea ?? '';
-            if (subtext.isNotEmpty) prefs.setString('cached_area', subtext);
-          }
-        }
-      }
-    } catch (_) {}
   }
 
   void _onLocationResolved({
@@ -274,6 +193,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     required bool isDenied,
   }) {
     if (!mounted) return;
+    _safetyTimeoutTimer?.cancel();
     _locationCity = city;
     _locationSubtext = subtext;
     _locationDenied = isDenied;
@@ -292,15 +212,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     });
     _cityFadeController.forward();
 
-    // Give the user 320ms to appreciate the detected city before transitioning
-    Timer(const Duration(milliseconds: 320), () {
+    // Give the user 300ms to appreciate the detected city before transitioning
+    Timer(const Duration(milliseconds: 300), () {
       if (mounted) _transitionFromSplash();
     });
   }
 
   void _transitionFromSplash() async {
     if (!mounted || _hasTransitioned) return;
-    _hasTransitioned = true;
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -309,26 +228,29 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
     if (!mounted) return;
 
-    // Safety guard: If another route was pushed on top of splash (e.g. deep link PropertyDetailsScreen),
-    // calling Navigator.pushReplacement(context, ...) would replace the top-most route in Flutter!
-    final currentRoute = ModalRoute.of(context);
-    if (currentRoute != null && !currentRoute.isCurrent) {
-      debugPrint("[OnboardingScreen] Another route is on top. Skipping pushReplacement to protect deep link.");
+    final isDeepLinkActive = DeepLinkService.instance.isHandlingDeepLink;
+    if (isDeepLinkActive) {
+      debugPrint("[OnboardingScreen] Deep link in progress. Preserving top route.");
+      _hasTransitioned = true;
       return;
     }
 
-    Navigator.pushReplacement(
-      context,
+    _hasTransitioned = true;
+
+    // Use pushAndRemoveUntil with rootNavigator to guarantee HomeScreen is presented cleanly
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => HomeScreen(
-          initialLocationCity: _locationCity,
-          initialLocationSubtext: _locationSubtext,
+          initialLocationCity: _locationCity ?? LocationHelper.defaultCity,
+          initialLocationSubtext: _locationSubtext ?? LocationHelper.defaultArea,
+          initialPosition: _locationPosition,
         ),
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(opacity: animation, child: child);
         },
         transitionDuration: const Duration(milliseconds: 200),
       ),
+      (route) => false,
     );
   }
 
@@ -396,11 +318,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_completed_onboarding', true);
     if (mounted) {
-      final currentRoute = ModalRoute.of(context);
-      if (currentRoute != null && !currentRoute.isCurrent) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      if (DeepLinkService.instance.isHandlingDeepLink) return;
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => HomeScreen(
+            initialLocationCity: _locationCity ?? LocationHelper.defaultCity,
+            initialLocationSubtext: _locationSubtext ?? LocationHelper.defaultArea,
+            initialPosition: _locationPosition,
+          ),
+        ),
+        (route) => false,
       );
     }
   }

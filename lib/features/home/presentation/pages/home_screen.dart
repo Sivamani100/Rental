@@ -56,18 +56,23 @@ import 'package:rental/features/home/presentation/widgets/shimmer_effect.dart';
 import 'package:rental/features/home/presentation/widgets/skeleton_box.dart';
 import 'package:rental/features/home/presentation/widgets/top_location_logo_switcher.dart';
 import 'package:rental/features/search/presentation/pages/voice_search_screen.dart';
+import 'package:rental/core/services/location_helper.dart';
+import 'package:rental/features/search/presentation/widgets/new_search_bar.dart';
+import 'package:rental/features/search/presentation/pages/new_search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? initialPropertyId;
 
   final String? initialLocationCity;
   final String? initialLocationSubtext;
+  final Position? initialPosition;
 
   const HomeScreen({
     super.key,
     this.initialPropertyId,
     this.initialLocationCity,
     this.initialLocationSubtext,
+    this.initialPosition,
   });
 
   @override
@@ -90,6 +95,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   PropertyModel? _selectedMapProperty;
   final MapController _mapController = MapController();
   late final PageController _pageController;
+  int _exploreCategoryIndex = 0;
+  late final PageController _explorePageController;
 
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
@@ -105,6 +112,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final ScrollController _pgScrollController = ScrollController();
   final ScrollController _rentalScrollController = ScrollController();
   final ScrollController _buyScrollController = ScrollController();
+
+  final ScrollController _exploreHomeScrollController = ScrollController();
+  final ScrollController _explorePgScrollController = ScrollController();
+  final ScrollController _exploreRentalScrollController = ScrollController();
+  final ScrollController _exploreBuyScrollController = ScrollController();
 
   static final Position _defaultFallbackPosition = Position(
     latitude: 17.0440,
@@ -166,7 +178,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    if (widget.initialPosition != null) {
+      _currentPosition = widget.initialPosition;
+    }
     _pageController = PageController(initialPage: _selectedTypeIndex);
+    _explorePageController = PageController(initialPage: _exploreCategoryIndex);
     WidgetsBinding.instance.addObserver(this);
     SavedPropertiesService.instance.addListener(_onSavedChanged);
     _searchFocusNode.addListener(() { if (mounted) setState(() {}); });
@@ -211,6 +227,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await prefs.remove('cached_properties');
         await prefs.remove('cached_properties_ts');
         await prefs.setInt('cached_properties_version', _cacheVersion);
+      }
+
+      if (_currentPosition == null) {
+        final cachedLat = prefs.getDouble('cached_lat');
+        final cachedLng = prefs.getDouble('cached_lng');
+        if (cachedLat != null && cachedLng != null) {
+          _currentPosition = Position(
+            latitude: cachedLat,
+            longitude: cachedLng,
+            timestamp: DateTime.now(),
+            accuracy: 10,
+            altitude: 0,
+            heading: 0,
+            speed: 0,
+            speedAccuracy: 0,
+            altitudeAccuracy: 0,
+            headingAccuracy: 0,
+          );
+        }
       }
 
       final cachedCity = prefs.getString('cached_city');
@@ -478,10 +513,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _hintTimer?.cancel();
     _searchController.dispose();
     _pageController.dispose();
+    _explorePageController.dispose();
     _homeScrollController.dispose();
     _pgScrollController.dispose();
     _rentalScrollController.dispose();
     _buyScrollController.dispose();
+    _exploreHomeScrollController.dispose();
+    _explorePgScrollController.dispose();
+    _exploreRentalScrollController.dispose();
+    _exploreBuyScrollController.dispose();
     _locationStream?.cancel();
     if (_propertiesChannel != null) {
       _supabase.removeChannel(_propertiesChannel!);
@@ -615,8 +655,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _isRefreshingLocation = false;
             if (_manualLocationOverride == null && _currentPosition == null) {
               _currentPosition = _defaultFallbackPosition;
-              _currentCity = _defaultCity;
-              _currentArea = _defaultArea;
+              if (_currentCity.isEmpty) _currentCity = _defaultCity;
+              if (_currentArea.isEmpty) _currentArea = _defaultArea;
             }
           });
         }
@@ -636,8 +676,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _isRefreshingLocation = false;
             if (_manualLocationOverride == null && _currentPosition == null) {
               _currentPosition = _defaultFallbackPosition;
-              _currentCity = _defaultCity;
-              _currentArea = _defaultArea;
+              if (_currentCity.isEmpty) _currentCity = _defaultCity;
+              if (_currentArea.isEmpty) _currentArea = _defaultArea;
             }
           });
         }
@@ -665,7 +705,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       try {
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.medium,
+            accuracy: LocationAccuracy.high,
             timeLimit: Duration(seconds: 4),
           ),
         );
@@ -677,8 +717,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         if (mounted && _manualLocationOverride == null && _currentPosition == null) {
           setState(() {
             _currentPosition = _defaultFallbackPosition;
-            _currentCity = _defaultCity;
-            _currentArea = _defaultArea;
+            if (_currentCity.isEmpty) _currentCity = _defaultCity;
+            if (_currentArea.isEmpty) _currentArea = _defaultArea;
           });
         }
         return;
@@ -686,6 +726,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       if (!mounted) return;
       _currentPosition = position;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setDouble('cached_lat', position.latitude);
+        await prefs.setDouble('cached_lng', position.longitude);
+      } catch (_) {}
+
       if (_manualLocationOverride == null) {
         if (mounted) setState(() {});
         await _updateGeocodingIfNeeded(position, force: true);
@@ -694,8 +740,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted && _manualLocationOverride == null && _currentPosition == null) {
         setState(() {
           _currentPosition = _defaultFallbackPosition;
-          _currentCity = _defaultCity;
-          _currentArea = _defaultArea;
+          if (_currentCity.isEmpty) _currentCity = _defaultCity;
+          if (_currentArea.isEmpty) _currentArea = _defaultArea;
         });
       }
     } finally {
@@ -708,8 +754,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     }
   }
-
-
 
   /// Geocoding throttle: only call the network geocoding API when user moves
   /// more than 500 meters from the last geocoded position, unless forced.
@@ -729,24 +773,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _lastGeocodedPosition = position;
 
     try {
-      final placemarks = await Geocoding()
-          .placemarkFromCoordinates(position.latitude, position.longitude)
-          .timeout(const Duration(seconds: 3));
-      if (placemarks.isNotEmpty && mounted) {
-        final place = placemarks.first;
+      final geo = await LocationHelper.reverseGeocode(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (mounted) {
         setState(() {
-          _currentCity =
-              place.locality ??
-              place.subLocality ??
-              place.name ??
-              'Finding location...';
-          _currentArea =
-              '${place.subAdministrativeArea ?? place.administrativeArea ?? ''}, ${place.country ?? ''}'
-                  .replaceAll(RegExp(r'^,\s*'), '')
-                  .replaceAll(RegExp(r',\s*$'), '');
-          if (_currentArea.trim().isEmpty) {
-            _currentArea = 'Detecting your area...';
-          }
+          _currentCity = geo['city'] ?? _currentCity;
+          _currentArea = geo['area'] ?? _currentArea;
         });
 
         // Persist for instant display on next app open
@@ -795,7 +830,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (mounted) setState(() { _isSearchingLocations = false; });
   }
 
-  Future<void> _openUnifiedSearch() async {
+  Future<void> _openUnifiedSearch({String? initialQuery}) async {
     final now = DateTime.now();
     if (_lastSearchOpenTime != null &&
         now.difference(_lastSearchOpenTime!).inMilliseconds < 250) {
@@ -807,26 +842,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final result = await Navigator.push(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, anim, secAnim) => UnifiedSearchScreen(
+          opaque: false,
+          barrierDismissible: true,
+          barrierColor: Colors.black.withValues(alpha: 0.42),
+          pageBuilder: (context, anim, secAnim) => NewSearchScreen(
             initialProperties: _allProperties,
+            initialQuery: initialQuery,
             currentPosition: _effectivePosition,
           ),
-          transitionDuration: const Duration(milliseconds: 200),
-          reverseTransitionDuration: const Duration(milliseconds: 180),
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 240),
           transitionsBuilder: (context, anim, secAnim, child) {
             final curved = CurvedAnimation(
               parent: anim,
               curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
             );
-            return FadeTransition(
-              opacity: curved,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.04),
-                  end: Offset.zero,
-                ).animate(curved),
-                child: child,
-              ),
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, -1.0),
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
             );
           },
         ),
@@ -876,6 +913,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
     } catch (e) {
       debugPrint('Error navigating to UnifiedSearchScreen: $e');
+    }
+  }
+
+  Future<void> _openVoiceSearch() async {
+    HapticFeedback.selectionClick();
+    final result = await VoiceSearchScreen.open(
+      context,
+      properties: _allProperties,
+    );
+    if (result != null && result.trim().isNotEmpty) {
+      _lastSearchOpenTime = null;
+      _openUnifiedSearch(initialQuery: result.trim());
     }
   }
 
@@ -1196,6 +1245,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Get the scroll controller for Explore active tab
+  ScrollController _exploreControllerForType(String typeStr) {
+    switch (typeStr) {
+      case 'Home':
+        return _exploreHomeScrollController;
+      case 'PG':
+        return _explorePgScrollController;
+      case 'Buy':
+        return _exploreBuyScrollController;
+      default:
+        return _exploreRentalScrollController;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1353,329 +1416,393 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return mobileScaffold;
   }
 
-  Widget _buildExploreMarketplaceView(BuildContext context, bool isDark) {
-    final headerBgColor = _isScrollUIVisible ? AppTheme.primaryAccent : (isDark ? AppTheme.darkScaffold : Colors.white);
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EXPLORE HEADER (collapsing Swiggy-style header with sticky tabs)
+  // ═══════════════════════════════════════════════════════════════════════════
+  Widget _buildExploreHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSearchActive = _searchFocusNode.hasFocus || _searchQuery.isNotEmpty;
+
+    final headerBgColor = (!_isScrollUIVisible || isSearchActive)
+        ? (isDark ? AppTheme.darkScaffold : Colors.white)
+        : AppTheme.primaryAccent;
     final isBgDark = ThemeData.estimateBrightnessForColor(headerBgColor) == Brightness.dark;
     final headerTextColor = isBgDark ? Colors.white : Colors.black87;
+    final headerSubTextColor = isBgDark ? Colors.white70 : Colors.black54;
 
-    final query = _searchQuery.trim().toLowerCase();
-    final currentPos = _effectivePosition;
-    final displayedProperties = query.isEmpty
-        ? List<PropertyModel>.from(_allProperties)
-        : _allProperties.where((p) {
-            final titleMatch = p.title.toLowerCase().contains(query);
-            final locMatch = p.locationStr.toLowerCase().contains(query);
-            final typeMatch = p.type.toLowerCase().contains(query);
-            return titleMatch || locMatch || typeMatch;
-          }).toList();
-
-    if (currentPos != null) {
-      displayedProperties.sort((a, b) {
-        final distA = Geolocator.distanceBetween(
-          currentPos.latitude,
-          currentPos.longitude,
-          a.latitude,
-          a.longitude,
-        );
-        final distB = Geolocator.distanceBetween(
-          currentPos.latitude,
-          currentPos.longitude,
-          b.latitude,
-          b.longitude,
-        );
-        return distA.compareTo(distB);
-      });
-    }
-
-    return NotificationListener<UserScrollNotification>(
-      onNotification: (notification) {
-        if (notification.metrics.axis != Axis.vertical) return false;
-        if (notification.direction == ScrollDirection.reverse) {
-          if (_isScrollUIVisible) setState(() => _isScrollUIVisible = false);
-        } else if (notification.direction == ScrollDirection.forward) {
-          if (!_isScrollUIVisible) setState(() => _isScrollUIVisible = true);
-        }
-        return false;
-      },
-      child: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            backgroundColor: headerBgColor,
-            floating: true,
-            pinned: true,
-            elevation: 0,
-            centerTitle: false,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
-            ),
-          titleSpacing: 24,
-          title: Text(
-            'Explore',
-            style: TextStyle(
-              fontFamily: 'ProximaNova',
-              color: headerTextColor,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
-            ),
-          ),
-          actions: [
-            BouncingButton(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => Scaffold(
-                      backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF2F2F7),
-                      body: _buildSavedPropertiesView(context, isDark, showBackButton: true),
-                    ),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
-                child: Icon(
-                  CupertinoIcons.heart,
-                  color: headerTextColor,
-                  size: 24,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 280),
+      decoration: BoxDecoration(
+        color: headerBgColor,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(isSearchActive ? 0 : (_isScrollUIVisible ? 36 : 18)),
+          bottomRight: Radius.circular(isSearchActive ? 0 : (_isScrollUIVisible ? 36 : 18)),
+        ),
+        boxShadow: (!_isScrollUIVisible && !isSearchActive)
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 3),
                 ),
-              ),
+              ]
+            : null,
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              height: (_isScrollUIVisible && !isSearchActive) ? 10 : 16,
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: BouncingButton(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 8.0),
-                  child: Icon(
-                    Iconsax.setting_2,
-                    color: headerTextColor,
-                    size: 24,
-                  ),
-                ),
-              ),
-            ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(74),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              child: Row(
-                children: [
-                  // Search bar
-                  Expanded(
-                    child: Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(
-                          _searchFocusNode.hasFocus || _searchQuery.isNotEmpty ? 30 : 12,
-                        ),
-                        border: _isScrollUIVisible ? null : Border.all(color: Colors.grey.shade300),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+            // ── Top row: "Explore" title + Saved + Settings buttons (collapses while scrolling down) ──
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: (!_isScrollUIVisible || isSearchActive)
+                  ? const SizedBox(width: double.infinity, height: 0)
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(22, 0, 16, 20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Explore',
+                              style: TextStyle(
+                                fontFamily: 'ProximaNova',
+                                color: headerTextColor,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                          // ── Saved Properties button ──
+                          BouncingButton(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => Scaffold(
+                                    backgroundColor: isDark ? AppTheme.darkScaffold : const Color(0xFFF2F2F7),
+                                    body: _buildSavedPropertiesView(context, isDark, showBackButton: true),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(2.0, 8.0, 14.0, 8.0),
+                              child: Icon(
+                                CupertinoIcons.heart,
+                                color: headerTextColor,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                          // ── Settings button ──
+                          BouncingButton(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SettingsScreen(),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(2.0, 8.0, 8.0, 8.0),
+                              child: Icon(
+                                Iconsax.setting_2,
+                                color: headerTextColor,
+                                size: 24,
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: TextField(
-                        controller: _searchController,
-                        readOnly: true,
-                        textAlignVertical: TextAlignVertical.center,
-                        onTap: _openUnifiedSearch,
-                        style: TextStyle(
-                          fontFamily: 'ProximaNova',
-                          fontSize: 14.5,
-                          color: Colors.grey.shade900,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: "Search for '${_searchHints[_hintIndex]}'",
-                          hintStyle: TextStyle(
-                            fontFamily: 'ProximaNova',
-                            fontSize: 14.0,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          errorBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
-                          prefixIcon: Padding(
-                            padding: const EdgeInsets.only(left: 8, right: 4),
-                            child: Icon(
-                              CupertinoIcons.search,
-                              color: Colors.grey.shade600,
-                              size: 20,
+                    ),
+            ),
+
+            // ── Search bar row (collapses while scrolling down) ──
+            AnimatedSize(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeInOut,
+              child: (!_isScrollUIVisible && !isSearchActive)
+                  ? const SizedBox(width: double.infinity, height: 0)
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: NewSearchBar(
+                              readOnly: true,
+                              onTap: _openUnifiedSearch,
+                              onVoiceTap: _openVoiceSearch,
                             ),
                           ),
-                          suffixIcon: Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: IconButton(
-                              icon: Icon(
-                                _searchQuery.isNotEmpty
-                                    ? CupertinoIcons.clear
-                                    : CupertinoIcons.mic_fill,
-                                color: Colors.black87,
-                                size: 20,
-                              ),
-                              onPressed: _searchQuery.isNotEmpty
-                                  ? () {
-                                      HapticFeedback.selectionClick();
-                                      _searchController.clear();
-                                      _searchFocusNode.unfocus();
-                                      setState(() {
-                                        _searchQuery = '';
-                                        _locationSuggestions = [];
-                                      });
-                                    }
-                                  : () async {
-                                      HapticFeedback.selectionClick();
-                                      await Navigator.push(
-                                        context,
-                                        PageRouteBuilder(
-                                          pageBuilder: (context, animation, secondaryAnimation) =>
-                                              VoiceSearchScreen(
-                                                properties: _allProperties,
-                                              ),
-                                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                            const begin = Offset(0.0, 1.0);
-                                            const end = Offset.zero;
-                                            final tween = Tween(begin: begin, end: end)
-                                                .chain(CurveTween(curve: Curves.ease));
-                                            return SlideTransition(
-                                                position: animation.drive(tween), child: child);
-                                          },
+                          const SizedBox(width: 10),
+
+                          // ── SORT button ──
+                          BouncingButton(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              _showSortBottomSheet();
+                            },
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  height: 52,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                      width: 1.0,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'SORT',
+                                        style: TextStyle(
+                                          fontFamily: 'ProximaNova',
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          color: isDark ? Colors.white : Colors.black87,
+                                          letterSpacing: 0.5,
                                         ),
-                                      );
-                                    },
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Icon(
+                                        CupertinoIcons.sort_down,
+                                        size: 13,
+                                        color: isDark ? Colors.white : Colors.black87,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (_filterState.activeFilterCount > 0)
+                                  Positioned(
+                                    top: -6,
+                                    right: -6,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? Colors.white : Colors.black,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: isDark ? Colors.black : Colors.white,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '${_filterState.activeFilterCount}',
+                                        style: TextStyle(
+                                          color: isDark ? Colors.black : Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 14,
-                          ),
-                        ),
+                        ],
                       ),
                     ),
-                  ),
+            ),
 
-                  const SizedBox(width: 10),
-
-                  // ── SORT button ──────────────────────────────
-                  BouncingButton(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _showSortBottomSheet();
-                    },
-                    child: Stack(
-                      clipBehavior: Clip.none,
+            // ── Sticky Category Tabs inside Header (remains sticky while scrolling) ──
+            AnimatedSize(
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeInOut,
+              child: isSearchActive
+                  ? const SizedBox(width: double.infinity, height: 0)
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          height: 50,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: _isScrollUIVisible ? null : Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text('SORT',
-                                style: TextStyle(
-                                  fontFamily: 'ProximaNova',
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.black87,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Icon(CupertinoIcons.sort_down,
-                                size: 14,
-                                color: Colors.black87,
-                              ),
-                            ],
-                          ),
+                        _buildHeaderTabBar(
+                          headerTextColor,
+                          headerSubTextColor,
+                          selectedIndex: _exploreCategoryIndex,
+                          onTabSelected: (index) {
+                            setState(() {
+                              _exploreCategoryIndex = index;
+                            });
+                            if (_explorePageController.hasClients) {
+                              _explorePageController.animateToPage(
+                                index,
+                                duration: const Duration(milliseconds: 280),
+                                curve: Curves.easeInOutCubic,
+                              );
+                            }
+                          },
                         ),
-                        if (_filterState.activeFilterCount > 0)
-                          Positioned(
-                            top: -8,
-                            right: -8,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: Text(
-                                '${_filterState.activeFilterCount}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
+                        SizedBox(
+                          height: (_isScrollUIVisible && !isSearchActive) ? 8 : 12,
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExploreTabContent(String typeStr) {
+    final properties = _getSortedPropertiesForType(typeStr);
+    String emptyLabel;
+    if (typeStr == 'Home') {
+      emptyLabel = 'Properties';
+    } else if (typeStr == 'PG') {
+      emptyLabel = 'Hostels / PGs';
+    } else if (typeStr == 'Buy') {
+      emptyLabel = 'Buy properties';
+    } else {
+      emptyLabel = 'Rentals';
+    }
+
+    final scrollCtrl = _exploreControllerForType(typeStr);
+
+    return RefreshIndicator(
+      color: AppTheme.swiggyOrange,
+      backgroundColor: Colors.white,
+      displacement: 32,
+      edgeOffset: 8,
+      triggerMode: RefreshIndicatorTriggerMode.anywhere,
+      onRefresh: () async {
+        HapticFeedback.mediumImpact();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('cached_properties_ts');
+        await Future.wait([
+          _refreshLocationFast(updateFeed: true),
+          _fetchProperties(),
+        ]);
+      },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            controller: scrollCtrl,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: 0.0,
+              bottom: 84.0,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight > 140
+                    ? constraints.maxHeight - 140
+                    : 300,
+              ),
+              child: (_isInitialLoading && _allProperties.isEmpty)
+                  ? _buildSkeletonGrid()
+                  : (properties.isEmpty
+                      ? Center(child: _buildEmptyState(emptyLabel))
+                      : _buildPropertyList(properties, 'Explore')),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildExploreMarketplaceView(BuildContext context, bool isDark) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Column(
+            children: [
+              // ── Swiggy-style Explore header ──
+              _buildExploreHeader(context),
+              // ── Content ──
+              if (_searchFocusNode.hasFocus || _searchQuery.isNotEmpty)
+                Expanded(
+                  child: _buildSearchResults(),
+                )
+              else
+                Expanded(
+                  child: NotificationListener<UserScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification.metrics.axis != Axis.vertical) {
+                        return false;
+                      }
+
+                      if (notification.direction == ScrollDirection.reverse) {
+                        // scrolling down
+                        if (_isScrollUIVisible) {
+                          setState(() => _isScrollUIVisible = false);
+                        }
+                      } else if (notification.direction == ScrollDirection.forward) {
+                        // scrolling up
+                        if (!_isScrollUIVisible) {
+                          setState(() => _isScrollUIVisible = true);
+                        }
+                      }
+                      return false;
+                    },
+                    child: PageView(
+                      controller: _explorePageController,
+                      onPageChanged: (index) {
+                        if (_exploreCategoryIndex != index) {
+                          setState(() {
+                            _exploreCategoryIndex = index;
+                          });
+                          AnalyticsService.instance.logCategoryClick(
+                            index == 0
+                                ? 'Explore_Home'
+                                : index == 1
+                                ? 'Explore_Hostel'
+                                : (index == 3 ? 'Explore_Buy' : 'Explore_Rental'),
+                          );
+                          HapticFeedback.selectionClick();
+                        }
+                      },
+                      children: [
+                        _buildExploreTabContent('Home'),
+                        _buildExploreTabContent('PG'),
+                        _buildExploreTabContent('Rental'),
+                        _buildExploreTabContent('Buy'),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
+            ],
           ),
         ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 100),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 20,
-                    right: 20,
-                    top: 16,
-                    bottom: 4,
-                  ),
-                  child: Text(
-                    'All Properties',
-                    style: TextStyle(
-                      fontFamily: 'DMSans',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: (_isInitialLoading && _allProperties.isEmpty)
-                      ? _buildSkeletonGrid()
-                      : _buildPropertyList(displayedProperties, 'Explore'),
-                ),
-              ],
-            ),
+
+        // ── Floating Bottom Center Search Button (appears when scrolling down) ──
+        Positioned(
+          bottom: MediaQuery.of(context).padding.bottom + 22,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: _buildFloatingBottomSearchButton(isDark),
           ),
         ),
       ],
-    ),
     );
   }
 
@@ -2107,7 +2234,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
-              height: (_isScrollUIVisible && !isSearchActive) ? 10 : 2,
+              height: (_isScrollUIVisible && !isSearchActive) ? 10 : 16,
             ),
             // ── Top row: location + settings button ─────────────────────────────
             AnimatedSize(
@@ -2267,95 +2394,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               // Search bar
                               Expanded(
                                 key: const ValueKey('home_search_expanded'),
-                                child: Container(
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(isSearchActive ? 30 : 12),
-                                    border: (_isScrollUIVisible && !isSearchActive) ? null : Border.all(color: Colors.grey.shade300),
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: TextField(
-                                    controller: _searchController,
-                                    readOnly: true,
-                                    textAlignVertical: TextAlignVertical.center,
-                                    cursorColor: Colors.black87,
-                                    cursorWidth: 2.0,
-                                    cursorHeight: 20.0,
-                                    onTap: _openUnifiedSearch,
-                                    style: TextStyle(
-                                      fontFamily: 'ProximaNova',
-                                      fontSize: 15.5,
-                                      color: Colors.grey.shade900,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    onChanged: _onSearchChanged,
-                                    decoration: InputDecoration(
-                                      hintText: "Search for '${_searchHints[_hintIndex]}'",
-                                      hintStyle: TextStyle(
-                                        fontFamily: 'ProximaNova',
-                                        fontSize: 15.0,
-                                        color: Colors.grey.shade600,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                      border: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      errorBorder: InputBorder.none,
-                                      disabledBorder: InputBorder.none,
-                                      contentPadding: isSearchActive 
-                                          ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
-                                          : const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                                      prefixIcon: isSearchActive ? null : Padding(
-                                        padding: const EdgeInsets.only(left: 8, right: 4),
-                                        child: Icon(
-                                          CupertinoIcons.search,
-                                          color: Colors.grey.shade600,
-                                          size: 20, // Decreased size
-                                        ),
-                                      ),
-                                      suffixIcon: Padding(
-                                        padding: const EdgeInsets.only(right: 8),
-                                        child: IconButton(
-                                          icon: Icon(
-                                            _searchQuery.isNotEmpty
-                                                ? CupertinoIcons.clear
-                                                : CupertinoIcons.mic_fill,
-                                            color: Colors.black87,
-                                            size: 20, // Decreased size
-                                          ),
-                                          onPressed: _searchQuery.isNotEmpty 
-                                              ? () {
-                                                  HapticFeedback.selectionClick();
-                                                  _searchController.clear();
-                                                  _searchFocusNode.unfocus(); // Close overlay when clearing
-                                                  setState(() {
-                                                    _searchQuery = '';
-                                                    _locationSuggestions = [];
-                                                  });
-                                                } 
-                                              : () async {
-                                                  HapticFeedback.selectionClick();
-                                                  await Navigator.push(
-                                                    context,
-                                                    PageRouteBuilder(
-                                                      pageBuilder: (context, animation, secondaryAnimation) => VoiceSearchScreen(
-                                                        properties: _allProperties,
-                                                      ),
-                                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                                        const begin = Offset(0.0, 1.0);
-                                                        const end = Offset.zero;
-                                                        const curve = Curves.ease;
-                                                        final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                                                        return SlideTransition(position: animation.drive(tween), child: child);
-                                                      },
-                                                    ),
-                                                  );
-                                                },
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                child: NewSearchBar(
+                                  readOnly: true,
+                                  onTap: _openUnifiedSearch,
+                                  onVoiceTap: _openVoiceSearch,
                                 ),
                               ),
 
@@ -2372,12 +2414,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                     clipBehavior: Clip.none,
                                     children: [
                                       Container(
-                                        height: 50,
-                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        height: 52,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: (_isScrollUIVisible && !isSearchActive) ? null : Border.all(color: Colors.grey.shade300),
+                                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                            width: 1.0,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
                                         ),
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
@@ -2389,35 +2441,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                                 fontFamily: 'ProximaNova',
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w800,
-                                                color: Colors.black87,
+                                                color: isDark ? Colors.white : Colors.black87,
                                                 letterSpacing: 0.5,
                                               ),
                                             ),
                                             const SizedBox(height: 2),
-                                            const Icon(
+                                            Icon(
                                               CupertinoIcons.sort_down,
-                                              size: 12, // Decreased size
-                                              color: Colors.black87,
+                                              size: 13,
+                                              color: isDark ? Colors.white : Colors.black87,
                                             ),
                                           ],
                                         ),
                                       ),
                                       if (_filterState.activeFilterCount > 0)
                                         Positioned(
-                                          top: -8,
-                                          right: -8,
+                                          top: -6,
+                                          right: -6,
                                           child: Container(
-                                            padding: const EdgeInsets.all(6),
+                                            padding: const EdgeInsets.all(5),
                                             decoration: BoxDecoration(
-                                              color: Colors.red,
+                                              color: isDark ? Colors.white : Colors.black,
                                               shape: BoxShape.circle,
-                                              border: Border.all(color: Colors.white, width: 2),
+                                              border: Border.all(
+                                                color: isDark ? Colors.black : Colors.white,
+                                                width: 2,
+                                              ),
                                             ),
                                             child: Text(
                                               '${_filterState.activeFilterCount}',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
+                                              style: TextStyle(
+                                                color: isDark ? Colors.black : Colors.white,
+                                                fontSize: 11,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
@@ -2444,8 +2499,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildHeaderTabBar(headerTextColor, headerSubTextColor),
-                        const SizedBox(
-                          height: 8,
+                        SizedBox(
+                          height: (_isScrollUIVisible && !isSearchActive) ? 8 : 12,
                         ),
                       ],
                     ),
@@ -2456,7 +2511,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildHeaderTabBar(Color textColor, Color subTextColor) {
+  Widget _buildHeaderTabBar(
+    Color textColor,
+    Color subTextColor, {
+    int? selectedIndex,
+    ValueChanged<int>? onTabSelected,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isHeaderYellow = _isScrollUIVisible && !(_searchFocusNode.hasFocus || _searchQuery.isNotEmpty);
+
+    // Signature brand yellow from AppTheme (the exact yellow color used throughout the app)
+    final brandYellow = AppTheme.primaryAccent;
+
+    // When scrolling down (white/dark sticky header), active tab shows in OUR BRAND YELLOW!
+    // When at the top (entire header is yellow), active tab shows in black for maximum contrast.
+    final activeColor = isHeaderYellow ? Colors.black87 : brandYellow;
+    final activeIndicatorColor = isHeaderYellow ? Colors.black87 : brandYellow;
+    final inactiveColor = isHeaderYellow
+        ? Colors.black.withValues(alpha: 0.55)
+        : (isDark ? Colors.white60 : Colors.black45);
+
     final tabs = [
       (label: 'ALL', index: 0, icon: CupertinoIcons.square_grid_2x2),
       (label: 'HOSTELS', index: 1, icon: Iconsax.building),
@@ -2464,8 +2538,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       (label: 'BUY', index: 3, icon: CupertinoIcons.bag),
     ];
 
+    final currentSelectedIndex = selectedIndex ?? _selectedTypeIndex;
+
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: EdgeInsets.only(top: isHeaderYellow ? 4 : 10),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -2476,7 +2552,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               return Container(
                 height: 14,
                 width: 1,
-                color: subTextColor.withValues(alpha: 0.3),
+                color: isHeaderYellow
+                    ? Colors.black.withValues(alpha: 0.2)
+                    : subTextColor.withValues(alpha: 0.2),
                 margin: const EdgeInsets.only(
                   left: 14,
                   right: 14,
@@ -2486,19 +2564,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             }
             final tabIndex = i ~/ 2;
             final tab = tabs[tabIndex];
-            final isSelected = tab.index == _selectedTypeIndex;
+            final isSelected = tab.index == currentSelectedIndex;
             return GestureDetector(
               onTap: () {
-                if (_selectedTypeIndex != tab.index) {
+                if (currentSelectedIndex != tab.index) {
                   HapticFeedback.selectionClick();
-                  setState(() {
-                    _selectedTypeIndex = tab.index;
-                  });
-                  _pageController.animateToPage(
-                    tab.index,
-                    duration: const Duration(milliseconds: 280),
-                    curve: Curves.easeInOutCubic,
-                  );
+                  if (onTabSelected != null) {
+                    onTabSelected(tab.index);
+                  } else {
+                    setState(() {
+                      _selectedTypeIndex = tab.index;
+                    });
+                    if (_pageController.hasClients) {
+                      _pageController.animateToPage(
+                        tab.index,
+                        duration: const Duration(milliseconds: 280),
+                        curve: Curves.easeInOutCubic,
+                      );
+                    }
+                  }
                 }
               },
               child: Container(
@@ -2511,9 +2595,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       children: [
                         Icon(
                           tab.icon,
-                          color: isSelected
-                              ? textColor
-                              : textColor.withValues(alpha: 0.6),
+                          color: isSelected ? activeColor : inactiveColor,
                           size: 16,
                         ),
                         const SizedBox(width: 6),
@@ -2521,13 +2603,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           tab.label,
                           style: TextStyle(
                             fontFamily: 'ProximaNova',
-                            color: isSelected
-                                ? textColor
-                                : textColor.withValues(alpha: 0.6),
+                            color: isSelected ? activeColor : inactiveColor,
                             fontSize: 12.5,
                             fontWeight:
                                 isSelected ? FontWeight.w800 : FontWeight.w600,
                             letterSpacing: 0.3,
+                            shadows: (isSelected && !isHeaderYellow && !isDark)
+                                ? [
+                                    Shadow(
+                                      color: Colors.black.withValues(alpha: 0.18),
+                                      blurRadius: 1,
+                                      offset: const Offset(0, 0.5),
+                                    ),
+                                  ]
+                                : null,
                           ),
                         ),
                       ],
@@ -2538,7 +2627,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       height: 3.5,
                       width: 50,
                       decoration: BoxDecoration(
-                        color: isSelected ? textColor : Colors.transparent,
+                        color: isSelected ? activeIndicatorColor : Colors.transparent,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(4),
                           topRight: Radius.circular(4),
@@ -2560,7 +2649,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // ═══════════════════════════════════════════════════════════════════════════
   Widget _buildFloatingBottomSearchButton(bool isDark) {
     final isSearchActive = _searchFocusNode.hasFocus || _searchQuery.isNotEmpty;
-    final isVisible = !_isScrollUIVisible && !isSearchActive && _bottomNavIndex == 0;
+    final isVisible = !_isScrollUIVisible && !isSearchActive && (_bottomNavIndex == 0 || _bottomNavIndex == 1);
 
     return AnimatedSlide(
       duration: const Duration(milliseconds: 280),
@@ -2768,79 +2857,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             // Search Bar
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 25),
-              child: Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: TextField(
-                  controller: _searchController,
-                  readOnly: true,
-                  textAlignVertical: TextAlignVertical.center,
-                  onTap: _openUnifiedSearch,
-                  style: TextStyle(
-                    fontFamily: 'ProximaNova',
-                    fontSize: 14.5,
-                    color: Colors.grey.shade900,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: "Search for '${_searchHints[_hintIndex]}'",
-                    hintStyle: TextStyle(
-                      fontFamily: 'ProximaNova',
-                      fontSize: 14.0,
-                      color: Colors.grey.shade600,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    suffixIcon: Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: IconButton(
-                        icon: Icon(
-                          _searchQuery.isNotEmpty
-                              ? CupertinoIcons.clear
-                              : CupertinoIcons.mic_fill,
-                          color: Colors.black87,
-                          size: 20,
-                        ),
-                        onPressed: _searchQuery.isNotEmpty
-                            ? () {
-                                HapticFeedback.selectionClick();
-                                _searchController.clear();
-                                _searchFocusNode.unfocus();
-                                setState(() {
-                                  _searchQuery = '';
-                                  _locationSuggestions = [];
-                                });
-                              }
-                            : () async {
-                                HapticFeedback.selectionClick();
-                                await Navigator.push(
-                                  context,
-                                  PageRouteBuilder(
-                                    pageBuilder: (context, animation, secondaryAnimation) =>
-                                        VoiceSearchScreen(
-                                          properties: _allProperties,
-                                        ),
-                                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                      const begin = Offset(0.0, 1.0);
-                                      const end = Offset.zero;
-                                      final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: Curves.ease));
-                                      return SlideTransition(position: animation.drive(tween), child: child);
-                                    },
-                                  ),
-                                );
-                              },
-                      ),
-                    ),
-
-                  ),
-                ),
+              child: NewSearchBar(
+                readOnly: true,
+                height: 48,
+                onTap: _openUnifiedSearch,
+                onVoiceTap: _openVoiceSearch,
               ),
             ),
             
@@ -2869,8 +2890,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     final filters = ['All', 'PG', 'Rental', 'Buy'];
                     final filter = filters[index];
                     final isSelected = _mapFilter == filter;
-                    final textColor = appBarTextColor;
-                    final subTextColor = appBarTextColor.withOpacity(0.6);
+                    final activeColor = AppTheme.primaryAccent;
+                    final textColor = isSelected ? activeColor : appBarTextColor;
+                    final subTextColor = isSelected ? activeColor : appBarTextColor.withValues(alpha: 0.6);
                     
                     return GestureDetector(
                       onTap: () {
@@ -2929,7 +2951,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               height: 3.5,
                               width: 50,
                               decoration: BoxDecoration(
-                                color: isSelected ? textColor : Colors.transparent,
+                                color: isSelected ? activeColor : Colors.transparent,
                                 borderRadius: const BorderRadius.only(
                                   topLeft: Radius.circular(4),
                                   topRight: Radius.circular(4),

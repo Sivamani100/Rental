@@ -22,6 +22,10 @@ class AppInstallPromptService {
     if (!kIsWeb) return;
 
     final prefs = await SharedPreferences.getInstance();
+    // Never show while splash or onboarding is still active
+    final bool hasCompletedOnboarding = prefs.getBool('has_completed_onboarding') ?? false;
+    if (!hasCompletedOnboarding) return;
+
     final int count = prefs.getInt(_countKey) ?? 0;
 
     // If shown/dismissed 3 times, stop forever

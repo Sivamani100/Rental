@@ -380,7 +380,7 @@ class _PartnerProfileTabState extends State<PartnerProfileTab> {
             child: Padding(
               padding: const EdgeInsets.only(top: 24, bottom: 24),
               child: Text(
-                'Rental Partner Ecosystem v1.1.16  •  Made with ♥ in India',
+                'Rental Partner Ecosystem v1.1.18  •  Made with ♥ in India',
                 style: TextStyle(
                   fontFamily: 'ProximaNova',
                   fontSize: 12,

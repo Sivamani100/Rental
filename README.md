@@ -2,7 +2,7 @@
 
 Arkio Rental is a Flutter application for discovering and managing rental, PG/hostel, and buy/sell property listings. It includes a location-aware property feed, map and voice search, property details and owner contact actions, listing submission, a partner dashboard, nearby transport and amenities, an AI assistant, analytics, notifications, and web deep-link support.
 
-The application identifier is `rental` in Dart (`pubspec.yaml`) and `com.arkiolabs.rental` on Android. The current package version is `1.1.17+27` (version name `1.1.17`, build number `27`).
+The application identifier is `rental` in Dart (`pubspec.yaml`) and `com.arkiolabs.rental` on Android. The current package version is `1.1.18+28` (version name `1.1.18`, build number `28`).
 
 ## Contents
 
@@ -491,3 +491,8 @@ Notable module files:
 - Some operations have local fallbacks, while others require Supabase (for example, fresh property feed queries and listing uploads). Local caches improve startup but do not make all app features offline-capable.
 - Theme files define both light and dark palettes, but current app wiring forces light mode.
 - The README documents client-observed backend contracts. Keep this guide synchronized with Supabase migrations, RPC signatures, policies, or a future backend schema repository.
+
+
+
+
+

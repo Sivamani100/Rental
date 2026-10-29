@@ -70,6 +70,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   late Future<List<PropertyModel>> _nearbyPropertiesFuture;
 
   late int _liveViewsCount;
+  static const bool _showViewsBadge = false; // Hidden per request without deleting code
   final DateTime _pageOpenTime = DateTime.now();
 
   @override
@@ -2022,40 +2023,42 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          // Right-Aligned Live Views Badge in vibrant clean Orange
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF5722).withValues(alpha: isDark ? 0.16 : 0.09),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: const Color(0xFFFF5722).withValues(alpha: 0.35),
-                                width: 1,
+                          if (_showViewsBadge) ...[
+                            const SizedBox(width: 8),
+                            // Right-Aligned Live Views Badge in vibrant clean Orange
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF5722).withValues(alpha: isDark ? 0.16 : 0.09),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: const Color(0xFFFF5722).withValues(alpha: 0.35),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    CupertinoIcons.eye_fill,
+                                    size: 13.5,
+                                    color: Color(0xFFFF5722),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '$_liveViewsCount views',
+                                    style: const TextStyle(
+                                      fontFamily: 'ProximaNova',
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFFFF5722),
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  CupertinoIcons.eye_fill,
-                                  size: 13.5,
-                                  color: Color(0xFFFF5722),
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  '$_liveViewsCount views',
-                                  style: const TextStyle(
-                                    fontFamily: 'ProximaNova',
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFFFF5722),
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 12),

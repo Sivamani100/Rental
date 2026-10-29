@@ -161,20 +161,21 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     });
   }
 
-  void _reset() {
+  void _clearAllAndClose() {
     HapticFeedback.mediumImpact();
     double defaultMax = 100000;
     if (_currentCategory == 'PG') defaultMax = 35000;
     if (_currentCategory == 'Buy') defaultMax = 50000000;
 
-    setState(() {
-      _state = FilterState(
-        selectedCategory: _currentCategory,
-        propertyTypes: [_currentCategory],
-        minBudget: 0,
-        maxBudget: defaultMax,
-      );
-    });
+    final clearedState = FilterState(
+      selectedCategory: _currentCategory,
+      propertyTypes: [_currentCategory],
+      minBudget: 0,
+      maxBudget: defaultMax,
+      sortBy: 'distance',
+    );
+    widget.onApply(clearedState);
+    Navigator.pop(context);
   }
 
   void _apply() {
@@ -283,16 +284,16 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   ],
                 ),
                 GestureDetector(
-                  onTap: _reset,
+                  onTap: _clearAllAndClose,
                   child: Text(
                     'Clear All',
                     style: TextStyle(
                       fontFamily: 'ProximaNova',
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppTheme.errorRed,
+                      color: isDark ? Colors.white70 : Colors.black87,
                       decoration: TextDecoration.underline,
-                      decorationColor: AppTheme.errorRed,
+                      decorationColor: isDark ? Colors.white70 : Colors.black87,
                     ),
                   ),
                 ),

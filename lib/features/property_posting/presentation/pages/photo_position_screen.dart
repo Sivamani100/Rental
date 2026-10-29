@@ -9,6 +9,7 @@ import 'package:rental/app/theme/app_theme.dart';
 import 'package:rental/core/widgets/bouncing_button.dart';
 import 'package:rental/core/widgets/image_cropper_sheet.dart';
 import 'package:rental/core/widgets/app_snackbar.dart';
+import 'package:rental/core/services/photo_processing_pipeline.dart';
 
 class PhotoItem {
   final XFile? file;
@@ -50,8 +51,14 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
 
   Future<void> _addMorePhotos() async {
     try {
-      final List<XFile> picked = await _picker.pickMultiImage();
+      final List<XFile> picked = await _picker.pickMultiImage(
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 85,
+      );
       if (picked.isNotEmpty) {
+        // Immediately kick off background processing
+        PhotoProcessingPipeline.instance.stageAndProcess(picked);
         setState(() {
           _photos.addAll(picked.map((f) => PhotoItem(file: f)));
           _selectedIndex = _photos.length - 1;
@@ -106,6 +113,7 @@ class _PhotoPositionScreenState extends State<PhotoPositionScreen> {
 
     final cropped = await ImageCropperSheet.open(context, item.file!);
     if (cropped != null && mounted) {
+      PhotoProcessingPipeline.instance.stageAndProcess([cropped]);
       setState(() {
         _photos[index] = PhotoItem(file: cropped);
       });

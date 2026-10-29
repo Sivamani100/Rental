@@ -116,7 +116,6 @@ Future<void> main() async {
   _initFirebaseSafely();
 
   // Non-blocking background initializations
-  InstallTracker.initAndTrack();
   AiAssistantService.instance.init();
 
   // CRITICAL: Load SharedPreferences BEFORE deep link check so we can use cache
@@ -168,9 +167,10 @@ Future<void> main() async {
       authOptions: const FlutterAuthClientOptions(
         localStorage: SecureLocalStorage(),
       ),
-    ).catchError((e) {
+    ).then((_) {
+      InstallTracker.initAndTrack();
+    }).catchError((e) {
       debugPrint('Supabase initialize error: $e');
-      return Supabase.instance;
     }),
   ]);
 
@@ -195,7 +195,7 @@ Future<void> main() async {
   if (kIsWeb) {
     AppInstallPromptService.instance.navigatorKey =
         PushNotificationService.instance.navigatorKey;
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 15), () {
       AppInstallPromptService.instance.checkAndShowPrompt();
     });
   }
