@@ -38,7 +38,7 @@ class NewSearchBar extends StatefulWidget {
     this.margin,
     this.height = 52.0,
     this.borderRadius = 16.0,
-    this.showShadow = true,
+    this.showShadow = false,
     this.showSearchIcon = false,
   });
 

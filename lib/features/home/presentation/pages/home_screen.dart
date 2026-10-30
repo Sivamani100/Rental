@@ -930,36 +930,123 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   List<PropertyModel> _getSortedPropertiesForType(String selectedTypeStr) {
     bool matchesType(PropertyModel property) {
+      final t = property.type.toLowerCase().trim();
+      final title = property.title.toLowerCase();
+      final tagsStr = property.tags.join(' ').toLowerCase();
+
+      final bool isPgOrHostel = t == 'pg' ||
+          t == 'hostel' ||
+          t == 'hostels' ||
+          t.contains('pg') ||
+          t.contains('hostel') ||
+          t.contains('paying guest') ||
+          t.contains('coliving') ||
+          t.contains('co-living') ||
+          title.contains('hostel') ||
+          title.contains(' pg') ||
+          title.startsWith('pg ') ||
+          title.contains('pg/') ||
+          title.contains('/pg') ||
+          title.contains('co living') ||
+          title.contains('coliving') ||
+          title.contains('guest house') ||
+          title.contains('dormitory') ||
+          tagsStr.contains('hostel') ||
+          tagsStr.contains('pg ') ||
+          tagsStr.contains('boys only') ||
+          tagsStr.contains('girls only') ||
+          (property.sharingType != null && property.sharingType!.isNotEmpty);
+
       if (selectedTypeStr == 'Home') return true;
-      if (selectedTypeStr == 'Rental') {
-        return property.type == 'Rental' || property.type == 'House';
-      } else if (selectedTypeStr == 'Buy') {
-        return property.type == 'Buy' ||
-            property.type == 'Sale' ||
-            property.type == 'Plot' ||
-            property.type == 'Land';
-      } else {
-        return property.type == 'PG' || property.type == 'Hostel';
+
+      if (selectedTypeStr == 'PG') {
+        return isPgOrHostel;
       }
+
+      if (selectedTypeStr == 'Rental') {
+        if (isPgOrHostel) return false;
+        return t == 'rental' ||
+            t == 'house' ||
+            t.contains('rent') ||
+            t.contains('apartment') ||
+            t.contains('flat') ||
+            title.contains('rent') ||
+            title.contains('flat') ||
+            title.contains('bhk');
+      }
+
+      if (selectedTypeStr == 'Buy') {
+        if (isPgOrHostel) return false;
+        return t == 'buy' ||
+            t == 'sale' ||
+            t == 'plot' ||
+            t == 'land' ||
+            t.contains('buy') ||
+            t.contains('sale') ||
+            title.contains('buy') ||
+            title.contains('sale') ||
+            title.contains('plot') ||
+            title.contains('land');
+      }
+
+      return true;
     }
 
     bool matchesSearch(PropertyModel p) {
-      if (_searchQuery.isEmpty) return true;
-      final q = _searchQuery.toLowerCase();
-      return p.title.toLowerCase().contains(q) ||
-          p.locationStr.toLowerCase().contains(q) ||
-          (p.description != null && p.description!.toLowerCase().contains(q)) ||
-          p.type.toLowerCase().contains(q) ||
-          p.tags.join(' ').toLowerCase().contains(q) ||
-          p.features.join(' ').toLowerCase().contains(q);
+      if (_searchQuery.trim().isEmpty) return true;
+      final q = _searchQuery.toLowerCase().trim();
+
+      // If user typed/selected a category term corresponding to this tab, match all properties of this tab
+      if (q == 'hostel' || q == 'hostels' || q == 'pg' || q == 'hostel & pg' || q == 'hostels & pg') {
+        if (selectedTypeStr == 'PG') return true;
+        final t = p.type.toLowerCase();
+        final title = p.title.toLowerCase();
+        return t.contains('pg') || t.contains('hostel') || title.contains('pg') || title.contains('hostel');
+      }
+
+      if (q == 'rent' || q == 'rentals' || q == 'rental') {
+        if (selectedTypeStr == 'Rental') return true;
+      }
+
+      if (q == 'buy' || q == 'sale' || q == 'plots') {
+        if (selectedTypeStr == 'Buy') return true;
+      }
+
+      final title = p.title.toLowerCase();
+      final loc = p.locationStr.toLowerCase();
+      final desc = (p.description ?? '').toLowerCase();
+      final type = p.type.toLowerCase();
+      final tags = p.tags.join(' ').toLowerCase();
+      final feat = p.features.join(' ').toLowerCase();
+      final combined = '$title $loc $desc $type $tags $feat';
+
+      if (combined.contains(q)) return true;
+
+      // Handle multi-word searches (e.g. "hostels in Diwancheruvu")
+      final words = q.split(RegExp(r'\s+')).where((w) => w.isNotEmpty && w != 'in' && w != 'near' && w != '&').toList();
+      if (words.isNotEmpty) {
+        return words.every((w) {
+          if (w == 'hostels' || w == 'hostel' || w == 'pg') {
+            return type.contains('pg') || type.contains('hostel') || title.contains('pg') || title.contains('hostel') || tags.contains('hostel') || tags.contains('pg');
+          }
+          return combined.contains(w);
+        });
+      }
+
+      return false;
     }
 
     bool matchesFilters(PropertyModel p) {
       double parsedPrice = double.tryParse(p.price.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
-      if (parsedPrice < _filterState.minBudget || parsedPrice > _filterState.maxBudget) return false;
+      // Only filter by budget if the property has a price > 0, so "To be updated" listings are preserved
+      if (parsedPrice > 0) {
+        if (parsedPrice < _filterState.minBudget || parsedPrice > _filterState.maxBudget) return false;
+      }
 
-      // 1. Category / Property Type match
-      if (_filterState.propertyTypes.isNotEmpty) {
+      // 1. Category / Property Type match:
+      // When the user has already navigated to a specific tab (PG, Rental, Buy),
+      // that tab takes precedence over any stale propertyTypes filter from another tab.
+      if (selectedTypeStr == 'Home' && _filterState.propertyTypes.isNotEmpty) {
         bool typeMatch = false;
         final pType = p.type.toLowerCase();
         for (final t in _filterState.propertyTypes) {
@@ -977,84 +1064,61 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         if (!typeMatch) return false;
       }
 
-      // 2. Buy Property Sub-type match
-      if (_filterState.buyPropertyTypes.isNotEmpty) {
-        bool match = false;
-        final pType = p.type.toLowerCase();
-        final text = '${p.title} ${p.description ?? ''} ${p.tags.join(' ')}'.toLowerCase();
-        for (final bpt in _filterState.buyPropertyTypes) {
-          final bptLower = bpt.toLowerCase();
-          if (bptLower.contains('plot') || bptLower.contains('land')) {
-            if (pType.contains('plot') || pType.contains('land') || text.contains('plot') || text.contains('land')) match = true;
-          } else if (bptLower.contains('flat') || bptLower.contains('apartment')) {
-            if (text.contains('flat') || text.contains('apartment') || text.contains('bhk')) match = true;
-          } else if (bptLower.contains('villa') || bptLower.contains('house')) {
-            if (pType.contains('house') || text.contains('villa') || text.contains('independent')) match = true;
-          } else if (bptLower.contains('commercial')) {
-            if (text.contains('commercial') || text.contains('shop') || text.contains('office')) match = true;
-          }
-        }
-        if (!match) return false;
-      }
-
-      // 3. Construction Status match
-      if (_filterState.constructionStatus.isNotEmpty) {
-        bool match = false;
-        final desc = '${p.description ?? ''} ${p.tags.join(' ')}'.toLowerCase();
-        for (final cs in _filterState.constructionStatus) {
-          if (desc.contains(cs.toLowerCase())) match = true;
-        }
-        if (!match) return false;
-      }
-
-      // 4. Furnishing match
-      if (_filterState.furnishing.isNotEmpty) {
-        bool match = false;
-        String pFurnish = (p.furnishingStatus ?? '').toLowerCase();
-        for (final f in _filterState.furnishing) {
-          if (pFurnish.contains(f.toLowerCase())) match = true;
-        }
-        if (!match) return false;
-      }
-
-      // 5. Occupancy / Sharing match
-      if (_filterState.occupancy.isNotEmpty) {
-        bool match = false;
-        final occText = '${p.sharingType ?? ''} ${p.tags.join(' ')} ${p.description ?? ''}'.toLowerCase();
-        for (final o in _filterState.occupancy) {
-          final oClean = o.toLowerCase().replaceAll('sharing', '').replaceAll('room', '').trim();
-          if (occText.contains(oClean)) match = true;
-        }
-        if (!match) return false;
-      }
-
-      // 6. Bathrooms match
-      if (_filterState.bathrooms.isNotEmpty) {
-        bool match = false;
-        String bths = p.baths.toLowerCase();
-        String bType = (p.bathroomType ?? '').toLowerCase();
-        String featuresStr = p.features.join(' ').toLowerCase();
-        for (final b in _filterState.bathrooms) {
-          final bLower = b.toLowerCase();
-          if (bLower.contains('attached') && (bType.contains('attached') || featuresStr.contains('attached'))) match = true;
-          else if (bLower.contains('common') && (bType.contains('common') || featuresStr.contains('common'))) match = true;
-          else if (bths.contains(bLower.replaceAll('+', ''))) match = true;
-        }
-        if (!match) return false;
-      }
-
-      // 7. BHK Type match
-      if (_filterState.bhkTypes.isNotEmpty) {
-        if (p.bhkType != null) {
+      // 2. Buy Property Sub-type match (Only applicable to Buy properties)
+      if (selectedTypeStr == 'Buy' || selectedTypeStr == 'Home') {
+        if (_filterState.buyPropertyTypes.isNotEmpty) {
           bool match = false;
-          String bhk = p.bhkType!.toLowerCase();
-          for (final b in _filterState.bhkTypes) {
-            final bClean = b.toLowerCase().split('/').first.trim();
-            if (bhk.contains(bClean) || p.tags.any((t) => t.toLowerCase().contains(bClean))) match = true;
+          final pType = p.type.toLowerCase();
+          final text = '${p.title} ${p.description ?? ''} ${p.tags.join(' ')}'.toLowerCase();
+          for (final bpt in _filterState.buyPropertyTypes) {
+            final bptLower = bpt.toLowerCase();
+            if (bptLower.contains('plot') || bptLower.contains('land')) {
+              if (pType.contains('plot') || pType.contains('land') || text.contains('plot') || text.contains('land')) match = true;
+            } else if (bptLower.contains('flat') || bptLower.contains('apartment')) {
+              if (text.contains('flat') || text.contains('apartment') || text.contains('bhk')) match = true;
+            } else if (bptLower.contains('villa') || bptLower.contains('house')) {
+              if (pType.contains('house') || text.contains('villa') || text.contains('independent')) match = true;
+            } else if (bptLower.contains('commercial')) {
+              if (text.contains('commercial') || text.contains('shop') || text.contains('office')) match = true;
+            }
           }
           if (!match) return false;
-        } else {
-          return false;
+        }
+
+        // 3. Construction Status match
+        if (_filterState.constructionStatus.isNotEmpty) {
+          bool match = false;
+          final desc = '${p.description ?? ''} ${p.tags.join(' ')}'.toLowerCase();
+          for (final cs in _filterState.constructionStatus) {
+            if (desc.contains(cs.toLowerCase())) match = true;
+          }
+          if (!match) return false;
+        }
+      }
+
+      // 4. Furnishing & BHK Type match (Only applicable to Rental properties)
+      if (selectedTypeStr == 'Rental' || selectedTypeStr == 'Home') {
+        if (_filterState.furnishing.isNotEmpty) {
+          bool match = false;
+          String pFurnish = (p.furnishingStatus ?? '').toLowerCase();
+          for (final f in _filterState.furnishing) {
+            if (pFurnish.contains(f.toLowerCase())) match = true;
+          }
+          if (!match) return false;
+        }
+
+        if (_filterState.bhkTypes.isNotEmpty) {
+          if (p.bhkType != null) {
+            bool match = false;
+            String bhk = p.bhkType!.toLowerCase();
+            for (final b in _filterState.bhkTypes) {
+              final bClean = b.toLowerCase().split('/').first.trim();
+              if (bhk.contains(bClean) || p.tags.any((t) => t.toLowerCase().contains(bClean))) match = true;
+            }
+            if (!match) return false;
+          } else {
+            return false;
+          }
         }
       }
 
@@ -1536,12 +1600,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: (!_isScrollUIVisible && !isSearchActive)
                   ? const SizedBox(width: double.infinity, height: 0)
                   : Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, (_isScrollUIVisible && !isSearchActive) ? 20 : 16),
                       child: Row(
                         children: [
                           Expanded(
                             child: NewSearchBar(
                               readOnly: true,
+                              showShadow: false,
                               onTap: _openUnifiedSearch,
                               onVoiceTap: _openVoiceSearch,
                             ),
@@ -1567,13 +1632,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                       color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                                       width: 1.0,
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
                                   ),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
@@ -1630,11 +1688,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
             ),
 
-            // ── Sticky Category Tabs inside Header (remains sticky while scrolling) ──
+            // ── Sticky Category Tabs inside Header (hidden at top, appears only while scrolling) ──
             AnimatedSize(
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeInOut,
-              child: isSearchActive
+              child: (_isScrollUIVisible || isSearchActive)
                   ? const SizedBox(width: double.infinity, height: 0)
                   : Column(
                       mainAxisSize: MainAxisSize.min,
@@ -1646,6 +1704,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           onTabSelected: (index) {
                             setState(() {
                               _exploreCategoryIndex = index;
+                              final q = _searchQuery.toLowerCase().trim();
+                              if (q == 'hostel' || q == 'hostels' || q == 'pg' || q == 'rentals' || q == 'rental' || q == 'buy') {
+                                _searchQuery = '';
+                                _searchController.clear();
+                              }
                             });
                             if (_explorePageController.hasClients) {
                               _explorePageController.animateToPage(
@@ -1656,9 +1719,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             }
                           },
                         ),
-                        SizedBox(
-                          height: (_isScrollUIVisible && !isSearchActive) ? 8 : 12,
-                        ),
+                        const SizedBox(height: 12),
                       ],
                     ),
             ),
@@ -2396,6 +2457,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                 key: const ValueKey('home_search_expanded'),
                                 child: NewSearchBar(
                                   readOnly: true,
+                                  showShadow: false,
                                   onTap: _openUnifiedSearch,
                                   onVoiceTap: _openVoiceSearch,
                                 ),
@@ -2423,13 +2485,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                             color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                                             width: 1.0,
                                           ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
                                         ),
                                         child: Column(
                                           mainAxisSize: MainAxisSize.min,
@@ -2574,6 +2629,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   } else {
                     setState(() {
                       _selectedTypeIndex = tab.index;
+                      final q = _searchQuery.toLowerCase().trim();
+                      if (q == 'hostel' || q == 'hostels' || q == 'pg' || q == 'rentals' || q == 'rental' || q == 'buy') {
+                        _searchQuery = '';
+                        _searchController.clear();
+                      }
                     });
                     if (_pageController.hasClients) {
                       _pageController.animateToPage(
@@ -3375,8 +3435,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   HapticFeedback.selectionClick();
                   if (index == 0) {
                     _lastExploreTabTap = null;
+                    final homeCtrl = _selectedTypeIndex == 0
+                        ? _homeScrollController
+                        : (_selectedTypeIndex == 1
+                            ? _pgScrollController
+                            : (_selectedTypeIndex == 3
+                                ? _buyScrollController
+                                : _rentalScrollController));
+                    final isAtTop = !homeCtrl.hasClients || homeCtrl.offset <= 20;
                     setState(() {
                       _bottomNavIndex = 0;
+                      if (isAtTop) _isScrollUIVisible = true;
                     });
                     if (_selectedTypeIndex != 0) {
                       setState(() {
@@ -3403,8 +3472,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       debugPrint('🚀 [Explore Tab] Opening UnifiedSearchScreen directly!');
                       _openUnifiedSearch();
                     } else {
+                      final expCtrl = _exploreControllerForType(
+                        _exploreCategoryIndex == 0
+                            ? 'Home'
+                            : (_exploreCategoryIndex == 1
+                                ? 'PG'
+                                : (_exploreCategoryIndex == 3
+                                    ? 'Buy'
+                                    : 'Rental')),
+                      );
+                      final isAtTop = !expCtrl.hasClients || expCtrl.offset <= 20;
                       setState(() {
                         _bottomNavIndex = 1;
+                        if (isAtTop) _isScrollUIVisible = true;
                       });
                     }
                   } else if (index == 2) {
@@ -3511,7 +3591,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             Text(
               _searchQuery.isNotEmpty 
                   ? "We couldn't find anything for '$_searchQuery' in this area."
-                  : 'No properties within ${_currentSearchRadiusKm}km. Try a different location!',
+                  : (_currentSearchRadiusKm > 0
+                      ? 'No properties within ${_currentSearchRadiusKm}km. Try a different location!'
+                      : 'No properties found in this category. Try exploring other areas or clearing filters!'),
               style: TextStyle(
                 fontFamily: 'ProximaNova',
                 color: isDark

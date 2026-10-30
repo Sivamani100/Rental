@@ -226,9 +226,17 @@ class _NewSearchScreenState extends State<NewSearchScreen> {
     if (p.description != null && p.description!.toLowerCase().contains(q)) return true;
 
     // Special keywords
-    if (q == 'hostel' || q == 'pg') {
+    if (q == 'hostel' || q == 'hostels' || q == 'pg' || q == 'hostel & pg' || q == 'hostels & pg') {
       final t = p.type.toLowerCase();
-      return t.contains('pg') || t.contains('hostel');
+      final title = p.title.toLowerCase();
+      return t.contains('pg') ||
+          t.contains('hostel') ||
+          title.contains('pg') ||
+          title.contains('hostel') ||
+          title.contains('guest house') ||
+          title.contains('dormitory') ||
+          p.tags.any((tag) => tag.toLowerCase().contains('pg') || tag.toLowerCase().contains('hostel')) ||
+          (p.sharingType != null && p.sharingType!.isNotEmpty);
     }
     if (q.contains('bhk')) {
       return p.title.toLowerCase().contains(q) ||

@@ -400,9 +400,10 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
     if (q == 'hostel' || q == 'hostels' || q == 'pg' || q == 'hostel & pg' || q == 'hostels & pg') {
       final t = p.type.toLowerCase();
       final title = p.title.toLowerCase();
-      if (t.contains('pg') || t.contains('hostel')) return true;
-      if (title.contains('pg') || title.contains('hostel')) return true;
-      if (p.tags.any((tag) => tag.toLowerCase().contains('pg') || tag.toLowerCase().contains('hostel'))) return true;
+      if (t.contains('pg') || t.contains('hostel') || t.contains('paying guest') || t.contains('coliving')) return true;
+      if (title.contains('pg') || title.contains('hostel') || title.contains('guest house') || title.contains('dormitory')) return true;
+      if (p.tags.any((tag) => tag.toLowerCase().contains('pg') || tag.toLowerCase().contains('hostel') || tag.toLowerCase().contains('sharing') || tag.toLowerCase().contains('boys') || tag.toLowerCase().contains('girls'))) return true;
+      if (p.sharingType != null && p.sharingType!.isNotEmpty) return true;
       return false;
     }
 
@@ -574,7 +575,16 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
       list = list.where((p) {
         final t = p.type.toLowerCase();
         final title = p.title.toLowerCase();
-        return t.contains('pg') || t.contains('hostel') || title.contains('pg') || title.contains('hostel');
+        return t.contains('pg') ||
+            t.contains('hostel') ||
+            t.contains('paying guest') ||
+            t.contains('coliving') ||
+            title.contains('pg') ||
+            title.contains('hostel') ||
+            title.contains('guest house') ||
+            title.contains('dormitory') ||
+            p.tags.any((tag) => tag.toLowerCase().contains('pg') || tag.toLowerCase().contains('hostel') || tag.toLowerCase().contains('sharing')) ||
+            (p.sharingType != null && p.sharingType!.isNotEmpty);
       }).toList();
     } else if (_selectedCategory == 'Rental') {
       list = list.where((p) {
@@ -747,13 +757,6 @@ class _UnifiedSearchScreenState extends State<UnifiedSearchScreen> {
           color: surfaceColor,
           borderRadius: BorderRadius.circular(50),
           border: Border.all(color: borderColor, width: 1.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Row(
           children: [

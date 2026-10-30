@@ -1,5 +1,5 @@
 name: rental
-description: "A new Flutter project."
+description: "Rental is a Flutter application for discovering and managing rental, PG/hostel, and buy/sell property listings. It includes a location-aware property feed, map and voice search, property details and owner contact actions, listing submission, a partner dashboard, nearby transport and amenities, an AI assistant, analytics, notifications, and web deep-link support."
 publish_to: 'none'
 version: 1.1.18+28
 
